@@ -2,6 +2,7 @@ from __future__ import annotations
 from typing import Optional, Tuple, Dict
 import jax, jax.numpy as jnp
 from jax import Array, lax, random
+from torch import dtype
 
 from vgd.util import _median_lengthscale_subset, _replace_lengthscale
 from vgd.distribution import DiscreteMixture, Posterior
@@ -46,6 +47,9 @@ def make_vgd_random_step(
     # Close over fixed, normalised weights; avoid any per-step normalisation.
     w_fixed = Q0.w
 
+    dtype = Q0.particles.dtype
+    eps_ = jnp.asarray(eps, dtype)
+
     def _one_step(carry: Tuple[DiscreteMixture, Array, Array, Array]):
         # mixture dist, lengthscale, time, key
         Q_cur, ell, t, key = carry
@@ -72,11 +76,11 @@ def make_vgd_random_step(
         # Strang Split (1/2 Noise -> Kernel Grad -> 1/2 Noise)
         particles = Q_cur.particles
         key, key_noise1, key_noise2 = random.split(key, 3)
-        sigma = jnp.sqrt(jnp.asarray((1 - lambd) * eps, dtype)) * jnp.asarray(noise_scale, dtype)
+        sigma = jnp.sqrt(jnp.asarray((1 - lambd) * eps_, dtype)) * jnp.asarray(noise_scale, dtype)
 
         # Langevin update 1:
         noise1 = random.normal(key_noise1, particles.shape, dtype=dtype) * sigma
-        particles_next = particles + noise1
+        particles_next = particles + eps_ * (1 - lambd) * s_prior + noise1
 
         # Kernel VGD update (fixed weights) 
         K, G = kernel(particles_next, particles_next, kparams)  # (n,n), (n,n,d)
@@ -90,7 +94,7 @@ def make_vgd_random_step(
 
         # Perform update + Langevin update 2:
         noise2 = random.normal(key_noise2, particles.shape, dtype=dtype) * sigma
-        particles_next = particles + jnp.asarray(eps, dtype) * (phi + (1 - lambd) * s_prior) + noise2
+        particles_next = particles + eps_ * (phi + (1 - lambd) * s_prior) + noise2
 
         Q_next = Q_cur.replace_particles(particles_next)
 

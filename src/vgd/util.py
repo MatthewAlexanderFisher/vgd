@@ -112,7 +112,7 @@ def seq_weights(loglik_total: Array, logw: Array, alpha: float = 1.0) -> Array:
 
 # Plotting code
 
-def plot_1d_output(Q, history, posterior, algo_name="VGD", figsize=(18,4), pred_mean_alpha=None):
+def plot_1d_output(Q, history, posterior, algo_name="VGD", figsize=(18,4), use_weights=False):
     particles = jnp.array(Q.particles).reshape(-1)  # flatten to (n,)
     trajectory = history["particles_traj"]
 
@@ -145,7 +145,10 @@ def plot_1d_output(Q, history, posterior, algo_name="VGD", figsize=(18,4), pred_
 
     # KDE of VGD Particles
     particles = jnp.array(particles).reshape(-1)
-    sns.kdeplot(x=particles, fill=True, bw_adjust=0.5, label=algo_name + " KDE", ax=axs[1])
+    if use_weights is False:
+        sns.kdeplot(x=particles, fill=True, bw_adjust=0.5, label=algo_name + " KDE", ax=axs[1])
+    else:
+        sns.kdeplot(x=particles, fill=True, bw_adjust=0.5, label=algo_name + " KDE", ax=axs[1], weights=Q.w)
     axs[1].set_title(algo_name + " KDE of Particles")
     axs[1].legend()
 
@@ -169,7 +172,7 @@ def plot_1d_output(Q, history, posterior, algo_name="VGD", figsize=(18,4), pred_
     grid = jnp.linspace(x_min, x_max, 100)
     predictive_means = posterior.like.pred_mean_fn(particles, grid)  # (n_particles, len(grid))
 
-    if pred_mean_alpha is None:
+    if use_weights is False:
         axs[4].plot(grid, predictive_means.T, color='red', alpha=0.4)
     else:
         for i, (mean_i, w_i) in enumerate(zip(predictive_means, Q.w)):
