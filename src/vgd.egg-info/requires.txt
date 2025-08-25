@@ -1,0 +1,13 @@
+jax==0.6.0
+pyyaml==6.0.2
+
+[dev]
+black==25.1.0
+tensorboard==2.19.0
+
+[docs]
+sphinx
+sphinx-autodoc-typehints
+sphinx-rtd-theme
+sphinxcontrib-bibtex==2.6.3
+furo
