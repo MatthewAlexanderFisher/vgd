@@ -80,7 +80,7 @@ def make_vgd_random_step(
 
         # Langevin update 1:
         noise1 = random.normal(key_noise1, particles.shape, dtype=dtype) * sigma
-        particles_next = particles + eps_ * (1 - lambd) * s_prior + noise1
+        particles_next = particles + eps_ * (1 - lambd) * s_prior / 2 + noise1
 
         # Kernel VGD update (fixed weights) 
         K, G = kernel(particles_next, particles_next, kparams)  # (n,n), (n,n,d)
@@ -94,7 +94,7 @@ def make_vgd_random_step(
 
         # Perform update + Langevin update 2:
         noise2 = random.normal(key_noise2, particles.shape, dtype=dtype) * sigma
-        particles_next = particles + eps_ * (phi + (1 - lambd) * s_prior) + noise2
+        particles_next = particles + eps_ * (phi + (1 - lambd) * s_prior) / 2 + noise2
 
         Q_next = Q_cur.replace_particles(particles_next)
 
