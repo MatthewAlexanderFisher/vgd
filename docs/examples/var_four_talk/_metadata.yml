@@ -1,0 +1,23 @@
+format:
+  revealjs: 
+    template-partials:
+      - title-slide.html
+    transition: fade
+
+    theme: custom.scss
+    css: custom.css
+    fig-align: center
+    margin: 0.06        # default ~0.04; smaller = slide closer to edges
+    html-math-method: katex
+    menu: false
+    progress: false
+    navigation-mode: vertical   # enables up/down within stacks
+    slide-number: h.v   # show 1.2 style numbering
+    # controls-layout: bottom-right
+    incremental: false
+    controls-tutorial: false
+    code-fold: true       # collapsible code blocks
+    code-tools: true      # show a small code/clipboard toolbar
+
+search: false
+

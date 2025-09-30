@@ -5,11 +5,12 @@ from jax import random, Array, lax
 from typing import Optional, Dict, Any, Callable, Tuple
 
 from vgd.loss import Loss
-from vgd.distribution import DiscreteMixture, Posterior
+from vgd.distribution import MixtureLike
+from vgd.model import Model
 
 def make_mfld_step(
     *,
-    model: Posterior,                      # Posterior/Model wrapper (likelihood + prior), data already bound
+    model: Model,                      # Posterior/Model wrapper (predictor/likelihood + prior), data already bound
     loss: Loss,                            # Loss: .eval(model, Q)->scalar, .grad(model, Q)->(n,d) VGD/Wasserstein field
     lr: float = 1e-3,                      # step size (Euler–Maruyama)
     temperature: float = 1.0,
@@ -17,8 +18,8 @@ def make_mfld_step(
     friction: float = 0.0,                 # momentum/underdamped if > 0
     return_metrics: bool = False,
 ) -> Callable[
-    [Tuple[DiscreteMixture, Array, Array], Array],
-    Tuple[Tuple[DiscreteMixture, Array, Array], Dict[str, Array]],
+    [Tuple[MixtureLike, Array, Array], Array],
+    Tuple[Tuple[MixtureLike, Array, Array], Dict[str, Array]],
 ]:
     """
     One MFLD scan step.
@@ -35,7 +36,7 @@ def make_mfld_step(
     drift = loss.grad(model, Q) + model.score_prior(Q.particles)
     """
 
-    def _one_step(carry: Tuple[DiscreteMixture, Array, Array]) -> Tuple[Tuple[DiscreteMixture, Array, Array], Dict[str, Array]]:
+    def _one_step(carry: Tuple[MixtureLike, Array, Array]) -> Tuple[Tuple[MixtureLike, Array, Array], Dict[str, Array]]:
         # mixture dist, lengthscale, time, key
         Q_cur, velocities, key = carry
 
@@ -89,22 +90,22 @@ def make_mfld_step(
 
 def mfld(
     *,
-    model: Posterior,
+    model: Model,
     loss: Loss,
     key: Array,
-    Q0: DiscreteMixture,
+    Q0: MixtureLike,
     steps: int,
     lr: float = 1e-3,
     temperature: float = 1.0,
     noise_scale: float = 1.0,
     friction: float = 0.0,
     return_metrics: bool = False,
-) -> Tuple[DiscreteMixture, Dict[str, Array]]:
+) -> Tuple[MixtureLike, Dict[str, Array]]:
     """
     Run Mean-Field Langevin Dynamics.
 
     Returns:
-      - final DiscreteMixture
+      - final MixtureLike
       - final velocities array (same shape as Q0.particles)
       - history dict stacked over time; {} if return_metrics=False
 

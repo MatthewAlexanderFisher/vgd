@@ -1,0 +1,32 @@
+project:
+  type: website
+  output-dir: docs
+
+website:
+  title: "VGD Docs"
+  navbar:
+    left:
+      - text: Tutorials
+        href: examples/index.qmd
+      - text: API
+        href: api/index.html
+    right:
+      - icon: github
+        href: https://github.com/matthewalexanderfisher/vgd
+  sidebar:
+    style: docked
+    search: true
+
+format:
+  html:
+    theme: cosmo
+    html-math-method: katex
+    toc: true
+    number-sections: true
+    css: 
+      - theming/styles.css  
+      # - theming/font.css
+
+execute:
+  engine: jupyter
+  jupyter: myenv

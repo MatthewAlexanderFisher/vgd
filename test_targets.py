@@ -6,7 +6,9 @@ import jax
 from jax import Array
 import jax.numpy as jnp
 
-from vgd.distribution import Distribution, Likelihood, Posterior
+from vgd.distribution import Distribution
+from vgd.model import Likelihood, Model, Posterior
+from vgd.loss import Loss
 
 def pred_mean(theta: Array, x: Array) -> Array:
     """

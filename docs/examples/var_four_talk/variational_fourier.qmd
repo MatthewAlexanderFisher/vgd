@@ -1,0 +1,1033 @@
+---
+title: "Variational Fourier Regression"
+author: "Matthew Fisher"
+execute:
+  eval: false
+---
+
+# Introduction
+
+```{python}
+#| echo: False
+import jax
+from jax import config
+from jax import Array
+import jax.numpy as jnp
+config.update("jax_enable_x64", True)  # do this at the very top
+
+import matplotlib.pyplot as plt
+import seaborn as sns
+import numpy as np
+
+plt.rcParams["figure.figsize"] = (5, 3)
+plt.rcParams["text.usetex"] = True
+plt.rcParams["font.family"] = "serif"
+plt.rcParams["font.serif"] = ["Computer Modern Roman"]  # matches LaTeX default
+
+import mplcyberpunk
+plt.style.use("cyberpunk")
+
+from vgd.model import FourierPredictor, PAdicFourierPredictor
+from vgd.distribution import FourierParticles, NormalDiag, SignedMixtureLike, PAdicMixtureLike
+from vgd.kernel import RBFKernel, KernelParams
+from vgd.loss import DeterministicRiskLoss, squared_loss_and_grad, logistic_loss_and_grad, ISFDeterministicRiskLoss
+from vgd.methods import vgd, vgd_weight, mfld, vgd_random
+from vgd.util import plot_1d_predictive_output, plot_isf_results, plot_1d_fit, plot_p_adic_tree_with_predictor
+from vgd.methods.isf import isf
+from vgd.methods.ridge import solve_alpha_ridge
+```
+
+## Big Picture Idea
+
+For a given loss $\ell$, the regression task is
+
+$$
+\inf_{f \in \mathcal{F}} \, \mathbb{E}[\ell(f(X), Y)],
+$$
+
+seeking functions $f$ with good *predictive performance*.
+
+Performance depends on
+
+1. **Choice of loss** (e.g. squared error, cross-entropy),
+2. **Choice of hypothesis class $\mathcal{F}$** (linear models, kernels, neural networks),
+3. **Choice of regularisation** (norm constraints, weight decay, spectral penalties).
+
+Successful methods exploit **inductive biases** matched to data geometry. E.g. CNNs for images, GNNs for graphs, transformers for sequences, etc.
+
+
+## Fourier Regression
+
+### Fourier viewpoint
+
+Any $f \in L^2(\mathbb{R}^d)$ has the Fourier representation
+
+$$
+f(x) = \int_{\mathbb{R}^d} \hat f(\theta) \, e^{-i \theta^\top x} \, d\theta,
+$$
+
+where $\hat f$ encodes the **spectral content** of $f$. In practice, we cannot learn $\hat f$ directly, but we can **approximate $f$ by truncating or discretising the integral**:
+
+$$
+f(x) \approx \sum_{j=1}^m \alpha_j e^{-i \theta_j^\top x},
+$$
+
+with frequencies ${\theta_j}$ drawn either adaptively or at random. This turns regression into **learning coefficients in a Fourier basis**.
+
+## Fourier Regression
+
+### Why Fourier?
+
+Fourier analysis is the harmonic analysis associated with the geometry of Euclidean space:
+
+1. $\mathbb{R}^d$ is a **locally compact abelian (LCA) group** under addition.
+2. Its Haar measure is the **Lebesgue measure**, the unique shift-invariant measure.
+3. By **Pontryagin duality**, the characters of this group are the exponentials $e^{-i \theta^\top x}$, and the Fourier transform is the corresponding Gelfand transform.
+
+Thus, the Fourier basis encodes **translation symmetry** - the fundamental symmetry of Euclidean space.
+
+## Fourier Regression
+
+### Generalisations and Connections
+
+There are analogous *Fourier transforms* on different **LCA** groups:
+
+* On $\mathbb{Z}/n\mathbb{Z}$ the dual group gives the **Discrete Fourier Transform**.
+* On the torus $\mathbb{R}/\mathbb{Z}$, it yields the **Fourier series**.
+* On the $p$-adic numbers $\mathbb{Q}_p$, there is a corresponding Fourier transform (discussed later).
+* More generally, **shift-invariant kernels** admit a Fourier spectral representation (Bochner’s theorem). This underlies *random Fourier features* and spectral kernel methods.
+
+So “Fourier regression” is not just heuristic: it’s a **principled basis expansion** matched to the group structure of the data, with natural regularisation in the frequency domain (e.g. penalising high frequencies).
+
+It **encodes** the inductive bias of shift-invariance.
+
+## Variational Fourier Regression
+
+::: {.unmarked}
+::: {.incremental}
+
+
+- How do we learn $\hat{f}(\theta)$? 
+
+- Have been working on **variational objectives:**
+  $$
+  \mathcal{F}(Q) = \underbrace{\mathcal{L}(Q)}_{\text{Loss}} + \underbrace{\mathrm{KL}(Q \| Q_0)}_{\text{Regulariser}},
+  $$
+
+  where
+
+  1. ▶ $Q$ is a **probability distribution**
+  2. ▶ $Q_0$ is a **prior**
+
+- This general objective includes: *Bayesian inference*, *prediction centric inference*, and more! Different methods:
+
+- **Particle Based Methods**
+  
+    - ▶ Mean-Field Langevin Dynamics
+    - ▶ **Generalisations of SVGD**
+    - ▶ Fisher-Rao geometries e.g. mirror descent
+
+- **Parametric Methods**
+    
+    - ▶ Normalising flows
+    - ▶ Mixtures of Gaussians (e.g. [this paper](https://proceedings.neurips.cc/paper_files/paper/2022/file/5d087955ee13fe9a7402eedec879b9c3-Paper-Conference.pdf))
+
+:::
+:::
+
+## Issues {.scrollable}
+
+We might want to treat $\hat f$ (the Fourier transform of $f$) as a **probability measure** so that we can plug it directly into the variational framework.
+
+However:
+
+1. **$\hat f$ is not generally a probability measure.**
+
+   * It can be complex-valued, can have negative parts, and is not normalised.
+   * Only in special cases (e.g. positive-definite functions, characteristic functions of distributions) can $\hat f$ be directly interpreted as a probability law.
+
+2. **If we *force* it into a probability-measure framework**, then we are really heading in the direction of **Bochner’s theorem**: representing kernels as expectations over Fourier features.
+
+   * In this case, $\hat f$ is no longer “the Fourier transform of the predictor” but is instead treated as a *spectral measure* that defines a kernel.
+   * Optimising over such spectral measures corresponds to **kernel learning**, not direct function learning.
+
+### Comparing with Random Fourier Features
+
+By **Bochner’s theorem**:
+If $k(x-y)$ is a continuous, normalised ($k(0) = 1$), stationary, positive-definite kernel on $\mathbb{R}^d$, then there exists a probability measure $\lambda$ on $\mathbb{R}^d$ such that
+
+$$
+k(x,y) = \int_{\mathbb{R}^d} e^{i \theta^\top(x-y)} \, d\lambda(\theta).
+$$
+
+* $\lambda$ is called the **spectral measure**.
+* If $k$ is real-valued, $\lambda$ must be symmetric $\lambda(A)=\lambda(-A)$.
+
+**Random Fourier Features (RFF)** approximate this integral via Monte Carlo:
+
+$$
+k(x,y) \approx \frac{1}{m}\sum_{j=1}^m \cos(\theta_j^\top(x-y)), \quad \theta_j \sim \lambda.
+$$
+
+If you plug this approximation into **Kernel Ridge Regression**, the predictor has the form
+
+$$
+f(x) = w^\top \phi(x),
+$$
+
+where
+
+$$
+\phi(x) = \big(\cos(\theta_1^\top x), \ldots, \cos(\theta_m^\top x)\big).
+$$
+
+* The weights $w \in \mathbb{R}^m$ are learned by minimising the regression loss (ridge regression in this finite-dimensional feature space).
+* The frequencies ${\theta_j}$ are usually fixed after the initial sampling from $\lambda$, though some variants learn/adapt them.
+
+
+### Desiderata
+
+To create a **novel approach** (I think), we want to:
+
+  - Treat $\hat{f}$ as a function or **signed measure**
+  - Optimise $\hat{f}$ in an **analogous framework**
+
+
+
+
+# Aside (Gradient flows + SVGD)
+
+## Gradient flows on Riemannian Manifolds
+
+### Gradient flows in Euclidean Space
+
+For a functional $F:\mathbb R^n \to \mathbb R$, the **gradient flow** is
+$$
+\dot x_t = -\nabla F(x_t).
+$$
+This is “steepest descent” with respect to the Euclidean inner product $\langle u,v\rangle=\sum u_i v_i$.
+
+## Gradient flows on Riemannian Manifolds
+
+### Generalising to a Riemannian manifold
+
+Let $(\mathcal M,g)$ be a Riemannian manifold:
+
+* At each point $p\in\mathcal M$, the tangent space $T_p\mathcal M$ is a vector space of admissible directions.
+* The metric tensor $g_p: T_p\mathcal M\times T_p\mathcal M\to \mathbb R$ is an inner product that can vary with $p$.
+
+**Gradient of $F$:** the vector $\nabla^g F(p)\in T_p\mathcal M$ such that
+$$
+dF(p)[\xi] = g_p(\nabla^g F(p), \xi) \quad\forall \xi\in T_p\mathcal M,
+$$
+where $dF$ is the differential (directional derivative).
+
+**Gradient flow:** the ODE
+$$
+\partial_t p_t = -\nabla^g F(p_t), \quad p_t\in\mathcal M.
+$$
+
+## Gradient flows on Riemannian Manifolds
+
+### Role of tangent space choice
+
+* The definition of $T_p\mathcal M$ tells you **what counts as a direction**.
+* Example: in Wasserstein geometry, tangent vectors at a measure $Q$ are velocity fields; in an embedding geometry, tangents are embedding perturbations.
+
+Different tangent models give different possible evolutions.
+
+## Gradient flows on Riemannian Manifolds
+
+### Role of the metric tensor
+
+* The metric tensor tells you how to measure the **size and angle** of tangent vectors.
+* “Steepest descent” is always defined relative to this inner product.
+* Changing the metric changes the gradient direction.
+
+Example:
+
+* With Euclidean metric, gradient is just $\nabla F$.
+* With a preconditioned metric $g(u,v)=u^\top M v$, the gradient becomes $M^{-1}\nabla F$.
+
+
+## Gradient flows on Riemannian Manifolds
+
+### Exponential map and evolution
+
+Once you have a tangent vector $v\in T_p\mathcal M$, you evolve by following the geodesic starting at $p$ with velocity $v$. This is the **exponential map**:
+$$
+p' = \exp_p(v).
+$$
+
+So the **evolution rule depends jointly on**:
+
+1. How you define tangents (what’s allowed),
+2. How you measure them (the metric tensor), and
+3. How you “integrate them back” to the manifold (the exponential map).
+
+## What is SVGD? 
+
+Suppose we want to optimise the objective:
+
+$$
+\mathcal{F}(Q) = \underbrace{\mathcal{L}(Q)}_{\text{Loss}} + \underbrace{\mathrm{KL}(Q \| Q_0)}_{\text{Regulariser}}.
+$$
+
+A natural idea would be to consider a **Riemannian manifold of probability measures** and perform a gradient flow.
+
+To recover SVGD we use the **Riemannian manifold** of $W_2$ with the tangent space given by Stein RKHS directions.
+
+## What is SVGD? 
+
+### Wasserstein $W_2$ Space (Otto construction)
+
+Consider the **Wasserstein-2 space**:
+$$
+W_2(\mathbb{R}^d) = \left\{ P \ \text{probability measure on } \mathbb{R}^d \mid \int |x|^2 dP(x) < \infty \right\}.
+$$
+
+* **Tangent space** at $P$:
+  $$
+  \mathcal{T}_P W_2 = \{ -\nabla \cdot (P v) \mid v \in L^2(P;\mathbb{R}^d) \}.
+  $$
+
+* **Exponential map**: pushing forward $P$ by a transport map
+  $$
+  \exp_P(v) = (I + \varepsilon v)_\# P.
+  $$
+
+* **Riemannian metric**:
+  $$
+  g_P(v,w) = \int v(x)\cdot w(x) \, dP(x).
+  $$
+
+This equips $W_2$ with a formal Riemannian structure (the Otto calculus).
+
+## What is SVGD? 
+
+### Gradient Flow in $W_2$
+
+Given a functional $\mathcal{F}: W_2 \to \mathbb{R}$, the **Wasserstein gradient flow** satisfies:
+$$
+\partial_t P_t = - \nabla \cdot \left(P_t \, \nabla \frac{\delta \mathcal{F}}{\delta P}(x)\right),
+$$
+where $\frac{\delta \mathcal{F}}{\delta P}$ is the first variation of $\mathcal{F}$.
+
+This is a PDE describing the evolution of measures under steepest descent in Wasserstein space.
+
+
+### Why not just use this?
+
+In practice, directly solving this PDE is intractable. Instead, SVGD takes a **particle approximation**:
+$$
+Q \approx \frac{1}{n} \sum_{i=1}^n \delta_{x_i}.
+$$
+
+We then evolve the particles $x_i$ along a velocity field $v$ chosen to maximally decrease $\mathcal{F}$.
+
+## What is SVGD? 
+
+### Kernelised Stein Gradient
+
+SVGD chooses $v$ from a **Reproducing Kernel Hilbert Space (RKHS)** $\mathcal{H}^d$ of vector fields with kernel $k$.
+
+* Stein’s identity ensures that the optimal direction of steepest descent can be expressed in closed form in this RKHS.
+* The resulting particle dynamics are:
+  $$
+  x_i \leftarrow x_i + \varepsilon \, \phi^*(x_i),
+  $$
+  with update function
+  $$
+  \phi^*(\cdot) = \mathbb{E}_{x \sim Q}\big[ \nabla_x \log \pi(x) \, k(x,\cdot) + \nabla_x k(x,\cdot) \big],
+  $$
+  where $\pi$ is the target distribution (often $\pi \propto e^{-\mathcal{L}}$).
+
+
+# Possible Approaches
+
+Recall the **objective:**
+
+Learn the inverse Fourier transform $\hat{f}(\theta)$ as a **signed measure** to create regressor functions
+
+$$
+f(x) = \int \hat{f}(\theta) e^{-i \theta^\top x} \,\mathrm{d}\theta.
+$$
+
+## Option 1: Reparameterise
+
+Rewrite our regressors as:
+
+\begin{align*}
+f(x) &= \int \hat{f}(\theta) e^{-i \theta^\top x} \,\mathrm{d}\theta \\
+&= \mathbb{E}_{\theta \sim Q} \left[ a(\theta) e^{-i \theta^\top x}  \right].
+\end{align*}
+
+Effectively decomposes the inverse Fourier transform as:
+
+$$
+\hat{f}(\theta) = \mathrm{d}Q(\theta) \, a(\theta).
+$$
+
+**Issues:**
+
+1. A vanilla approach (boring)
+2. Need to learn $a$ as well.
+3. Effectively just learning a **mixture distribution** $Q$ (similar to current/previous work).
+4. The regressor just becomes a product of $a(\theta)$ and a two-layer neural network with cosine activation (but with an interpretation as a spectral mixture).
+
+## Option 2: Two Particle "Swarms"
+
+Treat $\hat{f}$ as a **signed measure** and use the Hahn-Jordan decomposition to write:
+$$
+\hat{f} = a\, Q^+ - b \, Q^-,
+$$
+where $Q^+$ and $Q^-$ are probability measures and $a,b \geq 0$ are non-negative constants. To implement this:
+
+1. Treat both $Q^+$ and $Q^-$ as empirical measures 
+    $$
+    Q^+ = \sum_{i=1}^m w^+_i \delta_{\theta^+_i}, \quad Q^{-} = \sum_{j = 1}^M w^-_j \delta_{\theta^-_j},
+    $$
+2. First take a step to evolve $Q^+$ then a step to evolve $Q^-$ and then a vanilla Euclidean GD on $(a,b)$ (with operator splitting).
+
+**Issues:**
+
+1. Nice idea but seems annoying to implement (and figure out the details)
+2. Doubles number of hyperparameters
+
+## Option 3: RKHS Descent
+
+Entirely **abandon** forcing a probability measure and $W_2$. Instead, we optimise directly over a **reproducing kernel Hilbert space (RKHS)**!
+
+::: {.unmarked}
+::: {.incremental}
+
+
+::: {.aside-right}
+- Note: We could've just used $L^2$ instead, but an analogue of SVGD does not follow...
+:::
+
+- Let $k$ be a PSD kernel with RKHS $\mathcal{H}(k)$. Any **signed measure** $\nu$ can be embedded in the RKHS via
+  $$
+  \mu_\nu(\cdot) = \int k(\theta, \cdot) \,\mathrm{d}\nu(\theta)
+  $$
+
+  which induces a **norm**
+  $$
+  \| \nu \|_{\mathcal{H}(k)} = \iint k(\theta, \theta') \,\mathrm{d}\nu(\theta) \,\mathrm{d}\nu(\theta').
+  $$
+- $\mathcal{H}(k)$ is a Riemannian manifold with tangent space $\mathcal{H}(k)$. 
+
+- **Let's figure out the details!**
+:::
+:::
+
+
+# A Natural Generalisation 
+
+## Rewriting the Variational Objective
+
+Instead of considering the following objective for probability measures:
+
+$$
+\mathcal{F}(Q) = \mathcal{L}(Q) + \mathrm{KL}(Q \| Q_0),
+$$
+
+write
+
+$$
+\mathcal{F}(\nu) = \mathcal{L}(\nu) + \mathrm{SKL}(\nu \| \nu_0),
+$$
+
+where
+
+$$
+\mathrm{SKL}(\nu \| \nu_0) = \mathrm{KL}(\nu^+ \| \nu_0^+) + \mathrm{KL}(\nu^- \| \nu_0^-)
+$$
+
+and $\nu = \nu^+ - \nu^-$, and $\nu_0 = \nu_0^+ - \nu_0^-$ via the Hahn-Jordan decomposition.
+
+In order to cope with **signed measures** we consider an RKHS $\mathcal{H}(k)$ and consider the manifold $\mathcal{M}$ of $\mathcal{H}(k)$ embeddable signed measures $\nu$ equipped with the **tangent space**:
+
+$$
+\mathcal{T}_\nu \mathcal{M} = \mathcal{T}_\nu^{\mathrm{RKHS}} \oplus \mathcal{T}^\mathrm{Stein(\nu_0)}_\nu,
+$$
+
+where $\mathcal{T}_\nu^{\mathrm{RKHS}} \equiv \mathcal{H}(k)$ and $\mathcal{T}^\mathrm{Stein(\nu_0)}_\nu \equiv \mathcal{H}(K_{\nu_0^+}) \oplus \mathcal{H}(K_{\nu_0^-})$ is a direct sum of Stein RKHSs.
+
+## Evolution
+
+To evolve the original objective, break it down into constituent components:
+
+$$
+\mathcal{F}(\nu) = \underbrace{\mathcal{L}(\nu)}_{\text{RKHS block}} + \underbrace{\mathrm{KL}(\nu^+ \| \nu_0^+)}_{\mathcal{H}(K_{\nu_0^+}) \text{ block}} + \underbrace{\mathrm{KL}(\nu^- \| \nu_0^-)}_{\mathcal{H}(K_{\nu_0^-}) \text{ block}}
+$$
+
+So:
+
+1. Take a $\mathcal{T}_\nu^{\mathrm{RKHS}}$ step to evolve $\mathcal{L}(\nu)$
+2. Take a $\mathcal{H}(K_{\nu_0^+})$ step to evolve $\mathrm{KL}^+$ term
+3. Take a $\mathcal{H}(K_{\nu_0^-})$ step to evolve $\mathrm{KL}^-$ term
+
+
+## $\mathcal{L}(\nu)$ update derivation (can skip) {.scrollable}
+
+* Parameter space $\Theta$ and a **PD kernel** $k:\Theta\times\Theta\to\mathbb R$ with RKHS $\mathcal H_k$.
+* For a finite signed measure $\nu$ on $\Theta$, its **kernel mean embedding** is
+  $$
+  \mu_\nu(\cdot)=\int k(\cdot,\theta)\,d\nu(\theta)\in\mathcal H_k.
+  $$
+* For a signed variation $h$, the corresponding embedding variation is
+  $$
+  \mu_h(\cdot) = \int k(\cdot,\theta)\,dh(\theta)\in\mathcal H_k.
+  $$
+
+We want to descend a functional $\mathcal L(\nu)$. Define $\tilde{\mathcal L}(\mu):=\mathcal L(\nu)$ with $\mu=\mu_\nu$.
+
+
+### Riemannian (RKHS) gradient
+
+We use the Hilbert structure of $\mathcal H_k$. The **Riemannian gradient** $G_\nu\in\mathcal H_k$ is the unique element such that
+$$
+\langle G_\nu,\mu_h\rangle_{\mathcal H_k}\;=\;D\mathcal L(\nu)[h]\quad\forall h.
+$$
+
+This is the Riesz representation of the Fréchet derivative of $\tilde{\mathcal L}$ at $\mu_\nu$.
+
+- If a **pointwise functional derivative** $\psi_\nu$ exists with
+  $$
+  D\mathcal L(\nu)[h]=\int \psi_\nu(\theta)\,dh(\theta),
+  $$
+  then
+  $$
+  \langle G_\nu,\mu_h\rangle=\int G_\nu(\theta)\,dh(\theta)=\int \psi_\nu(\theta)\,dh(\theta),
+  $$
+  which implies  
+  $$
+  G_\nu=\Pi_{\mathcal H_k} \psi_\nu,
+  $$
+  the **orthogonal projection** of $\psi_\nu$ onto $\mathcal H_k$.
+
+- In general, $G_\nu$ is simply the **Riesz representer**; the pointwise description is optional.
+
+Thus the **gradient flow** is
+$$
+\partial_t \mu_{\nu_t}=-G_{\nu_t}.
+$$
+
+
+### Particle form
+
+Let $\nu=\sum_{j=1}^m \alpha_j \delta_{\theta_j}$. Then
+$$
+\mu_\nu = \sum_{j=1}^m \alpha_j k(\cdot,\theta_j).
+$$
+
+If particles move, then (assuming $k$ is $C^1$ in its second argument)
+$$
+\partial_t \mu_\nu
+=\sum_j \dot\alpha_j\,k(\cdot,\theta_j)\;+\;\sum_j \alpha_j\,\nabla_{\theta_j} k(\cdot,\theta_j)\cdot \dot\theta_j.
+\tag{★}
+$$
+
+
+### Galerkin system
+
+Define **nodal data**
+$$
+g_i := G_\nu(\theta_i)=\langle G_\nu, k(\cdot,\theta_i)\rangle = D\mathcal L(\nu)[\delta_{\theta_i}].
+$$
+
+Let
+$$
+K_{ij}=k(\theta_i,\theta_j),\qquad
+B_{m:}(\theta,\alpha)=\Big[\sum_j \alpha_j \nabla_{\theta_j}k(\theta_m,\theta_j)\Big]^\top.
+$$
+
+Projecting $\partial_t\mu_\nu=-G_\nu$ against $k(\cdot,\theta_m)$ gives
+$$
+K\dot\alpha+B(\theta,\alpha)\dot\theta=-g.
+\tag{GS}
+$$
+
+This expresses the **orthogonal projection of the infinite-dimensional gradient** onto the tangent space of the finite-dimensional particle manifold.
+
+
+### Choices of update
+
+1. **Weight-only update (exact in span).**
+   $$
+   \boxed{\;\dot\alpha=-K^{-1}g,\quad \dot\theta=0.\;}
+   $$
+   This exactly matches the projected gradient using only weight changes.
+
+2. **Location-only update (natural gradient).**
+   Fix $\dot\alpha=0$ and solve least squares for $\dot\theta$:
+   $$
+   \boxed{\;\dot\theta=-(B^\top B+\lambda I)^{-1}B^\top g,\;}
+   $$
+   with small $\lambda>0$ for damping.
+
+3. **Joint update.**
+   Solve
+   $$
+   \min_{\dot\alpha,\dot\theta}\ \|K\dot\alpha+B\dot\theta+g\|_2^2
+   $$
+   (optionally with Tikhonov). This gives the least-squares projection of the ambient gradient.
+
+
+### Why approximate in $\mathrm{span}\{k(\cdot,\theta_i)\}$?
+
+The manifold
+$$
+\mathcal M_m=\Big\{\sum_{j=1}^m \alpha_j k(\cdot,\theta_j)\Big\}\subset\mathcal H_k
+$$
+is the **finite-dimensional submanifold** of the RKHS induced by $m$ particles.  
+When we restrict optimisation to this manifold, we are not free to move in arbitrary directions of $\mathcal H_k$: the only admissible variations are those that come from perturbing the particle weights $\alpha_j$ or their locations $\theta_j$.
+
+
+#### Tangent space structure
+The tangent space at $\mu_\nu\in\mathcal M_m$ is
+$$
+T_{\mu_\nu}\mathcal M_m
+=\mathrm{span}\big\{\,k(\cdot,\theta_j)\,\}_{j=1}^m \;\cup\; \{\,\nabla_{\theta_j}k(\cdot,\theta_j)\,\}_{j=1}^m.
+$$
+
+- Moving $\alpha_j$ perturbs $\mu_\nu$ in the direction $k(\cdot,\theta_j)$.
+- Moving $\theta_j$ perturbs $\mu_\nu$ in the direction $\nabla_{\theta_j}k(\cdot,\theta_j)$.
+
+Thus the only directions available to us lie in this span.
+
+#### Gradient projection
+The **ambient RKHS gradient** $G_\nu$ may not belong to $T_{\mu_\nu}\mathcal M_m$.  
+The **correct Riemannian gradient on the submanifold** is its **orthogonal projection**:
+$$
+\nabla^{\mathcal M_m}\mathcal L(\mu_\nu)
+=\Pi_{T_{\mu_\nu}\mathcal M_m}(G_\nu).
+$$
+This is a geometric fact: gradient flows are always tangent to the manifold they evolve on.
+
+
+#### Collocation / interpolation step
+Practically, we often restrict further to the **weight span** $\mathrm{span}\{k(\cdot,\theta_j)\}$, ignoring the derivative directions.  
+In this case, the best approximation of $G_\nu$ in this span is the **minimum-norm kernel interpolant** $\hat G$ that matches the nodal values
+$$
+g_i := G_\nu(\theta_i).
+$$
+By standard RKHS theory (the representer/interpolation property),
+$$
+\hat G(\cdot)=\sum_{j=1}^m \beta_j k(\cdot,\theta_j),\qquad \beta=K^{-1}g,
+$$
+where $K_{ij}=k(\theta_i,\theta_j)$.
+
+This identity is exactly the projection of $G_\nu$ onto the span $\{k(\cdot,\theta_j)\}$ expressed in collocation form.  
+
+
+## SKL update derivation (can skip) {.scrollable}
+
+For sufficiently smooth vector valued $\phi$, can show that for $T_\varepsilon = \mathrm{Id} + \varepsilon \phi$:
+$$
+\frac{d}{d\varepsilon} \mathrm{KL}((T_\varepsilon)_\# \mu \| Q) \Big\lvert_{\varepsilon = 0} = \mathbb{E}_{\theta \sim \mu}\left[ \mathcal{S}_Q \, \phi(\theta) \right],
+$$
+where
+$$
+\mathcal{S}_Q \phi =  \nabla \log q \cdot \phi + \nabla \cdot \phi
+$$
+is the vector-valued Stein operator.
+
+Applying this to each Hahn-Jordan part of $\nu$ and $\nu_0$ we have
+
+$$
+\frac{d}{d\varepsilon} \mathrm{SKL}((T_\varepsilon)_\# \nu \| \nu_0) \Big\lvert_{\varepsilon = 0} = \mathbb{E}_{\theta \sim \nu^+}\left[ \mathcal{S}_{\nu_0^+} \, \phi(\theta) \right] + \mathbb{E}_{\theta \sim \nu^-}\left[ \mathcal{S}_{\nu^-_0} \, \phi(\theta) \right].
+$$
+
+For **particles**:
+
+$$
+\nu = \sum_{j=1}^m \alpha_j \delta_{\theta_j},
+$$
+
+define the sign-index sets and (unnormalised) Hahn–Jordan weights
+$$
+J_+ := {j:\alpha_j>0},\quad J_- := {j:\alpha_j<0},\quad
+\alpha_j^{+} := \max(\alpha_j,0),\quad \alpha_j^{-} := \max(-\alpha_j,0).
+$$
+with $w_j^{+}=\alpha_j^{+}/\sum_{\ell\in J_+}\alpha_\ell^{+}$ and $w_j^{-}=\alpha_j^{-}/\sum_{\ell\in J_-}\alpha_\ell^{-}$, yielding
+
+\begin{align*}
+\dot{\theta}_i &= -\mathbf{1}\{{i\in J_+}\}\,
+\sum_{\ell\in J_+}\tilde w_\ell^{+}\Big[
+k(\theta_i,\theta_\ell)\,\nabla \log \nu_0^{+}(\theta_\ell)
++\nabla_{\theta_\ell} k(\theta_i,\theta_\ell)
+\Big] \\
+& \quad -\mathbf{1}\{{i\in J_-}\}\,
+\sum_{\ell\in J_-}\tilde w_\ell^{-}\Big[
+k(\theta_i,\theta_\ell)\, \nabla \log \nu_0^{-}(\theta_\ell)
++\nabla_{\theta_\ell} k(\theta_i,\theta_\ell)
+\Big].
+\end{align*}
+
+For an RBF kernel $k(\theta,\theta')=\exp(-|\theta-\theta'|^2/(2\ell^2))$,
+$$
+\nabla_{\theta_\ell}k(\theta_i,\theta_\ell)=\frac{1}{\ell^2},k(\theta_i,\theta_\ell),(\theta_i-\theta_\ell),
+$$
+so the update simplifies to
+$$
+\dot{\theta}_i
+= -\sum_{\ell\in J_{\operatorname{sign}(\alpha_i)}}\tilde w_\ell^{(\operatorname{sign})}
+k(\theta_i,\theta_\ell)\left[
+\nabla \log \nu^{(\operatorname{sign})}(\theta_\ell)
++\frac{1}{\ell^2}(\theta_i-\theta_\ell)
+\right].
+$$
+
+## Final Update Equations {.scrollable}
+
+To evolve the original objective, break it down into constituent components:
+
+$$
+\mathcal{F}(\nu) = \underbrace{\mathcal{L}(\nu)}_{\text{RKHS block}} + \underbrace{\mathrm{KL}(\nu^+ \| \nu_0^+)}_{\mathcal{H}(K_{\nu_0^+}) \text{ block}} + \underbrace{\mathrm{KL}(\nu^- \| \nu_0^-)}_{\mathcal{H}(K_{\nu_0^-}) \text{ block}}
+$$
+
+Letting $\phi_\nu$ denote the **first variation** of $\mathcal{L}(\nu)$ at $\nu$:
+
+1. **RKHS block:** Under the assumption $K \approx I$, the update simplifies to:
+   \begin{align*}
+   \alpha_j^{(t+1)} &= \alpha_j^{(t)}-\eta_\alpha \, \phi_\nu(\theta_j^{(t)}) \quad \text{(weight update)} \\
+   \theta_j^{(t+1)} &= \theta_j^{(t)}-\eta_\theta \, \alpha_j^{(t)}\,\nabla_\theta \phi_\nu(\theta_j^{(t)}) \quad \text{(location update)}
+   \end{align*}
+
+2. **$\mathcal{H}(K_{\nu_0^+})$ block:** Pure transport step moving towards $\nu_0^+$:
+   $$
+   \theta_i^{+,(t+1)} = \theta_i^{+,(t)} +  \eta_+ \,\frac{1}{|J^+|}\sum_{j \in J^+} \Big[\, k(\theta_j^{+,(t)} , \theta_i^{+,(t)}) \, \nabla_{\theta_j} \log \nu_0^+(\theta_j^{+,(t)}) \;+\; \nabla_{\theta_j} k(\theta_j^{+,(t)}, \theta_i^{+,(t)}) \,\Big] 
+   $$
+3. **$\mathcal{H}(K_{\nu_0^-})$ block:** Pure transport step moving towards $\nu_0^-$:
+   $$
+   \theta_i^{-,(t+1)} = \theta_i^{-,(t)} +  \eta_- \,\frac{1}{|J^-|}\sum_{j \in J^-} \Big[\, k(\theta_j^{-,(t)} , \theta_i^{-,(t)}) \, \nabla_{\theta_j} \log \nu_0^-(\theta_j^{-,(t)}) \;+\; \nabla_{\theta_j} k(\theta_j^{-,(t)}, \theta_i^{-,(t)}) \,\Big] 
+   $$
+
+
+# **Does it work?** (experimental results in $\mathbb{R}^d$)
+
+## Regression
+
+```{python}
+#| echo: False
+
+# -----------------------
+# Synthetic data makers
+# -----------------------
+def make_regression_data(n=256, key=jax.random.PRNGKey(0)):
+    kx, kn = jax.random.split(key)
+    X = jax.random.uniform(kx, (n, 1), minval=-3.0, maxval=3.0)
+    f_true = jnp.sin(2.0 * X[:, 0]) + 0.5 * jnp.cos(1.3 * X[:, 0])
+    y = f_true + 0.15 * jax.random.normal(kn, (n,))
+    return {"x": X, "y": y}, f_true  # f_true for diagnostics
+
+def make_classification_data(n=512, key=jax.random.PRNGKey(1)):
+    kx, kn = jax.random.split(key)
+    X = jax.random.uniform(kx, (n, 2), minval=-2.5, maxval=2.5)
+    logits = 1.2 * jnp.sin(2.0 * X[:, 0]) + 0.8 * X[:, 1]
+    logits = logits + 0.5 * jax.random.normal(kn, (n,))
+    probs = jax.nn.sigmoid(logits)
+    y = jnp.where(probs > 0.5, 1.0, 0.0)
+    return {"x": X, "y": y.astype(jnp.float32)}, logits
+
+
+# -----------------------
+# Fourier particle init
+# -----------------------
+def init_fourier_particles(
+    n_particles: int,
+    d: int,
+    key: Array,
+    w_scale: float = 1.0,          # freq std
+    phase_uniform: bool = True,
+    alpha_scale: float = 0.1       # weight std (smaller is usually stabler)
+) -> SignedMixtureLike:
+    k1, k2, k3 = jax.random.split(key, 3)
+    omega = jax.random.normal(k1, (n_particles, d)) * w_scale         # (n,d)
+    if phase_uniform: 
+        b = jax.random.uniform(k2, (n_particles, 1), minval=0.0, maxval=2.0 * jnp.pi) 
+    else: 
+        b = jnp.zeros((n_particles, 1))
+    particles = jnp.concatenate([omega, b], axis=1)                   # (n, d+1)
+    alpha = jax.random.normal(k3, (n_particles,)) * alpha_scale       # (n,)
+    return SignedMixtureLike(particles=particles, alpha=alpha)
+
+
+# -----------------------
+# Simple metrics
+# -----------------------
+def mse(y, yhat):
+    r = yhat - y
+    return float(jnp.mean(r * r))
+
+def accuracy(y, logits):
+    preds = (jax.nn.sigmoid(logits) >= 0.5).astype(y.dtype)
+    return float(jnp.mean((preds == y).astype(jnp.float32)))
+
+
+```
+
+
+```{python}
+#| fig-align: center
+#| fig-width: 9       # inches for the matplotlib canvas
+#| fig-height: 4.5
+#| fig-dpi: 150
+#| out-width: 80%     # CSS scale on the slide
+#| echo: True
+
+
+key = jax.random.PRNGKey(42)
+data, f_true = make_regression_data(n=256, key=key)
+N, d = data["x"].shape
+
+# Init Fourier mixture
+Q0 = init_fourier_particles(n_particles=48, d=d, key=key, w_scale=1.0, phase_uniform=True)
+
+# Predictor + Loss
+prior = NormalDiag(sd=1.0)
+predictor = FourierPredictor(prior_plus=prior, prior_minus=prior, data = data, x_key="x", y_key="y")
+loss = ISFDeterministicRiskLoss(loss_and_grad=squared_loss_and_grad)
+
+# Kernel & params (adjust KernelParams(...) if your signature differs)
+kparams = KernelParams(lengthscale=jnp.asarray(1.), amplitude=jnp.asarray(1.0)) 
+kernel = RBFKernel()
+
+# Pre-train diagnostics
+f0 = predictor.predict(Q0)
+
+# Run VGD
+out = isf(
+    model=predictor,
+    loss=loss,
+    kernel=kernel,
+    kparams=kparams,
+    eps_theta=1e-2,
+    eps_alpha = 1e-4,
+    lambda_skl = 1.,
+    Q0=Q0,
+    steps=5000,
+    ema_alpha=1.0,
+    use_median_lengthscale=True,
+    return_metrics=True,
+)
+Qhat, metrics = out if isinstance(out, tuple) else (out, None)
+
+Qfinal, history = out
+plot_1d_predictive_output(Qfinal, history, predictor)
+plt.show()
+``` 
+
+## Classification
+
+```{python}
+#| fig-align: center
+#| fig-width: 9       # inches for the matplotlib canvas
+#| fig-height: 4.5
+#| fig-dpi: 150
+#| out-width: 80%     # CSS scale on the slide
+#| echo: True
+
+
+data, logits = make_classification_data(n=256, key=key)
+N, d = data["x"].shape
+
+# Init Fourier mixture
+Q0 = init_fourier_particles(n_particles=48, d=d, key=key, w_scale=1.0, phase_uniform=True)
+
+# Predictor + Loss
+prior = NormalDiag(sd=1.0)
+predictor = FourierPredictor(prior_plus=prior, prior_minus=prior, data = data, x_key="x", y_key="y")
+loss = ISFDeterministicRiskLoss(loss_and_grad=logistic_loss_and_grad)
+
+# Kernel & params (adjust KernelParams(...) if your signature differs)
+kparams = KernelParams(lengthscale=jnp.asarray(1.), amplitude=jnp.asarray(1.0)) 
+kernel = RBFKernel()
+
+# Pre-train diagnostics
+f0 = predictor.predict(Q0)
+
+# Run VGD
+out = isf(
+    model=predictor,
+    loss=loss,
+    kernel=kernel,
+    kparams=kparams,
+    eps_theta=1e-2,
+    eps_alpha = 1e-4,
+    lambda_skl = 1.,
+    Q0=Q0,
+    steps=5000,
+    ema_alpha=1.0,
+    use_median_lengthscale=True,
+    return_metrics=True,
+)
+Qhat, metrics = out if isinstance(out, tuple) else (out, None)
+Qfinal, history = out
+
+plot_isf_results(
+    predictor=predictor,
+    data=data,
+    Q0=Q0,
+    Qhat=Qhat,
+    metrics=metrics,
+    grid_lim=2.5,
+    grid_n=200,
+    title_prefix="Interpolated Stein Flow"
+)
+plt.show()
+
+```
+
+
+# **Does it work?** (experimental results in $\mathbb{Q}_p$)
+
+## $p$-adic numbers 
+
+For a prime $p$, the **$p$-adic absolute value** on $\mathbb{Q}$ is
+$$
+|x|_p=\begin{cases}
+p^{-k}\, & x=p^k\frac{a}{b},\; a,b\in\mathbb{Z}, \; p\nmid a,b, \\
+0,& x=0.
+\end{cases}
+$$
+Numbers divisible by many powers of $p$ are **small** $p$-adically (e.g. $|8|_2=2^{-3}$).
+
+Let $v_p(x)\in\mathbb{Z}\cup{\infty}$ be the **$p$-adic valuation** (largest $k$ with $p^k\mid x$ and $v_p(0)=\infty$). Then $|x|_p=p^{-v_p(x)}$ and
+$$
+|x+y|_p \le \max\{|x|_p,|y|_p\}\quad\text{(ultrametric inequality).}
+$$
+
+**Completions.** The completion of $\mathbb{Q}$ under $|\cdot|_p$ is $\mathbb{Q}_p$. Elements have expansions
+$$
+x=\sum_{i=k_0}^{\infty} a_i p^i, \qquad a_i\in\{0,\dots,p-1\}, \; k_0\in\mathbb{Z},
+$$
+i.e. **only finitely many negative powers** occur; for $\mathbb{Z}_p$ (the compact open unit ball) we have $k_0\ge 0$.
+
+**Balls and measure.** Closed balls are cosets $a+p^m\mathbb{Z}_p$. With Haar measure $\mu$ normalised by $\mu(\mathbb{Z}_p)=1$, one has $\mu(a+p^m\mathbb{Z}_p)=p^{-m}$.
+
+
+## Hierarchical data and $p$-adics
+
+The ultrametric induces a **tree**: each ball $a+p^m\mathbb{Z}_p$ splits into $p$ disjoint children $a+bp^m+p^{m+1}\mathbb{Z}_p$, $b\in{0,\dots,p-1}$. Two points are close iff they agree to many **leading base-$p$ digits**:
+$$
+v_p(x-y)=\text{length of the longest common prefix of the $p$-adic digit strings of $x,y$.}
+$$
+
+**Canonical encodings.**
+
+* **Binary/quad strings** (e.g. taxonomy, DNA): choose $p=2$ or $p=4$.
+  Encode a finite string $s=(s_0,\dots,s_{L-1})$ as $x=\sum_{i=0}^{L-1} s_i p^i\in\mathbb{Z}_p$. Then
+  $$
+  v_p(x-x')=\min{i: s_i\neq s_i'}\quad(\text{or } \infty \text{ if identical}),
+  $$
+  so distance equals **first divergence depth** in the tree.
+* **General rooted trees** of out-degree $\le p$: label edges $0,\dots,p-1$ from root and encode the path label as above.
+
+This makes $\mathbb{Q}_p$ a natural host for **clustering**, **phylogenies**, and **any prefix-based similarity**.
+
+
+## Gelfand transform ($p$-adic Fourier analysis)
+
+Consider the LCA group $(\mathbb{Q}_p,+)$ with Haar measure $\mu$ ($\mu(\mathbb{Z}_p)=1$). Fix the **standard additive character** $\psi:\mathbb{Q}_p\to\mathbb{T}$ that is trivial on $\mathbb{Z}_p$ and non-trivial on $p^{-1}\mathbb{Z}_p$ (concretely, $\psi(x)=e^{2\pi i {x}_p}$, where ${x}_p\in\mathbb{Q}/\mathbb{Z}$ is determined by the finitely many negative-power digits of $x$).
+
+* **Fourier/Gelfand transform**:
+  $$
+  \widehat{f}(\xi)=\int_{\mathbb{Q}_p} f(x)\,\psi(\xi x)\,d\mu(x),\qquad \xi\in\mathbb{Q}_p.
+  $$
+* **Inversion/Plancherel** (with dual Haar $d\xi$):
+  $$
+  f(x)=\int_{\mathbb{Q}_p} \widehat{f}(\xi)\,\psi(-\xi x)\,d\xi\,\qquad |f|_2=|\widehat f|_2.
+  $$
+* **Characters.** Every continuous character is $\chi_\xi(x)=\psi(\xi x)$ for a unique $\xi\in\mathbb{Q}_p$; the dual group is $\widehat{\mathbb{Q}}_p\cong\mathbb{Q}_p$.
+
+**Practical evaluation.** If computations are at resolution $m$ (finite strings/digits), then
+$$
+\chi_\xi(x)=\exp\Big(2\pi i \;\frac{(\xi x)\bmod p^m}{p^m}\Big),
+$$
+so you only need modular arithmetic on integers of size $p^m$.
+
+## Regression
+
+
+```{python}
+def make_p_adic_regression_data_1d(p=5, m=4, N=512, key: Array=jax.random.PRNGKey(0)):
+    """
+    One-dimensional X uniform in {0,...,M-1}, y from a few true p-adic characters + noise.
+    """
+    M = p ** m
+    k1, k2, k3 = jax.random.split(key, 3)
+
+    # X ~ Haar on Z_p mod p^m => uniform residues
+    X = jax.random.randint(k1, shape=(N,), minval=0, maxval=M).astype(jnp.int64)
+
+    # True mixture at low frequencies
+    Xi_true = jnp.array([ (p ** 0) * 7,  (p ** 1) * 3,  (p ** 2) * 1 ], dtype=jnp.int64) % M  # (3,)
+    phi_true   = jnp.array([0.0, 3.0, 8.0])  # phases in [0,M), interpreted as real
+    alpha_true = jnp.array([1.2, -0.8, 0.5])
+
+    # y = sum_j alpha_j cos(2π/M (Xi_j * X + phi_j)) + noise
+    Tphi = (X[:, None] * Xi_true[None, :] + phi_true[None, :]) % M  # (N, 3)
+    ang  = (2.0 * jnp.pi / M) * Tphi
+    Phi_true = jnp.cos(ang)  # (N, 3)
+    y_clean  = (Phi_true @ alpha_true).reshape(-1)
+
+    noise = 0.1 * jax.random.normal(k2, shape=(N,))
+    y = y_clean + noise
+    return X, y, dict(Xi_true=Xi_true, phi_true=phi_true, alpha_true=alpha_true, M=M)
+
+```
+
+```{python}
+#| fig-align: center
+#| fig-width: 9       # inches for the matplotlib canvas
+#| fig-height: 4.5
+#| fig-dpi: 150
+#| out-width: 80%     # CSS scale on the slide
+#| echo: True
+
+p, m = 2, 3
+X, y, truth = make_p_adic_regression_data_1d(p=p, m=m, N=600, key=jax.random.PRNGKey(42))
+predictor = PAdicFourierPredictor(p=p, m=m, data={"x": X, "y": y}, use_sin=True)
+
+M = predictor.modulus()
+k = 8  # number of frequencies to keep
+Xi0 = predictor.pick_freqs_via_sampled_dft(X, y, M, k)   # (k,1)
+# cos+sin => alpha length is 2k; phases unused here (keep zeros)
+phi0   = jnp.zeros((k,), dtype=jnp.float32)
+alpha0 = jnp.zeros((2 * k,), dtype=jnp.float32)
+
+Q = PAdicMixtureLike(Xi=Xi0, phi=phi0, alpha=alpha0)
+
+y_pred = predictor.predict(Q)
+mse_old = jnp.mean((y_pred - y) ** 2)
+print(f"[1D] M={M}, k={k}, cos+sin spectrum-init ridge MSE: {float(mse_old):.6f}")
+
+# Build design and ridge
+Phi = predictor.features_pointwise(Q)          # (2k, N) since use_sin=True
+alpha_hat = solve_alpha_ridge(Phi, y, lam=1e-3)
+Q = Q.replace_alpha(alpha_hat)
+
+y_pred = predictor.predict(Q)
+mse = jnp.mean((y_pred - y) ** 2)
+print(f"[1D] M={M}, k={k}, cos+sin spectrum-init ridge MSE: {float(mse):.6f}")
+
+plot_1d_fit(X, y, Q, predictor)
+
+```
+
+## Regression
+
+```{python}
+#| fig-align: center
+#| fig-width: 9       # inches for the matplotlib canvas
+#| fig-height: 4.5
+#| fig-dpi: 150
+#| out-width: 80%     # CSS scale on the slide
+#| echo: True
+
+plot_p_adic_tree_with_predictor(X, y, Q, predictor, p=predictor.p, m=predictor.m,)
+
+```

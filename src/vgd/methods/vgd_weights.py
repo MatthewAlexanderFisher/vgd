@@ -4,7 +4,8 @@ import jax, jax.numpy as jnp
 from jax import lax, Array
 
 from vgd.util import _median_lengthscale_subset, _replace_lengthscale
-from vgd.distribution import DiscreteMixture, Posterior
+from vgd.distribution import MixtureLike, DiscreteMixture
+from vgd.model import Model
 from vgd.kernel import Kernel, KernelParams
 from vgd.loss import Loss
 
@@ -13,12 +14,12 @@ from vgd.loss import Loss
 
 def make_vgd_weight_step(
     *,
-    model: Posterior,
+    model: Model,
     loss: Loss,                                # provides wasserstein gradient .grad(model, Q) -> (n,d)
     kernel: Kernel,
     base_kparams: KernelParams,
     eps: float,
-    Q0: DiscreteMixture,                       # initial particles & (normalised) weights
+    Q0: MixtureLike,                       # initial particles & (normalised) weights
     # lengthscale control
     max_points: int = 256,
     update_every: int = 10,
@@ -48,7 +49,7 @@ def make_vgd_weight_step(
     else:
         ell0 = jnp.asarray(base_kparams.lengthscale)
 
-    def _ema_weights(Q: DiscreteMixture, t: Array) -> Array:
+    def _ema_weights(Q: MixtureLike, t: Array) -> Array:
         def do_update(_):
             r = loss.weights(model, Q, mean=True)  # (n,)
             w_new = (1.0 - weight_ema) * Q.w + weight_ema * r
@@ -57,7 +58,7 @@ def make_vgd_weight_step(
                         do_update, lambda _: Q.w, operand=None)
 
 
-    def _one_step(carry: Tuple[DiscreteMixture, Array, Array]):
+    def _one_step(carry: Tuple[MixtureLike, Array, Array]):
         # Qmixture, lengthscale, time
         Q_cur, ell, t = carry
 
@@ -80,7 +81,7 @@ def make_vgd_weight_step(
         kparams = _replace_lengthscale(base_kparams, ell_next)
 
         # build Q for loss.grad using UPDATED weights
-        Q_int = DiscreteMixture(Q_cur.particles, w_next)
+        Q_int = Q_cur.replace_weights(w_next)
 
         # Wasserstein field + prior score
         wass_grad = loss.grad(model, Q_int)              # (n,d)
@@ -122,12 +123,12 @@ def make_vgd_weight_step(
 
 def vgd_weight(
     *,
-    model: Posterior,
+    model: Model,
     loss: Loss,
     kernel: Kernel,
     kparams: KernelParams,
     eps: float,
-    Q0: DiscreteMixture,                               # (particles, normalised w)
+    Q0: MixtureLike,                               # (particles, normalised w)
     steps: int = 1000,
     max_points: int = 256,
     update_every: int = 10,

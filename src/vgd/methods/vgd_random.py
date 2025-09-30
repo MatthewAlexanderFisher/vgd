@@ -5,19 +5,20 @@ from jax import Array, lax, random
 from torch import dtype
 
 from vgd.util import _median_lengthscale_subset, _replace_lengthscale
-from vgd.distribution import DiscreteMixture, Posterior
+from vgd.distribution import MixtureLike
+from vgd.model import Posterior, Model
 from vgd.kernel import Kernel, KernelParams
 from vgd.loss import Loss
 
 
 def make_vgd_random_step(
     *,
-    model: Posterior,                            # Posterior/Model wrapper (likelihood + prior), data already bound
+    model: Model,                            # Posterior/Model wrapper (likelihood + prior), data already bound
     loss: Loss,                                  # Loss: .grad(model, Q) -> (n,d)
     kernel: Kernel,                              # Kernel: __call__(X, Y, params) -> (K:(n,n), G:(n,n,d))
     base_kparams: KernelParams,                  # has 'lengthscale'; used via _replace_lengthscale
     eps: float,                                  # step size (dt)
-    Q0: DiscreteMixture,                         # DiscreteMixture with normalised weights (particles, w)
+    Q0: MixtureLike,                         # MixtureLike with normalised weights (particles, w)
     max_points: int = 256,                     # for median lengthscale
     update_every: int = 10,                    # how often to refresh lengthscale
     ema_alpha: float = 1.0,                    # EMA smoothing for lengthscale (1.0 = no smoothing)
@@ -50,7 +51,7 @@ def make_vgd_random_step(
     dtype = Q0.particles.dtype
     eps_ = jnp.asarray(eps, dtype)
 
-    def _one_step(carry: Tuple[DiscreteMixture, Array, Array, Array]):
+    def _one_step(carry: Tuple[MixtureLike, Array, Array, Array]):
         # mixture dist, lengthscale, time, key
         Q_cur, ell, t, key = carry
         dtype = Q_cur.particles.dtype
@@ -120,12 +121,12 @@ def make_vgd_random_step(
 
 def vgd_random(
     *,
-    model: Posterior,
+    model: Model,
     loss: Loss,
     kernel: Kernel,
     kparams: KernelParams,
     eps: float,
-    Q0: DiscreteMixture,                       # DiscreteMixture with normalized w
+    Q0: MixtureLike,                       # MixtureLike with normalized w
     key: Array,                                
     steps: int = 1000,
     max_points: int = 256,
@@ -176,12 +177,12 @@ def vgd_random(
 
 def make_vgd_naive_random_step(
     *,
-    model: Posterior,                            # Posterior/Model wrapper (likelihood + prior), data already bound
+    model: Model,                            # Posterior/Model wrapper (likelihood + prior), data already bound
     loss: Loss,                                  # Loss: .grad(model, Q) -> (n,d)
     kernel: Kernel,                              # Kernel: __call__(X, Y, params) -> (K:(n,n), G:(n,n,d))
     base_kparams: KernelParams,                  # has 'lengthscale'; used via _replace_lengthscale
     eps: float,                                  # step size (dt)
-    Q0: DiscreteMixture,                         # DiscreteMixture with normalised weights (particles, w)
+    Q0: MixtureLike,                         # MixtureLike with normalised weights (particles, w)
     max_points: int = 256,                       # for median lengthscale
     update_every: int = 10,                      # how often to refresh lengthscale
     ema_alpha: float = 1.0,                      # EMA smoothing for lengthscale (1.0 = no smoothing)
@@ -277,12 +278,12 @@ def make_vgd_naive_random_step(
 
 def vgd_naive_random(
     *,
-    model: Posterior,
+    model: Model,
     loss: Loss,
     kernel: Kernel,
     kparams: KernelParams,
     eps: float,
-    Q0: DiscreteMixture,                       # DiscreteMixture with normalized w
+    Q0: MixtureLike,                       # MixtureLike with normalized w
     key: Array,                                
     steps: int = 1000,
     max_points: int = 256,

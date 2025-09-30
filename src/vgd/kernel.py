@@ -1,7 +1,9 @@
+from __future__ import annotations
 import functools
+from typing import  NamedTuple
+
 import jax, jax.numpy as jnp
 from jax import Array
-from typing import  NamedTuple
 
 class KernelParams(NamedTuple):
     lengthscale: Array
