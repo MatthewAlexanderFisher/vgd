@@ -18,7 +18,6 @@ format:
     fig-align: center
     margin: 0.06        # default ~0.04; smaller = slide closer to edges
     embed-resources: true   # inlines images/CSS/JS
-    math: none
     highlight-style: dracula
     incremental: false
     navigation-mode: vertical   # enables up/down within stacks

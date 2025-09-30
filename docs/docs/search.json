@@ -1,217 +1,210 @@
 [
   {
-    "objectID": "examples/index.html",
-    "href": "examples/index.html",
-    "title": "Tutorials",
-    "section": "",
-    "text": "Variational Fourier Regression"
-  },
-  {
-    "objectID": "examples/var_four_talk/variational_fourier.html#big-picture-idea",
-    "href": "examples/var_four_talk/variational_fourier.html#big-picture-idea",
+    "objectID": "slides/index.html#big-picture-idea",
+    "href": "slides/index.html#big-picture-idea",
     "title": "Variational Fourier Regression",
     "section": "Big Picture Idea",
     "text": "Big Picture Idea\nFor a given loss \\ell, the regression task is\n\n\\inf_{f \\in \\mathcal{F}} \\, \\mathbb{E}[\\ell(f(X), Y)],\n\nseeking functions f with good predictive performance.\nPerformance depends on\n\nChoice of loss (e.g. squared error, cross-entropy),\nChoice of hypothesis class \\mathcal{F} (linear models, kernels, neural networks),\nChoice of regularisation (norm constraints, weight decay, spectral penalties).\n\nSuccessful methods exploit inductive biases matched to data geometry. E.g. CNNs for images, GNNs for graphs, transformers for sequences, etc."
   },
   {
-    "objectID": "examples/var_four_talk/variational_fourier.html#fourier-regression",
-    "href": "examples/var_four_talk/variational_fourier.html#fourier-regression",
+    "objectID": "slides/index.html#fourier-regression",
+    "href": "slides/index.html#fourier-regression",
     "title": "Variational Fourier Regression",
     "section": "Fourier Regression",
     "text": "Fourier Regression\nFourier viewpoint\nAny f \\in L^2(\\mathbb{R}^d) has the Fourier representation\n\nf(x) = \\int_{\\mathbb{R}^d} \\hat f(\\theta) \\, e^{-i \\theta^\\top x} \\, d\\theta,\n\nwhere \\hat f encodes the spectral content of f. In practice, we cannot learn \\hat f directly, but we can approximate f by truncating or discretising the integral:\n\nf(x) \\approx \\sum_{j=1}^m \\alpha_j e^{-i \\theta_j^\\top x},\n\nwith frequencies {\\theta_j} drawn either adaptively or at random. This turns regression into learning coefficients in a Fourier basis."
   },
   {
-    "objectID": "examples/var_four_talk/variational_fourier.html#fourier-regression-1",
-    "href": "examples/var_four_talk/variational_fourier.html#fourier-regression-1",
+    "objectID": "slides/index.html#fourier-regression-1",
+    "href": "slides/index.html#fourier-regression-1",
     "title": "Variational Fourier Regression",
     "section": "Fourier Regression",
     "text": "Fourier Regression\nWhy Fourier?\nFourier analysis is the harmonic analysis associated with the geometry of Euclidean space:\n\n\\mathbb{R}^d is a locally compact abelian (LCA) group under addition.\nIts Haar measure is the Lebesgue measure, the unique shift-invariant measure.\nBy Pontryagin duality, the characters of this group are the exponentials e^{-i \\theta^\\top x}, and the Fourier transform is the corresponding Gelfand transform.\n\nThus, the Fourier basis encodes translation symmetry - the fundamental symmetry of Euclidean space."
   },
   {
-    "objectID": "examples/var_four_talk/variational_fourier.html#fourier-regression-2",
-    "href": "examples/var_four_talk/variational_fourier.html#fourier-regression-2",
+    "objectID": "slides/index.html#fourier-regression-2",
+    "href": "slides/index.html#fourier-regression-2",
     "title": "Variational Fourier Regression",
     "section": "Fourier Regression",
     "text": "Fourier Regression\nGeneralisations and Connections\nThere are analogous Fourier transforms on different LCA groups:\n\nOn \\mathbb{Z}/n\\mathbb{Z} the dual group gives the Discrete Fourier Transform.\nOn the torus \\mathbb{R}/\\mathbb{Z}, it yields the Fourier series.\nOn the p-adic numbers \\mathbb{Q}_p, there is a corresponding Fourier transform (discussed later).\nMore generally, shift-invariant kernels admit a Fourier spectral representation (Bochner’s theorem). This underlies random Fourier features and spectral kernel methods.\n\nSo “Fourier regression” is not just heuristic: it’s a principled basis expansion matched to the group structure of the data, with natural regularisation in the frequency domain (e.g. penalising high frequencies).\nIt encodes the inductive bias of shift-invariance."
   },
   {
-    "objectID": "examples/var_four_talk/variational_fourier.html#variational-fourier-regression",
-    "href": "examples/var_four_talk/variational_fourier.html#variational-fourier-regression",
+    "objectID": "slides/index.html#variational-fourier-regression",
+    "href": "slides/index.html#variational-fourier-regression",
     "title": "Variational Fourier Regression",
     "section": "Variational Fourier Regression",
     "text": "Variational Fourier Regression\n\n\nHow do we learn \\hat{f}(\\theta)?\nHave been working on variational objectives: \n\\mathcal{F}(Q) = \\underbrace{\\mathcal{L}(Q)}_{\\text{Loss}} + \\underbrace{\\mathrm{KL}(Q \\| Q_0)}_{\\text{Regulariser}},\n\nwhere\n\n▶ Q is a probability distribution\n▶ Q_0 is a prior\n\nThis general objective includes: Bayesian inference, prediction centric inference, and more! Different methods:\nParticle Based Methods\n\n▶ Mean-Field Langevin Dynamics\n▶ Generalisations of SVGD\n▶ Fisher-Rao geometries e.g. mirror descent\n\nParametric Methods\n\n▶ Normalising flows\n▶ Mixtures of Gaussians (e.g. this paper)"
   },
   {
-    "objectID": "examples/var_four_talk/variational_fourier.html#issues",
-    "href": "examples/var_four_talk/variational_fourier.html#issues",
+    "objectID": "slides/index.html#issues",
+    "href": "slides/index.html#issues",
     "title": "Variational Fourier Regression",
     "section": "Issues",
     "text": "Issues\nWe might want to treat \\hat f (the Fourier transform of f) as a probability measure so that we can plug it directly into the variational framework.\nHowever:\n\n\\hat f is not generally a probability measure.\n\nIt can be complex-valued, can have negative parts, and is not normalised.\nOnly in special cases (e.g. positive-definite functions, characteristic functions of distributions) can \\hat f be directly interpreted as a probability law.\n\nIf we force it into a probability-measure framework, then we are really heading in the direction of Bochner’s theorem: representing kernels as expectations over Fourier features.\n\nIn this case, \\hat f is no longer “the Fourier transform of the predictor” but is instead treated as a spectral measure that defines a kernel.\nOptimising over such spectral measures corresponds to kernel learning, not direct function learning.\n\n\nComparing with Random Fourier Features\nBy Bochner’s theorem: If k(x-y) is a continuous, normalised (k(0) = 1), stationary, positive-definite kernel on \\mathbb{R}^d, then there exists a probability measure \\lambda on \\mathbb{R}^d such that\n\nk(x,y) = \\int_{\\mathbb{R}^d} e^{i \\theta^\\top(x-y)} \\, d\\lambda(\\theta).\n\n\n\\lambda is called the spectral measure.\nIf k is real-valued, \\lambda must be symmetric \\lambda(A)=\\lambda(-A).\n\nRandom Fourier Features (RFF) approximate this integral via Monte Carlo:\n\nk(x,y) \\approx \\frac{1}{m}\\sum_{j=1}^m \\cos(\\theta_j^\\top(x-y)), \\quad \\theta_j \\sim \\lambda.\n\nIf you plug this approximation into Kernel Ridge Regression, the predictor has the form\n\nf(x) = w^\\top \\phi(x),\n\nwhere\n\n\\phi(x) = \\big(\\cos(\\theta_1^\\top x), \\ldots, \\cos(\\theta_m^\\top x)\\big).\n\n\nThe weights w \\in \\mathbb{R}^m are learned by minimising the regression loss (ridge regression in this finite-dimensional feature space).\nThe frequencies {\\theta_j} are usually fixed after the initial sampling from \\lambda, though some variants learn/adapt them.\n\nDesiderata\nTo create a novel approach (I think), we want to:\n\nTreat \\hat{f} as a function or signed measure\nOptimise \\hat{f} in an analogous framework"
   },
   {
-    "objectID": "examples/var_four_talk/variational_fourier.html#gradient-flows-on-riemannian-manifolds",
-    "href": "examples/var_four_talk/variational_fourier.html#gradient-flows-on-riemannian-manifolds",
+    "objectID": "slides/index.html#gradient-flows-on-riemannian-manifolds",
+    "href": "slides/index.html#gradient-flows-on-riemannian-manifolds",
     "title": "Variational Fourier Regression",
     "section": "Gradient flows on Riemannian Manifolds",
     "text": "Gradient flows on Riemannian Manifolds\nGradient flows in Euclidean Space\nFor a functional F:\\mathbb R^n \\to \\mathbb R, the gradient flow is \n\\dot x_t = -\\nabla F(x_t).\n This is “steepest descent” with respect to the Euclidean inner product \\langle u,v\\rangle=\\sum u_i v_i."
   },
   {
-    "objectID": "examples/var_four_talk/variational_fourier.html#gradient-flows-on-riemannian-manifolds-1",
-    "href": "examples/var_four_talk/variational_fourier.html#gradient-flows-on-riemannian-manifolds-1",
+    "objectID": "slides/index.html#gradient-flows-on-riemannian-manifolds-1",
+    "href": "slides/index.html#gradient-flows-on-riemannian-manifolds-1",
     "title": "Variational Fourier Regression",
     "section": "Gradient flows on Riemannian Manifolds",
     "text": "Gradient flows on Riemannian Manifolds\nGeneralising to a Riemannian manifold\nLet (\\mathcal M,g) be a Riemannian manifold:\n\nAt each point p\\in\\mathcal M, the tangent space T_p\\mathcal M is a vector space of admissible directions.\nThe metric tensor g_p: T_p\\mathcal M\\times T_p\\mathcal M\\to \\mathbb R is an inner product that can vary with p.\n\nGradient of F: the vector \\nabla^g F(p)\\in T_p\\mathcal M such that \ndF(p)[\\xi] = g_p(\\nabla^g F(p), \\xi) \\quad\\forall \\xi\\in T_p\\mathcal M,\n where dF is the differential (directional derivative).\nGradient flow: the ODE \n\\partial_t p_t = -\\nabla^g F(p_t), \\quad p_t\\in\\mathcal M."
   },
   {
-    "objectID": "examples/var_four_talk/variational_fourier.html#gradient-flows-on-riemannian-manifolds-2",
-    "href": "examples/var_four_talk/variational_fourier.html#gradient-flows-on-riemannian-manifolds-2",
+    "objectID": "slides/index.html#gradient-flows-on-riemannian-manifolds-2",
+    "href": "slides/index.html#gradient-flows-on-riemannian-manifolds-2",
     "title": "Variational Fourier Regression",
     "section": "Gradient flows on Riemannian Manifolds",
     "text": "Gradient flows on Riemannian Manifolds\nRole of tangent space choice\n\nThe definition of T_p\\mathcal M tells you what counts as a direction.\nExample: in Wasserstein geometry, tangent vectors at a measure Q are velocity fields; in an embedding geometry, tangents are embedding perturbations.\n\nDifferent tangent models give different possible evolutions."
   },
   {
-    "objectID": "examples/var_four_talk/variational_fourier.html#gradient-flows-on-riemannian-manifolds-3",
-    "href": "examples/var_four_talk/variational_fourier.html#gradient-flows-on-riemannian-manifolds-3",
+    "objectID": "slides/index.html#gradient-flows-on-riemannian-manifolds-3",
+    "href": "slides/index.html#gradient-flows-on-riemannian-manifolds-3",
     "title": "Variational Fourier Regression",
     "section": "Gradient flows on Riemannian Manifolds",
     "text": "Gradient flows on Riemannian Manifolds\nRole of the metric tensor\n\nThe metric tensor tells you how to measure the size and angle of tangent vectors.\n“Steepest descent” is always defined relative to this inner product.\nChanging the metric changes the gradient direction.\n\nExample:\n\nWith Euclidean metric, gradient is just \\nabla F.\nWith a preconditioned metric g(u,v)=u^\\top M v, the gradient becomes M^{-1}\\nabla F."
   },
   {
-    "objectID": "examples/var_four_talk/variational_fourier.html#gradient-flows-on-riemannian-manifolds-4",
-    "href": "examples/var_four_talk/variational_fourier.html#gradient-flows-on-riemannian-manifolds-4",
+    "objectID": "slides/index.html#gradient-flows-on-riemannian-manifolds-4",
+    "href": "slides/index.html#gradient-flows-on-riemannian-manifolds-4",
     "title": "Variational Fourier Regression",
     "section": "Gradient flows on Riemannian Manifolds",
     "text": "Gradient flows on Riemannian Manifolds\nExponential map and evolution\nOnce you have a tangent vector v\\in T_p\\mathcal M, you evolve by following the geodesic starting at p with velocity v. This is the exponential map: \np' = \\exp_p(v).\n\nSo the evolution rule depends jointly on:\n\nHow you define tangents (what’s allowed),\nHow you measure them (the metric tensor), and\nHow you “integrate them back” to the manifold (the exponential map)."
   },
   {
-    "objectID": "examples/var_four_talk/variational_fourier.html#what-is-svgd",
-    "href": "examples/var_four_talk/variational_fourier.html#what-is-svgd",
+    "objectID": "slides/index.html#what-is-svgd",
+    "href": "slides/index.html#what-is-svgd",
     "title": "Variational Fourier Regression",
     "section": "What is SVGD?",
     "text": "What is SVGD?\nSuppose we want to optimise the objective:\n\n\\mathcal{F}(Q) = \\underbrace{\\mathcal{L}(Q)}_{\\text{Loss}} + \\underbrace{\\mathrm{KL}(Q \\| Q_0)}_{\\text{Regulariser}}.\n\nA natural idea would be to consider a Riemannian manifold of probability measures and perform a gradient flow.\nTo recover SVGD we use the Riemannian manifold of W_2 with the tangent space given by Stein RKHS directions."
   },
   {
-    "objectID": "examples/var_four_talk/variational_fourier.html#what-is-svgd-1",
-    "href": "examples/var_four_talk/variational_fourier.html#what-is-svgd-1",
+    "objectID": "slides/index.html#what-is-svgd-1",
+    "href": "slides/index.html#what-is-svgd-1",
     "title": "Variational Fourier Regression",
     "section": "What is SVGD?",
     "text": "What is SVGD?\nWasserstein W_2 Space (Otto construction)\nConsider the Wasserstein-2 space: \nW_2(\\mathbb{R}^d) = \\left\\{ P \\ \\text{probability measure on } \\mathbb{R}^d \\mid \\int |x|^2 dP(x) &lt; \\infty \\right\\}.\n\n\nTangent space at P: \n\\mathcal{T}_P W_2 = \\{ -\\nabla \\cdot (P v) \\mid v \\in L^2(P;\\mathbb{R}^d) \\}.\n\nExponential map: pushing forward P by a transport map \n\\exp_P(v) = (I + \\varepsilon v)_\\# P.\n\nRiemannian metric: \ng_P(v,w) = \\int v(x)\\cdot w(x) \\, dP(x).\n\n\nThis equips W_2 with a formal Riemannian structure (the Otto calculus)."
   },
   {
-    "objectID": "examples/var_four_talk/variational_fourier.html#what-is-svgd-2",
-    "href": "examples/var_four_talk/variational_fourier.html#what-is-svgd-2",
+    "objectID": "slides/index.html#what-is-svgd-2",
+    "href": "slides/index.html#what-is-svgd-2",
     "title": "Variational Fourier Regression",
     "section": "What is SVGD?",
     "text": "What is SVGD?\nGradient Flow in W_2\nGiven a functional \\mathcal{F}: W_2 \\to \\mathbb{R}, the Wasserstein gradient flow satisfies: \n\\partial_t P_t = - \\nabla \\cdot \\left(P_t \\, \\nabla \\frac{\\delta \\mathcal{F}}{\\delta P}(x)\\right),\n where \\frac{\\delta \\mathcal{F}}{\\delta P} is the first variation of \\mathcal{F}.\nThis is a PDE describing the evolution of measures under steepest descent in Wasserstein space.\nWhy not just use this?\nIn practice, directly solving this PDE is intractable. Instead, SVGD takes a particle approximation: \nQ \\approx \\frac{1}{n} \\sum_{i=1}^n \\delta_{x_i}.\n\nWe then evolve the particles x_i along a velocity field v chosen to maximally decrease \\mathcal{F}."
   },
   {
-    "objectID": "examples/var_four_talk/variational_fourier.html#what-is-svgd-3",
-    "href": "examples/var_four_talk/variational_fourier.html#what-is-svgd-3",
+    "objectID": "slides/index.html#what-is-svgd-3",
+    "href": "slides/index.html#what-is-svgd-3",
     "title": "Variational Fourier Regression",
     "section": "What is SVGD?",
     "text": "What is SVGD?\nKernelised Stein Gradient\nSVGD chooses v from a Reproducing Kernel Hilbert Space (RKHS) \\mathcal{H}^d of vector fields with kernel k.\n\nStein’s identity ensures that the optimal direction of steepest descent can be expressed in closed form in this RKHS.\nThe resulting particle dynamics are: \nx_i \\leftarrow x_i + \\varepsilon \\, \\phi^*(x_i),\n with update function \n\\phi^*(\\cdot) = \\mathbb{E}_{x \\sim Q}\\big[ \\nabla_x \\log \\pi(x) \\, k(x,\\cdot) + \\nabla_x k(x,\\cdot) \\big],\n where \\pi is the target distribution (often \\pi \\propto e^{-\\mathcal{L}})."
   },
   {
-    "objectID": "examples/var_four_talk/variational_fourier.html#option-1-reparameterise",
-    "href": "examples/var_four_talk/variational_fourier.html#option-1-reparameterise",
+    "objectID": "slides/index.html#option-1-reparameterise",
+    "href": "slides/index.html#option-1-reparameterise",
     "title": "Variational Fourier Regression",
     "section": "Option 1: Reparameterise",
     "text": "Option 1: Reparameterise\nRewrite our regressors as:\n\\begin{align*}\nf(x) &= \\int \\hat{f}(\\theta) e^{-i \\theta^\\top x} \\,\\mathrm{d}\\theta \\\\\n&= \\mathbb{E}_{\\theta \\sim Q} \\left[ a(\\theta) e^{-i \\theta^\\top x}  \\right].\n\\end{align*}\nEffectively decomposes the inverse Fourier transform as:\n\n\\hat{f}(\\theta) = \\mathrm{d}Q(\\theta) \\, a(\\theta).\n\nIssues:\n\nA vanilla approach (boring)\nNeed to learn a as well.\nEffectively just learning a mixture distribution Q (similar to current/previous work).\nThe regressor just becomes a product of a(\\theta) and a two-layer neural network with cosine activation (but with an interpretation as a spectral mixture)."
   },
   {
-    "objectID": "examples/var_four_talk/variational_fourier.html#option-2-two-particle-swarms",
-    "href": "examples/var_four_talk/variational_fourier.html#option-2-two-particle-swarms",
+    "objectID": "slides/index.html#option-2-two-particle-swarms",
+    "href": "slides/index.html#option-2-two-particle-swarms",
     "title": "Variational Fourier Regression",
     "section": "Option 2: Two Particle “Swarms”",
     "text": "Option 2: Two Particle “Swarms”\nTreat \\hat{f} as a signed measure and use the Hahn-Jordan decomposition to write: \n\\hat{f} = a\\, Q^+ - b \\, Q^-,\n where Q^+ and Q^- are probability measures and a,b \\geq 0 are non-negative constants. To implement this:\n\nTreat both Q^+ and Q^- as empirical measures \nQ^+ = \\sum_{i=1}^m w^+_i \\delta_{\\theta^+_i}, \\quad Q^{-} = \\sum_{j = 1}^M w^-_j \\delta_{\\theta^-_j},\n\nFirst take a step to evolve Q^+ then a step to evolve Q^- and then a vanilla Euclidean GD on (a,b) (with operator splitting).\n\nIssues:\n\nNice idea but seems annoying to implement (and figure out the details)\nDoubles number of hyperparameters"
   },
   {
-    "objectID": "examples/var_four_talk/variational_fourier.html#option-3-rkhs-descent",
-    "href": "examples/var_four_talk/variational_fourier.html#option-3-rkhs-descent",
+    "objectID": "slides/index.html#option-3-rkhs-descent",
+    "href": "slides/index.html#option-3-rkhs-descent",
     "title": "Variational Fourier Regression",
     "section": "Option 3: RKHS Descent",
     "text": "Option 3: RKHS Descent\nEntirely abandon forcing a probability measure and W_2. Instead, we optimise directly over a reproducing kernel Hilbert space (RKHS)!\n\n\n\nNote: We could’ve just used L^2 instead, but an analogue of SVGD does not follow…\n\n\n\nLet k be a PSD kernel with RKHS \\mathcal{H}(k). Any signed measure \\nu can be embedded in the RKHS via \n\\mu_\\nu(\\cdot) = \\int k(\\theta, \\cdot) \\,\\mathrm{d}\\nu(\\theta)\n\nwhich induces a norm \n\\| \\nu \\|_{\\mathcal{H}(k)} = \\iint k(\\theta, \\theta') \\,\\mathrm{d}\\nu(\\theta) \\,\\mathrm{d}\\nu(\\theta').\n\n\\mathcal{H}(k) is a Riemannian manifold with tangent space \\mathcal{H}(k).\nLet’s figure out the details!"
   },
   {
-    "objectID": "examples/var_four_talk/variational_fourier.html#rewriting-the-variational-objective",
-    "href": "examples/var_four_talk/variational_fourier.html#rewriting-the-variational-objective",
+    "objectID": "slides/index.html#rewriting-the-variational-objective",
+    "href": "slides/index.html#rewriting-the-variational-objective",
     "title": "Variational Fourier Regression",
     "section": "Rewriting the Variational Objective",
     "text": "Rewriting the Variational Objective\nInstead of considering the following objective for probability measures:\n\n\\mathcal{F}(Q) = \\mathcal{L}(Q) + \\mathrm{KL}(Q \\| Q_0),\n\nwrite\n\n\\mathcal{F}(\\nu) = \\mathcal{L}(\\nu) + \\mathrm{SKL}(\\nu \\| \\nu_0),\n\nwhere\n\n\\mathrm{SKL}(\\nu \\| \\nu_0) = \\mathrm{KL}(\\nu^+ \\| \\nu_0^+) + \\mathrm{KL}(\\nu^- \\| \\nu_0^-)\n\nand \\nu = \\nu^+ - \\nu^-, and \\nu_0 = \\nu_0^+ - \\nu_0^- via the Hahn-Jordan decomposition.\nIn order to cope with signed measures we consider an RKHS \\mathcal{H}(k) and consider the manifold \\mathcal{M} of \\mathcal{H}(k) embeddable signed measures \\nu equipped with the tangent space:\n\n\\mathcal{T}_\\nu \\mathcal{M} = \\mathcal{T}_\\nu^{\\mathrm{RKHS}} \\oplus \\mathcal{T}^\\mathrm{Stein(\\nu_0)}_\\nu,\n\nwhere \\mathcal{T}_\\nu^{\\mathrm{RKHS}} \\equiv \\mathcal{H}(k) and \\mathcal{T}^\\mathrm{Stein(\\nu_0)}_\\nu \\equiv \\mathcal{H}(K_{\\nu_0^+}) \\oplus \\mathcal{H}(K_{\\nu_0^-}) is a direct sum of Stein RKHSs."
   },
   {
-    "objectID": "examples/var_four_talk/variational_fourier.html#evolution",
-    "href": "examples/var_four_talk/variational_fourier.html#evolution",
+    "objectID": "slides/index.html#evolution",
+    "href": "slides/index.html#evolution",
     "title": "Variational Fourier Regression",
     "section": "Evolution",
     "text": "Evolution\nTo evolve the original objective, break it down into constituent components:\n\n\\mathcal{F}(\\nu) = \\underbrace{\\mathcal{L}(\\nu)}_{\\text{RKHS block}} + \\underbrace{\\mathrm{KL}(\\nu^+ \\| \\nu_0^+)}_{\\mathcal{H}(K_{\\nu_0^+}) \\text{ block}} + \\underbrace{\\mathrm{KL}(\\nu^- \\| \\nu_0^-)}_{\\mathcal{H}(K_{\\nu_0^-}) \\text{ block}}\n\nSo:\n\nTake a \\mathcal{T}_\\nu^{\\mathrm{RKHS}} step to evolve \\mathcal{L}(\\nu)\nTake a \\mathcal{H}(K_{\\nu_0^+}) step to evolve \\mathrm{KL}^+ term\nTake a \\mathcal{H}(K_{\\nu_0^-}) step to evolve \\mathrm{KL}^- term"
   },
   {
-    "objectID": "examples/var_four_talk/variational_fourier.html#mathcallnu-update-derivation-can-skip",
-    "href": "examples/var_four_talk/variational_fourier.html#mathcallnu-update-derivation-can-skip",
+    "objectID": "slides/index.html#mathcallnu-update-derivation-can-skip",
+    "href": "slides/index.html#mathcallnu-update-derivation-can-skip",
     "title": "Variational Fourier Regression",
     "section": "\\mathcal{L}(\\nu) update derivation (can skip)",
     "text": "\\mathcal{L}(\\nu) update derivation (can skip)\n\nParameter space \\Theta and a PD kernel k:\\Theta\\times\\Theta\\to\\mathbb R with RKHS \\mathcal H_k.\nFor a finite signed measure \\nu on \\Theta, its kernel mean embedding is \n\\mu_\\nu(\\cdot)=\\int k(\\cdot,\\theta)\\,d\\nu(\\theta)\\in\\mathcal H_k.\n\nFor a signed variation h, the corresponding embedding variation is \n\\mu_h(\\cdot) = \\int k(\\cdot,\\theta)\\,dh(\\theta)\\in\\mathcal H_k.\n\n\nWe want to descend a functional \\mathcal L(\\nu). Define \\tilde{\\mathcal L}(\\mu):=\\mathcal L(\\nu) with \\mu=\\mu_\\nu.\nRiemannian (RKHS) gradient\nWe use the Hilbert structure of \\mathcal H_k. The Riemannian gradient G_\\nu\\in\\mathcal H_k is the unique element such that \n\\langle G_\\nu,\\mu_h\\rangle_{\\mathcal H_k}\\;=\\;D\\mathcal L(\\nu)[h]\\quad\\forall h.\n\nThis is the Riesz representation of the Fréchet derivative of \\tilde{\\mathcal L} at \\mu_\\nu.\n\nIf a pointwise functional derivative \\psi_\\nu exists with \nD\\mathcal L(\\nu)[h]=\\int \\psi_\\nu(\\theta)\\,dh(\\theta),\n then \n\\langle G_\\nu,\\mu_h\\rangle=\\int G_\\nu(\\theta)\\,dh(\\theta)=\\int \\psi_\\nu(\\theta)\\,dh(\\theta),\n which implies\n\nG_\\nu=\\Pi_{\\mathcal H_k} \\psi_\\nu,\n the orthogonal projection of \\psi_\\nu onto \\mathcal H_k.\nIn general, G_\\nu is simply the Riesz representer; the pointwise description is optional.\n\nThus the gradient flow is \n\\partial_t \\mu_{\\nu_t}=-G_{\\nu_t}.\n\nParticle form\nLet \\nu=\\sum_{j=1}^m \\alpha_j \\delta_{\\theta_j}. Then \n\\mu_\\nu = \\sum_{j=1}^m \\alpha_j k(\\cdot,\\theta_j).\n\nIf particles move, then (assuming k is C^1 in its second argument) \n\\partial_t \\mu_\\nu\n=\\sum_j \\dot\\alpha_j\\,k(\\cdot,\\theta_j)\\;+\\;\\sum_j \\alpha_j\\,\\nabla_{\\theta_j} k(\\cdot,\\theta_j)\\cdot \\dot\\theta_j.\n\\tag{★}\n\nGalerkin system\nDefine nodal data \ng_i := G_\\nu(\\theta_i)=\\langle G_\\nu, k(\\cdot,\\theta_i)\\rangle = D\\mathcal L(\\nu)[\\delta_{\\theta_i}].\n\nLet \nK_{ij}=k(\\theta_i,\\theta_j),\\qquad\nB_{m:}(\\theta,\\alpha)=\\Big[\\sum_j \\alpha_j \\nabla_{\\theta_j}k(\\theta_m,\\theta_j)\\Big]^\\top.\n\nProjecting \\partial_t\\mu_\\nu=-G_\\nu against k(\\cdot,\\theta_m) gives \nK\\dot\\alpha+B(\\theta,\\alpha)\\dot\\theta=-g.\n\\tag{GS}\n\nThis expresses the orthogonal projection of the infinite-dimensional gradient onto the tangent space of the finite-dimensional particle manifold.\nChoices of update\n\nWeight-only update (exact in span). \n\\boxed{\\;\\dot\\alpha=-K^{-1}g,\\quad \\dot\\theta=0.\\;}\n This exactly matches the projected gradient using only weight changes.\nLocation-only update (natural gradient). Fix \\dot\\alpha=0 and solve least squares for \\dot\\theta: \n\\boxed{\\;\\dot\\theta=-(B^\\top B+\\lambda I)^{-1}B^\\top g,\\;}\n with small \\lambda&gt;0 for damping.\nJoint update. Solve \n\\min_{\\dot\\alpha,\\dot\\theta}\\ \\|K\\dot\\alpha+B\\dot\\theta+g\\|_2^2\n (optionally with Tikhonov). This gives the least-squares projection of the ambient gradient.\n\nWhy approximate in \\mathrm{span}\\{k(\\cdot,\\theta_i)\\}?\nThe manifold \n\\mathcal M_m=\\Big\\{\\sum_{j=1}^m \\alpha_j k(\\cdot,\\theta_j)\\Big\\}\\subset\\mathcal H_k\n is the finite-dimensional submanifold of the RKHS induced by m particles.\nWhen we restrict optimisation to this manifold, we are not free to move in arbitrary directions of \\mathcal H_k: the only admissible variations are those that come from perturbing the particle weights \\alpha_j or their locations \\theta_j.\nTangent space structure\nThe tangent space at \\mu_\\nu\\in\\mathcal M_m is \nT_{\\mu_\\nu}\\mathcal M_m\n=\\mathrm{span}\\big\\{\\,k(\\cdot,\\theta_j)\\,\\}_{j=1}^m \\;\\cup\\; \\{\\,\\nabla_{\\theta_j}k(\\cdot,\\theta_j)\\,\\}_{j=1}^m.\n\n\nMoving \\alpha_j perturbs \\mu_\\nu in the direction k(\\cdot,\\theta_j).\nMoving \\theta_j perturbs \\mu_\\nu in the direction \\nabla_{\\theta_j}k(\\cdot,\\theta_j).\n\nThus the only directions available to us lie in this span.\nGradient projection\nThe ambient RKHS gradient G_\\nu may not belong to T_{\\mu_\\nu}\\mathcal M_m.\nThe correct Riemannian gradient on the submanifold is its orthogonal projection: \n\\nabla^{\\mathcal M_m}\\mathcal L(\\mu_\\nu)\n=\\Pi_{T_{\\mu_\\nu}\\mathcal M_m}(G_\\nu).\n This is a geometric fact: gradient flows are always tangent to the manifold they evolve on.\nCollocation / interpolation step\nPractically, we often restrict further to the weight span \\mathrm{span}\\{k(\\cdot,\\theta_j)\\}, ignoring the derivative directions.\nIn this case, the best approximation of G_\\nu in this span is the minimum-norm kernel interpolant \\hat G that matches the nodal values \ng_i := G_\\nu(\\theta_i).\n By standard RKHS theory (the representer/interpolation property), \n\\hat G(\\cdot)=\\sum_{j=1}^m \\beta_j k(\\cdot,\\theta_j),\\qquad \\beta=K^{-1}g,\n where K_{ij}=k(\\theta_i,\\theta_j).\nThis identity is exactly the projection of G_\\nu onto the span \\{k(\\cdot,\\theta_j)\\} expressed in collocation form."
   },
   {
-    "objectID": "examples/var_four_talk/variational_fourier.html#skl-update-derivation-can-skip",
-    "href": "examples/var_four_talk/variational_fourier.html#skl-update-derivation-can-skip",
+    "objectID": "slides/index.html#skl-update-derivation-can-skip",
+    "href": "slides/index.html#skl-update-derivation-can-skip",
     "title": "Variational Fourier Regression",
     "section": "SKL update derivation (can skip)",
     "text": "SKL update derivation (can skip)\nFor sufficiently smooth vector valued \\phi, can show that for T_\\varepsilon = \\mathrm{Id} + \\varepsilon \\phi: \n\\frac{d}{d\\varepsilon} \\mathrm{KL}((T_\\varepsilon)_\\# \\mu \\| Q) \\Big\\lvert_{\\varepsilon = 0} = \\mathbb{E}_{\\theta \\sim \\mu}\\left[ \\mathcal{S}_Q \\, \\phi(\\theta) \\right],\n where \n\\mathcal{S}_Q \\phi =  \\nabla \\log q \\cdot \\phi + \\nabla \\cdot \\phi\n is the vector-valued Stein operator.\nApplying this to each Hahn-Jordan part of \\nu and \\nu_0 we have\n\n\\frac{d}{d\\varepsilon} \\mathrm{SKL}((T_\\varepsilon)_\\# \\nu \\| \\nu_0) \\Big\\lvert_{\\varepsilon = 0} = \\mathbb{E}_{\\theta \\sim \\nu^+}\\left[ \\mathcal{S}_{\\nu_0^+} \\, \\phi(\\theta) \\right] + \\mathbb{E}_{\\theta \\sim \\nu^-}\\left[ \\mathcal{S}_{\\nu^-_0} \\, \\phi(\\theta) \\right].\n\nFor particles:\n\n\\nu = \\sum_{j=1}^m \\alpha_j \\delta_{\\theta_j},\n\ndefine the sign-index sets and (unnormalised) Hahn–Jordan weights \nJ_+ := \\{\\, j : \\alpha_j&gt;0 \\,\\},\\quad\nJ_- := \\{\\, j : \\alpha_j&lt;0 \\,\\},\\quad\n\\alpha_j^{+} := \\max(\\alpha_j,0),\\quad\n\\alpha_j^{-} := \\max(-\\alpha_j,0).\n\nwith \nw_j^{+}=\\frac{\\alpha_j^{+}}{\\sum_{\\ell\\in J_+}\\alpha_\\ell^{+}},\n\\qquad\nw_j^{-}=\\frac{\\alpha_j^{-}}{\\sum_{\\ell\\in J_-}\\alpha_\\ell^{-}},\n yielding \\begin{align*}\n\\dot{\\theta}_i &= -\\mathbf{1}_{\\{ i\\in J_+ \\}}\n\\sum_{\\ell\\in J_+}\\tilde w_\\ell^{+}\\Big(\nk(\\theta_i,\\theta_\\ell)\\,\\nabla \\log \\nu_0^{+}(\\theta_\\ell)\n+\\nabla_{\\theta_\\ell} k(\\theta_i,\\theta_\\ell)\n\\Big) \\\\\n&\\quad -\\mathbf{1}_{\\{ i\\in J_- \\}}\n\\sum_{\\ell\\in J_-}\\tilde w_\\ell^{-}\\Big(\nk(\\theta_i,\\theta_\\ell)\\,\\nabla \\log \\nu_0^{-}(\\theta_\\ell)\n+\\nabla_{\\theta_\\ell} k(\\theta_i,\\theta_\\ell)\n\\Big).\n\\end{align*}\nFor an RBF kernel k(\\theta,\\theta')=\\exp(-|\\theta-\\theta'|^2/(2\\ell^2)), \n\\nabla_{\\theta_\\ell}k(\\theta_i,\\theta_\\ell)=\\frac{1}{\\ell^2},k(\\theta_i,\\theta_\\ell),(\\theta_i-\\theta_\\ell),\n so the update simplifies to \n\\dot{\\theta}_i\n= -\\sum_{\\ell\\in J_{\\operatorname{sign}(\\alpha_i)}}\\tilde w_\\ell^{(\\operatorname{sign})}\nk(\\theta_i,\\theta_\\ell)\\left[\n\\nabla \\log \\nu^{(\\operatorname{sign})}(\\theta_\\ell)\n+\\frac{1}{\\ell^2}(\\theta_i-\\theta_\\ell)\n\\right]."
   },
   {
-    "objectID": "examples/var_four_talk/variational_fourier.html#final-update-equations",
-    "href": "examples/var_four_talk/variational_fourier.html#final-update-equations",
+    "objectID": "slides/index.html#final-update-equations",
+    "href": "slides/index.html#final-update-equations",
     "title": "Variational Fourier Regression",
     "section": "Final Update Equations",
     "text": "Final Update Equations\nTo evolve the original objective, break it down into constituent components:\n\n\\mathcal{F}(\\nu) = \\underbrace{\\mathcal{L}(\\nu)}_{\\text{RKHS block}} + \\underbrace{\\mathrm{KL}(\\nu^+ \\| \\nu_0^+)}_{\\mathcal{H}(K_{\\nu_0^+}) \\text{ block}} + \\underbrace{\\mathrm{KL}(\\nu^- \\| \\nu_0^-)}_{\\mathcal{H}(K_{\\nu_0^-}) \\text{ block}}\n\nLetting \\phi_\\nu denote the first variation of \\mathcal{L}(\\nu) at \\nu:\n\nRKHS block: Under the assumption K \\approx I, the update simplifies to: \\begin{align*}\n\\alpha_j^{(t+1)} &= \\alpha_j^{(t)}-\\eta_\\alpha \\, \\phi_\\nu(\\theta_j^{(t)}) \\quad \\text{(weight update)} \\\\\n\\theta_j^{(t+1)} &= \\theta_j^{(t)}-\\eta_\\theta \\, \\alpha_j^{(t)}\\,\\nabla_\\theta \\phi_\\nu(\\theta_j^{(t)}) \\quad \\text{(location update)}\n\\end{align*}\n\\mathcal{H}(K_{\\nu_0^+}) block: Pure transport step moving towards \\nu_0^+: \n\\theta_i^{+,(t+1)} = \\theta_i^{+,(t)} +  \\eta_+ \\,\\frac{1}{|J^+|}\\sum_{j \\in J^+} \\Big[\\, k(\\theta_j^{+,(t)} , \\theta_i^{+,(t)}) \\, \\nabla_{\\theta_j} \\log \\nu_0^+(\\theta_j^{+,(t)}) \\;+\\; \\nabla_{\\theta_j} k(\\theta_j^{+,(t)}, \\theta_i^{+,(t)}) \\,\\Big]\n\n\\mathcal{H}(K_{\\nu_0^-}) block: Pure transport step moving towards \\nu_0^-: \n\\theta_i^{-,(t+1)} = \\theta_i^{-,(t)} +  \\eta_- \\,\\frac{1}{|J^-|}\\sum_{j \\in J^-} \\Big[\\, k(\\theta_j^{-,(t)} , \\theta_i^{-,(t)}) \\, \\nabla_{\\theta_j} \\log \\nu_0^-(\\theta_j^{-,(t)}) \\;+\\; \\nabla_{\\theta_j} k(\\theta_j^{-,(t)}, \\theta_i^{-,(t)}) \\,\\Big]"
   },
   {
-    "objectID": "examples/var_four_talk/variational_fourier.html#regression",
-    "href": "examples/var_four_talk/variational_fourier.html#regression",
+    "objectID": "slides/index.html#regression",
+    "href": "slides/index.html#regression",
     "title": "Variational Fourier Regression",
     "section": "Regression",
     "text": "Regression\n\n\nCode\nkey = jax.random.PRNGKey(42)\ndata, f_true = make_regression_data(n=256, key=key)\nN, d = data[\"x\"].shape\n\n# Init Fourier mixture\nQ0 = init_fourier_particles(n_particles=48, d=d, key=key, w_scale=1.0, phase_uniform=True)\n\n# Predictor + Loss\nprior = NormalDiag(sd=1.0)\npredictor = FourierPredictor(prior_plus=prior, prior_minus=prior, data = data, x_key=\"x\", y_key=\"y\")\nloss = ISFDeterministicRiskLoss(loss_and_grad=squared_loss_and_grad)\n\n# Kernel & params (adjust KernelParams(...) if your signature differs)\nkparams = KernelParams(lengthscale=jnp.asarray(1.), amplitude=jnp.asarray(1.0)) \nkernel = RBFKernel()\n\n# Pre-train diagnostics\nf0 = predictor.predict(Q0)\n\n# Run VGD\nout = isf(\n    model=predictor,\n    loss=loss,\n    kernel=kernel,\n    kparams=kparams,\n    eps_theta=1e-2,\n    eps_alpha = 1e-4,\n    lambda_skl = 1.,\n    Q0=Q0,\n    steps=5000,\n    ema_alpha=1.0,\n    use_median_lengthscale=True,\n    return_metrics=True,\n)\nQhat, metrics = out if isinstance(out, tuple) else (out, None)\n\nQfinal, history = out\nplot_1d_predictive_output(Qfinal, history, predictor)\nplt.show()"
   },
   {
-    "objectID": "examples/var_four_talk/variational_fourier.html#classification",
-    "href": "examples/var_four_talk/variational_fourier.html#classification",
+    "objectID": "slides/index.html#classification",
+    "href": "slides/index.html#classification",
     "title": "Variational Fourier Regression",
     "section": "Classification",
     "text": "Classification\n\n\nCode\ndata, logits = make_classification_data(n=256, key=key)\nN, d = data[\"x\"].shape\n\n# Init Fourier mixture\nQ0 = init_fourier_particles(n_particles=48, d=d, key=key, w_scale=1.0, phase_uniform=True)\n\n# Predictor + Loss\nprior = NormalDiag(sd=1.0)\npredictor = FourierPredictor(prior_plus=prior, prior_minus=prior, data = data, x_key=\"x\", y_key=\"y\")\nloss = ISFDeterministicRiskLoss(loss_and_grad=logistic_loss_and_grad)\n\n# Kernel & params (adjust KernelParams(...) if your signature differs)\nkparams = KernelParams(lengthscale=jnp.asarray(1.), amplitude=jnp.asarray(1.0)) \nkernel = RBFKernel()\n\n# Pre-train diagnostics\nf0 = predictor.predict(Q0)\n\n# Run VGD\nout = isf(\n    model=predictor,\n    loss=loss,\n    kernel=kernel,\n    kparams=kparams,\n    eps_theta=1e-2,\n    eps_alpha = 1e-4,\n    lambda_skl = 1.,\n    Q0=Q0,\n    steps=5000,\n    ema_alpha=1.0,\n    use_median_lengthscale=True,\n    return_metrics=True,\n)\nQhat, metrics = out if isinstance(out, tuple) else (out, None)\nQfinal, history = out\n\nplot_isf_results(\n    predictor=predictor,\n    data=data,\n    Q0=Q0,\n    Qhat=Qhat,\n    metrics=metrics,\n    grid_lim=2.5,\n    grid_n=200,\n    title_prefix=\"Interpolated Stein Flow\"\n)\nplt.show()"
   },
   {
-    "objectID": "examples/var_four_talk/variational_fourier.html#p-adic-numbers",
-    "href": "examples/var_four_talk/variational_fourier.html#p-adic-numbers",
+    "objectID": "slides/index.html#p-adic-numbers",
+    "href": "slides/index.html#p-adic-numbers",
     "title": "Variational Fourier Regression",
     "section": "p-adic numbers",
     "text": "p-adic numbers\nFor a prime p, the p-adic absolute value on \\mathbb{Q} is \n|x|_p=\\begin{cases}\np^{-k}\\, & x=p^k\\frac{a}{b},\\; a,b\\in\\mathbb{Z}, \\; p\\nmid a,b, \\\\\n0,& x=0.\n\\end{cases}\n Numbers divisible by many powers of p are small p-adically (e.g. |8|_2=2^{-3}).\nLet v_p(x)\\in\\mathbb{Z}\\cup{\\infty} be the p-adic valuation (largest k with p^k\\mid x and v_p(0)=\\infty). Then |x|_p=p^{-v_p(x)} and \n|x+y|_p \\le \\max\\{|x|_p,|y|_p\\}\\quad\\text{(ultrametric inequality).}\n\nCompletions. The completion of \\mathbb{Q} under |\\cdot|_p is \\mathbb{Q}_p. Elements have expansions \nx=\\sum_{i=k_0}^{\\infty} a_i p^i, \\qquad a_i\\in\\{0,\\dots,p-1\\}, \\; k_0\\in\\mathbb{Z},\n i.e. only finitely many negative powers occur; for \\mathbb{Z}_p (the compact open unit ball) we have k_0\\ge 0.\nBalls and measure. Closed balls are cosets a+p^m\\mathbb{Z}_p. With Haar measure \\mu normalised by \\mu(\\mathbb{Z}_p)=1, one has \\mu(a+p^m\\mathbb{Z}_p)=p^{-m}."
   },
   {
-    "objectID": "examples/var_four_talk/variational_fourier.html#hierarchical-data-and-p-adics",
-    "href": "examples/var_four_talk/variational_fourier.html#hierarchical-data-and-p-adics",
+    "objectID": "slides/index.html#hierarchical-data-and-p-adics",
+    "href": "slides/index.html#hierarchical-data-and-p-adics",
     "title": "Variational Fourier Regression",
     "section": "Hierarchical data and p-adics",
     "text": "Hierarchical data and p-adics\nThe ultrametric induces a tree: each ball a+p^m\\mathbb{Z}_p splits into p disjoint children a+bp^m+p^{m+1}\\mathbb{Z}_p, b\\in{0,\\dots,p-1}. Two points are close iff they agree to many leading base-p digits: \nv_p(x-y)=\\text{length of the longest common prefix of the $p$-adic digit strings of $x,y$.}\n\nCanonical encodings.\n\nBinary/quad strings (e.g. taxonomy, DNA): choose p=2 or p=4. Encode a finite string s=(s_0,\\dots,s_{L-1}) as x=\\sum_{i=0}^{L-1} s_i p^i\\in\\mathbb{Z}_p. Then \nv_p(x-x')=\\min{i: s_i\\neq s_i'}\\quad(\\text{or } \\infty \\text{ if identical}),\n so distance equals first divergence depth in the tree.\nGeneral rooted trees of out-degree \\le p: label edges 0,\\dots,p-1 from root and encode the path label as above.\n\nThis makes \\mathbb{Q}_p a natural host for clustering, phylogenies, and any prefix-based similarity."
   },
   {
-    "objectID": "examples/var_four_talk/variational_fourier.html#gelfand-transform-p-adic-fourier-analysis",
-    "href": "examples/var_four_talk/variational_fourier.html#gelfand-transform-p-adic-fourier-analysis",
+    "objectID": "slides/index.html#gelfand-transform-p-adic-fourier-analysis",
+    "href": "slides/index.html#gelfand-transform-p-adic-fourier-analysis",
     "title": "Variational Fourier Regression",
     "section": "Gelfand transform (p-adic Fourier analysis)",
     "text": "Gelfand transform (p-adic Fourier analysis)\nConsider the LCA group (\\mathbb{Q}_p,+) with Haar measure \\mu (\\mu(\\mathbb{Z}_p)=1). Fix the standard additive character \\psi:\\mathbb{Q}_p\\to\\mathbb{T} that is trivial on \\mathbb{Z}_p and non-trivial on p^{-1}\\mathbb{Z}_p (concretely, \\psi(x)=e^{2\\pi i {x}_p}, where {x}_p\\in\\mathbb{Q}/\\mathbb{Z} is determined by the finitely many negative-power digits of x).\n\nFourier/Gelfand transform: \n\\widehat{f}(\\xi)=\\int_{\\mathbb{Q}_p} f(x)\\,\\psi(\\xi x)\\,d\\mu(x),\\qquad \\xi\\in\\mathbb{Q}_p.\n\nInversion/Plancherel (with dual Haar d\\xi): \nf(x)=\\int_{\\mathbb{Q}_p} \\widehat{f}(\\xi)\\,\\psi(-\\xi x)\\,d\\xi\\,\\qquad |f|_2=|\\widehat f|_2.\n\nCharacters. Every continuous character is \\chi_\\xi(x)=\\psi(\\xi x) for a unique \\xi\\in\\mathbb{Q}_p; the dual group is \\widehat{\\mathbb{Q}}_p\\cong\\mathbb{Q}_p.\n\nPractical evaluation. If computations are at resolution m (finite strings/digits), then \n\\chi_\\xi(x)=\\exp\\Big(2\\pi i \\;\\frac{(\\xi x)\\bmod p^m}{p^m}\\Big),\n so you only need modular arithmetic on integers of size p^m."
   },
   {
-    "objectID": "examples/var_four_talk/variational_fourier.html#regression-1",
-    "href": "examples/var_four_talk/variational_fourier.html#regression-1",
+    "objectID": "slides/index.html#regression-1",
+    "href": "slides/index.html#regression-1",
     "title": "Variational Fourier Regression",
     "section": "Regression",
     "text": "Regression\n\n\nCode\ndef make_p_adic_regression_data_1d(p=5, m=4, N=512, key: Array=jax.random.PRNGKey(0)):\n    \"\"\"\n    One-dimensional X uniform in {0,...,M-1}, y from a few true p-adic characters + noise.\n    \"\"\"\n    M = p ** m\n    k1, k2, k3 = jax.random.split(key, 3)\n\n    # X ~ Haar on Z_p mod p^m =&gt; uniform residues\n    X = jax.random.randint(k1, shape=(N,), minval=0, maxval=M).astype(jnp.int64)\n\n    # True mixture at low frequencies\n    Xi_true = jnp.array([ (p ** 0) * 7,  (p ** 1) * 3,  (p ** 2) * 1 ], dtype=jnp.int64) % M  # (3,)\n    phi_true   = jnp.array([0.0, 3.0, 8.0])  # phases in [0,M), interpreted as real\n    alpha_true = jnp.array([1.2, -0.8, 0.5])\n\n    # y = sum_j alpha_j cos(2π/M (Xi_j * X + phi_j)) + noise\n    Tphi = (X[:, None] * Xi_true[None, :] + phi_true[None, :]) % M  # (N, 3)\n    ang  = (2.0 * jnp.pi / M) * Tphi\n    Phi_true = jnp.cos(ang)  # (N, 3)\n    y_clean  = (Phi_true @ alpha_true).reshape(-1)\n\n    noise = 0.1 * jax.random.normal(k2, shape=(N,))\n    y = y_clean + noise\n    return X, y, dict(Xi_true=Xi_true, phi_true=phi_true, alpha_true=alpha_true, M=M)\n\n\n\n\nCode\np, m = 2, 3\nX, y, truth = make_p_adic_regression_data_1d(p=p, m=m, N=600, key=jax.random.PRNGKey(42))\npredictor = PAdicFourierPredictor(p=p, m=m, data={\"x\": X, \"y\": y}, use_sin=True)\n\nM = predictor.modulus()\nk = 8  # number of frequencies to keep\nXi0 = predictor.pick_freqs_via_sampled_dft(X, y, M, k)   # (k,1)\n# cos+sin =&gt; alpha length is 2k; phases unused here (keep zeros)\nphi0   = jnp.zeros((k,), dtype=jnp.float32)\nalpha0 = jnp.zeros((2 * k,), dtype=jnp.float32)\n\nQ = PAdicMixtureLike(Xi=Xi0, phi=phi0, alpha=alpha0)\n\ny_pred = predictor.predict(Q)\nmse_old = jnp.mean((y_pred - y) ** 2)\nprint(f\"[1D] M={M}, k={k}, cos+sin spectrum-init ridge MSE: {float(mse_old):.6f}\")\n\n# Build design and ridge\nPhi = predictor.features_pointwise(Q)          # (2k, N) since use_sin=True\nalpha_hat = solve_alpha_ridge(Phi, y, lam=1e-3)\nQ = Q.replace_alpha(alpha_hat)\n\ny_pred = predictor.predict(Q)\nmse = jnp.mean((y_pred - y) ** 2)\nprint(f\"[1D] M={M}, k={k}, cos+sin spectrum-init ridge MSE: {float(mse):.6f}\")\n\nplot_1d_fit(X, y, Q, predictor)\n\n\n[1D] M=8, k=8, cos+sin spectrum-init ridge MSE: 1.308472\n[1D] M=8, k=8, cos+sin spectrum-init ridge MSE: 0.008831"
   },
   {
-    "objectID": "examples/var_four_talk/variational_fourier.html#regression-2",
-    "href": "examples/var_four_talk/variational_fourier.html#regression-2",
+    "objectID": "slides/index.html#regression-2",
+    "href": "slides/index.html#regression-2",
     "title": "Variational Fourier Regression",
     "section": "Regression",
     "text": "Regression\n\n\nCode\nplot_p_adic_tree_with_predictor(X, y, Q, predictor, p=predictor.p, m=predictor.m,)"

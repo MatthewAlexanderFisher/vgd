@@ -1886,7 +1886,7 @@ k(\theta_i,\theta_\ell)\left[
 </section>
 <section id="regression" class="slide level2">
 <h2>Regression</h2>
-<div id="cb5c6bcf" class="cell" data-fig-dpi="150" data-fig-height="4.5" data-fig-width="9" data-execution_count="3">
+<div id="78c67a4a" class="cell" data-fig-dpi="150" data-fig-height="4.5" data-fig-width="9" data-execution_count="3">
 <details class="code-fold">
 <summary>Code</summary>
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb1"><pre class="sourceCode numberSource python number-lines code-with-copy"><code class="sourceCode python"><span id="cb1-1"><a></a>key <span class="op">=</span> jax.random.PRNGKey(<span class="dv">42</span>)</span>
@@ -1940,7 +1940,7 @@ k(\theta_i,\theta_\ell)\left[
 </section>
 <section id="classification" class="slide level2">
 <h2>Classification</h2>
-<div id="ff609f95" class="cell" data-fig-dpi="150" data-fig-height="4.5" data-fig-width="9" data-execution_count="4">
+<div id="4d76651b" class="cell" data-fig-dpi="150" data-fig-height="4.5" data-fig-width="9" data-execution_count="4">
 <details class="code-fold">
 <summary>Code</summary>
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb2"><pre class="sourceCode numberSource python number-lines code-with-copy"><code class="sourceCode python"><span id="cb2-1"><a></a>data, logits <span class="op">=</span> make_classification_data(n<span class="op">=</span><span class="dv">256</span>, key<span class="op">=</span>key)</span>
@@ -2053,7 +2053,7 @@ f(x)=\int_{\mathbb{Q}_p} \widehat{f}(\xi)\,\psi(-\xi x)\,d\xi\,\qquad |f|_2=|\wi
 </section>
 <section id="regression-1" class="slide level2">
 <h2>Regression</h2>
-<div id="cd6c9c5b" class="cell" data-execution_count="5">
+<div id="ac4d710d" class="cell" data-execution_count="5">
 <details class="code-fold">
 <summary>Code</summary>
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb3"><pre class="sourceCode numberSource python number-lines code-with-copy"><code class="sourceCode python"><span id="cb3-1"><a></a><span class="kw">def</span> make_p_adic_regression_data_1d(p<span class="op">=</span><span class="dv">5</span>, m<span class="op">=</span><span class="dv">4</span>, N<span class="op">=</span><span class="dv">512</span>, key: Array<span class="op">=</span>jax.random.PRNGKey(<span class="dv">0</span>)):</span>
@@ -2082,7 +2082,7 @@ f(x)=\int_{\mathbb{Q}_p} \widehat{f}(\xi)\,\psi(-\xi x)\,d\xi\,\qquad |f|_2=|\wi
 <span id="cb3-24"><a></a>    <span class="cf">return</span> X, y, <span class="bu">dict</span>(Xi_true<span class="op">=</span>Xi_true, phi_true<span class="op">=</span>phi_true, alpha_true<span class="op">=</span>alpha_true, M<span class="op">=</span>M)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </details>
 </div>
-<div id="a838f998" class="cell" data-fig-dpi="150" data-fig-height="4.5" data-fig-width="9" data-execution_count="6">
+<div id="28131bd3" class="cell" data-fig-dpi="150" data-fig-height="4.5" data-fig-width="9" data-execution_count="6">
 <details class="code-fold">
 <summary>Code</summary>
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb4"><pre class="sourceCode numberSource python number-lines code-with-copy"><code class="sourceCode python"><span id="cb4-1"><a></a>p, m <span class="op">=</span> <span class="dv">2</span>, <span class="dv">3</span></span>
@@ -2128,7 +2128,7 @@ f(x)=\int_{\mathbb{Q}_p} \widehat{f}(\xi)\,\psi(-\xi x)\,d\xi\,\qquad |f|_2=|\wi
 </section>
 <section id="regression-2" class="slide level2">
 <h2>Regression</h2>
-<div id="917eaf7c" class="cell" data-fig-dpi="150" data-fig-height="4.5" data-fig-width="9" data-execution_count="7">
+<div id="6962b7f3" class="cell" data-fig-dpi="150" data-fig-height="4.5" data-fig-width="9" data-execution_count="7">
 <details class="code-fold">
 <summary>Code</summary>
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb6"><pre class="sourceCode numberSource python number-lines code-with-copy"><code class="sourceCode python"><span id="cb6-1"><a></a>plot_p_adic_tree_with_predictor(X, y, Q, predictor, p<span class="op">=</span>predictor.p, m<span class="op">=</span>predictor.m,)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
@@ -2141,7 +2141,6 @@ f(x)=\int_{\mathbb{Q}_p} \widehat{f}(\xi)\,\psi(-\xi x)\,d\xi\,\qquad |f|_2=|\wi
 </div>
 </div>
 </div>
-
 
 
 </section></section>

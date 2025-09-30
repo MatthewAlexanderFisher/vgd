@@ -2,4 +2,3 @@
 title: "Tutorials"
 ---
 
-- [Variational Fourier Regression](var_four_talk/variational_fourier.qmd)
