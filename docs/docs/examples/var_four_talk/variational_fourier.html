@@ -698,20 +698,26 @@ g_i := G_\nu(\theta_i).
 \nu = \sum_{j=1}^m \alpha_j \delta_{\theta_j},
 </span></p>
 <p>define the sign-index sets and (unnormalised) Hahn–Jordan weights <span class="math display">
-J_+ := {j:\alpha_j&gt;0},\quad J_- := {j:\alpha_j&lt;0},\quad
-\alpha_j^{+} := \max(\alpha_j,0),\quad \alpha_j^{-} := \max(-\alpha_j,0).
-</span> with <span class="math inline">w_j^{+}=\alpha_j^{+}/\sum_{\ell\in J_+}\alpha_\ell^{+}</span> and <span class="math inline">w_j^{-}=\alpha_j^{-}/\sum_{\ell\in J_-}\alpha_\ell^{-}</span>, yielding</p>
-<p><span class="math display">\begin{align*}
-\dot{\theta}_i &amp;= -\mathbf{1}\{{i\in J_+}\}\,
-\sum_{\ell\in J_+}\tilde w_\ell^{+}\Big[
+J_+ := \{\, j : \alpha_j&gt;0 \,\},\quad
+J_- := \{\, j : \alpha_j&lt;0 \,\},\quad
+\alpha_j^{+} := \max(\alpha_j,0),\quad
+\alpha_j^{-} := \max(-\alpha_j,0).
+</span></p>
+<p>with <span class="math display">
+w_j^{+}=\frac{\alpha_j^{+}}{\sum_{\ell\in J_+}\alpha_\ell^{+}},
+\qquad
+w_j^{-}=\frac{\alpha_j^{-}}{\sum_{\ell\in J_-}\alpha_\ell^{-}},
+</span> yielding <span class="math display">\begin{align*}
+\dot{\theta}_i &amp;= -\mathbf{1}_{\{ i\in J_+ \}}
+\sum_{\ell\in J_+}\tilde w_\ell^{+}\Big(
 k(\theta_i,\theta_\ell)\,\nabla \log \nu_0^{+}(\theta_\ell)
 +\nabla_{\theta_\ell} k(\theta_i,\theta_\ell)
-\Big] \\
-&amp; \quad -\mathbf{1}\{{i\in J_-}\}\,
-\sum_{\ell\in J_-}\tilde w_\ell^{-}\Big[
-k(\theta_i,\theta_\ell)\, \nabla \log \nu_0^{-}(\theta_\ell)
+\Big) \\
+&amp;\quad -\mathbf{1}_{\{ i\in J_- \}}
+\sum_{\ell\in J_-}\tilde w_\ell^{-}\Big(
+k(\theta_i,\theta_\ell)\,\nabla \log \nu_0^{-}(\theta_\ell)
 +\nabla_{\theta_\ell} k(\theta_i,\theta_\ell)
-\Big].
+\Big).
 \end{align*}</span></p>
 <p>For an RBF kernel <span class="math inline">k(\theta,\theta')=\exp(-|\theta-\theta'|^2/(2\ell^2))</span>, <span class="math display">
 \nabla_{\theta_\ell}k(\theta_i,\theta_\ell)=\frac{1}{\ell^2},k(\theta_i,\theta_\ell),(\theta_i-\theta_\ell),
@@ -751,7 +757,7 @@ k(\theta_i,\theta_\ell)\left[
 </section>
 <section id="regression" class="slide level2">
 <h2>Regression</h2>
-<div id="bfcd71da" class="cell" data-fig-dpi="150" data-fig-height="4.5" data-fig-width="9" data-execution_count="3">
+<div id="d3143235" class="cell" data-fig-dpi="150" data-fig-height="4.5" data-fig-width="9" data-execution_count="3">
 <details class="code-fold">
 <summary>Code</summary>
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb1"><pre class="sourceCode numberSource python number-lines code-with-copy"><code class="sourceCode python"><span id="cb1-1"><a></a>key <span class="op">=</span> jax.random.PRNGKey(<span class="dv">42</span>)</span>
@@ -805,7 +811,7 @@ k(\theta_i,\theta_\ell)\left[
 </section>
 <section id="classification" class="slide level2">
 <h2>Classification</h2>
-<div id="9e0b6ea1" class="cell" data-fig-dpi="150" data-fig-height="4.5" data-fig-width="9" data-execution_count="4">
+<div id="c3b26345" class="cell" data-fig-dpi="150" data-fig-height="4.5" data-fig-width="9" data-execution_count="4">
 <details class="code-fold">
 <summary>Code</summary>
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb2"><pre class="sourceCode numberSource python number-lines code-with-copy"><code class="sourceCode python"><span id="cb2-1"><a></a>data, logits <span class="op">=</span> make_classification_data(n<span class="op">=</span><span class="dv">256</span>, key<span class="op">=</span>key)</span>
@@ -918,7 +924,7 @@ f(x)=\int_{\mathbb{Q}_p} \widehat{f}(\xi)\,\psi(-\xi x)\,d\xi\,\qquad |f|_2=|\wi
 </section>
 <section id="regression-1" class="slide level2">
 <h2>Regression</h2>
-<div id="e1c13858" class="cell" data-fig-dpi="150" data-fig-height="4.5" data-fig-width="9" data-execution_count="6">
+<div id="c445f592" class="cell" data-fig-dpi="150" data-fig-height="4.5" data-fig-width="9" data-execution_count="6">
 <details class="code-fold">
 <summary>Code</summary>
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb3"><pre class="sourceCode numberSource python number-lines code-with-copy"><code class="sourceCode python"><span id="cb3-1"><a></a>p, m <span class="op">=</span> <span class="dv">2</span>, <span class="dv">3</span></span>
@@ -964,7 +970,7 @@ f(x)=\int_{\mathbb{Q}_p} \widehat{f}(\xi)\,\psi(-\xi x)\,d\xi\,\qquad |f|_2=|\wi
 </section>
 <section id="regression-2" class="slide level2">
 <h2>Regression</h2>
-<div id="2602395a" class="cell" data-fig-dpi="150" data-fig-height="4.5" data-fig-width="9" data-execution_count="7">
+<div id="c7d6266a" class="cell" data-fig-dpi="150" data-fig-height="4.5" data-fig-width="9" data-execution_count="7">
 <details class="code-fold">
 <summary>Code</summary>
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb5"><pre class="sourceCode numberSource python number-lines code-with-copy"><code class="sourceCode python"><span id="cb5-1"><a></a>plot_p_adic_tree_with_predictor(X, y, Q, predictor, p<span class="op">=</span>predictor.p, m<span class="op">=</span>predictor.m,)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>

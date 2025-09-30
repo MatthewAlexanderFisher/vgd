@@ -648,23 +648,32 @@ $$
 
 define the sign-index sets and (unnormalised) Hahn–Jordan weights
 $$
-J_+ := {j:\alpha_j>0},\quad J_- := {j:\alpha_j<0},\quad
-\alpha_j^{+} := \max(\alpha_j,0),\quad \alpha_j^{-} := \max(-\alpha_j,0).
+J_+ := \{\, j : \alpha_j>0 \,\},\quad
+J_- := \{\, j : \alpha_j<0 \,\},\quad
+\alpha_j^{+} := \max(\alpha_j,0),\quad
+\alpha_j^{-} := \max(-\alpha_j,0).
 $$
-with $w_j^{+}=\alpha_j^{+}/\sum_{\ell\in J_+}\alpha_\ell^{+}$ and $w_j^{-}=\alpha_j^{-}/\sum_{\ell\in J_-}\alpha_\ell^{-}$, yielding
 
+with
+$$
+w_j^{+}=\frac{\alpha_j^{+}}{\sum_{\ell\in J_+}\alpha_\ell^{+}},
+\qquad
+w_j^{-}=\frac{\alpha_j^{-}}{\sum_{\ell\in J_-}\alpha_\ell^{-}},
+$$
+yielding
 \begin{align*}
-\dot{\theta}_i &= -\mathbf{1}\{{i\in J_+}\}\,
-\sum_{\ell\in J_+}\tilde w_\ell^{+}\Big[
+\dot{\theta}_i &= -\mathbf{1}_{\{ i\in J_+ \}}
+\sum_{\ell\in J_+}\tilde w_\ell^{+}\Big(
 k(\theta_i,\theta_\ell)\,\nabla \log \nu_0^{+}(\theta_\ell)
 +\nabla_{\theta_\ell} k(\theta_i,\theta_\ell)
-\Big] \\
-& \quad -\mathbf{1}\{{i\in J_-}\}\,
-\sum_{\ell\in J_-}\tilde w_\ell^{-}\Big[
-k(\theta_i,\theta_\ell)\, \nabla \log \nu_0^{-}(\theta_\ell)
+\Big) \\
+&\quad -\mathbf{1}_{\{ i\in J_- \}}
+\sum_{\ell\in J_-}\tilde w_\ell^{-}\Big(
+k(\theta_i,\theta_\ell)\,\nabla \log \nu_0^{-}(\theta_\ell)
 +\nabla_{\theta_\ell} k(\theta_i,\theta_\ell)
-\Big].
+\Big).
 \end{align*}
+
 
 For an RBF kernel $k(\theta,\theta')=\exp(-|\theta-\theta'|^2/(2\ell^2))$,
 $$
