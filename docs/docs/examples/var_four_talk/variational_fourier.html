@@ -751,7 +751,7 @@ k(\theta_i,\theta_\ell)\left[
 </section>
 <section id="regression" class="slide level2">
 <h2>Regression</h2>
-<div id="09b6f6a5" class="cell" data-fig-dpi="150" data-fig-height="4.5" data-fig-width="9" data-execution_count="3">
+<div id="bfcd71da" class="cell" data-fig-dpi="150" data-fig-height="4.5" data-fig-width="9" data-execution_count="3">
 <details class="code-fold">
 <summary>Code</summary>
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb1"><pre class="sourceCode numberSource python number-lines code-with-copy"><code class="sourceCode python"><span id="cb1-1"><a></a>key <span class="op">=</span> jax.random.PRNGKey(<span class="dv">42</span>)</span>
@@ -794,11 +794,18 @@ k(\theta_i,\theta_\ell)\left[
 <span id="cb1-38"><a></a>plot_1d_predictive_output(Qfinal, history, predictor)</span>
 <span id="cb1-39"><a></a>plt.show()</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </details>
+<div class="cell-output cell-output-display">
+<div class="quarto-figure quarto-figure-center">
+<figure>
+<p><img data-src="variational_fourier_files/figure-revealjs/cell-4-output-1.png" class="quarto-figure quarto-figure-center" width="1718" height="374"></p>
+</figure>
+</div>
+</div>
 </div>
 </section>
 <section id="classification" class="slide level2">
 <h2>Classification</h2>
-<div id="f25d2143" class="cell" data-fig-dpi="150" data-fig-height="4.5" data-fig-width="9" data-execution_count="4">
+<div id="9e0b6ea1" class="cell" data-fig-dpi="150" data-fig-height="4.5" data-fig-width="9" data-execution_count="4">
 <details class="code-fold">
 <summary>Code</summary>
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb2"><pre class="sourceCode numberSource python number-lines code-with-copy"><code class="sourceCode python"><span id="cb2-1"><a></a>data, logits <span class="op">=</span> make_classification_data(n<span class="op">=</span><span class="dv">256</span>, key<span class="op">=</span>key)</span>
@@ -849,6 +856,13 @@ k(\theta_i,\theta_\ell)\left[
 <span id="cb2-46"><a></a>)</span>
 <span id="cb2-47"><a></a>plt.show()</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </details>
+<div class="cell-output cell-output-display">
+<div class="quarto-figure quarto-figure-center">
+<figure>
+<p><img data-src="variational_fourier_files/figure-revealjs/cell-5-output-1.png" class="quarto-figure quarto-figure-center" width="1331" height="765"></p>
+</figure>
+</div>
+</div>
 </div>
 </section></section>
 <section>
@@ -904,7 +918,7 @@ f(x)=\int_{\mathbb{Q}_p} \widehat{f}(\xi)\,\psi(-\xi x)\,d\xi\,\qquad |f|_2=|\wi
 </section>
 <section id="regression-1" class="slide level2">
 <h2>Regression</h2>
-<div id="666a966e" class="cell" data-fig-dpi="150" data-fig-height="4.5" data-fig-width="9" data-execution_count="6">
+<div id="e1c13858" class="cell" data-fig-dpi="150" data-fig-height="4.5" data-fig-width="9" data-execution_count="6">
 <details class="code-fold">
 <summary>Code</summary>
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb3"><pre class="sourceCode numberSource python number-lines code-with-copy"><code class="sourceCode python"><span id="cb3-1"><a></a>p, m <span class="op">=</span> <span class="dv">2</span>, <span class="dv">3</span></span>
@@ -935,15 +949,33 @@ f(x)=\int_{\mathbb{Q}_p} \widehat{f}(\xi)\,\psi(-\xi x)\,d\xi\,\qquad |f|_2=|\wi
 <span id="cb3-26"><a></a></span>
 <span id="cb3-27"><a></a>plot_1d_fit(X, y, Q, predictor)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </details>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1D] M=8, k=8, cos+sin spectrum-init ridge MSE: 1.308472
+[1D] M=8, k=8, cos+sin spectrum-init ridge MSE: 0.008831</code></pre>
+</div>
+<div class="cell-output cell-output-display">
+<div class="quarto-figure quarto-figure-center">
+<figure>
+<p><img data-src="variational_fourier_files/figure-revealjs/cell-7-output-2.png" class="quarto-figure quarto-figure-center" width="1547" height="443"></p>
+</figure>
+</div>
+</div>
 </div>
 </section>
 <section id="regression-2" class="slide level2">
 <h2>Regression</h2>
-<div id="b3c695b4" class="cell" data-fig-dpi="150" data-fig-height="4.5" data-fig-width="9" data-execution_count="7">
+<div id="2602395a" class="cell" data-fig-dpi="150" data-fig-height="4.5" data-fig-width="9" data-execution_count="7">
 <details class="code-fold">
 <summary>Code</summary>
-<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb4"><pre class="sourceCode numberSource python number-lines code-with-copy"><code class="sourceCode python"><span id="cb4-1"><a></a>plot_p_adic_tree_with_predictor(X, y, Q, predictor, p<span class="op">=</span>predictor.p, m<span class="op">=</span>predictor.m,)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb5"><pre class="sourceCode numberSource python number-lines code-with-copy"><code class="sourceCode python"><span id="cb5-1"><a></a>plot_p_adic_tree_with_predictor(X, y, Q, predictor, p<span class="op">=</span>predictor.p, m<span class="op">=</span>predictor.m,)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </details>
+<div class="cell-output cell-output-display">
+<div class="quarto-figure quarto-figure-center">
+<figure>
+<p><img data-src="variational_fourier_files/figure-revealjs/cell-8-output-1.png" class="quarto-figure quarto-figure-center" width="1545" height="470"></p>
+</figure>
+</div>
+</div>
 </div>
 
 

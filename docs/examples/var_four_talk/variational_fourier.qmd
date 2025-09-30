@@ -2,7 +2,7 @@
 title: "Variational Fourier Regression"
 author: "Matthew Fisher"
 execute:
-  eval: false
+  eval: true
 ---
 
 # Introduction
