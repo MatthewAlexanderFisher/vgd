@@ -1,9 +1,39 @@
 ---
 title: "Variational Fourier Regression"
 author: "Matthew Fisher"
+project:
+  type: website
+#   output-dir: /docs
+
+editor:
+  render-on-save: true
+format:
+  revealjs:
+    template-partials:
+      - title-slide.html
+    transition: fade
+
+    theme: custom.scss
+    css: custom.css
+    fig-align: center
+    margin: 0.06        # default ~0.04; smaller = slide closer to edges
+    embed-resources: true   # inlines images/CSS/JS
+    math: none
+    highlight-style: dracula
+    incremental: false
+    navigation-mode: vertical   # enables up/down within stacks
+    slide-number: h.v   # show 1.2 style numbering
+    controls-tutorial: true
+    code-fold: true       # collapsible code blocks
+    code-tools: true      # show a small code/clipboard toolbar
+    html-math-method: katex
+
 execute:
-  eval: true
+  echo: true              # show code by default (set false to hide globally)
+
+jupyter: python3
 ---
+
 
 # Introduction
 
