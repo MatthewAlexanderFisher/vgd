@@ -28,7 +28,8 @@ format:
     html-math-method: katex
 
 execute:
-  echo: true              # show code by default (set false to hide globally)
+  echo: false              # show code by default (set false to hide globally)
+  eval: true
 
 jupyter: python3
 ---
@@ -967,7 +968,7 @@ $$
 This makes $\mathbb{Q}_p$ a natural host for **clustering**, **phylogenies**, and **any prefix-based similarity**.
 
 
-## Gelfand transform ($p$-adic Fourier analysis)
+## Fourier transform ($p$-adic Fourier analysis)
 
 Consider the LCA group $(\mathbb{Q}_p,+)$ with Haar measure $\mu$ ($\mu(\mathbb{Z}_p)=1$). Fix the **standard additive character** $\psi:\mathbb{Q}_p\to\mathbb{T}$ that is trivial on $\mathbb{Z}_p$ and non-trivial on $p^{-1}\mathbb{Z}_p$ (concretely, $\psi(x)=e^{2\pi i {x}_p}$, where ${x}_p\in\mathbb{Q}/\mathbb{Z}$ is determined by the finitely many negative-power digits of $x$).
 
@@ -1069,3 +1070,661 @@ plot_1d_fit(X, y, Q, predictor)
 plot_p_adic_tree_with_predictor(X, y, Q, predictor, p=predictor.p, m=predictor.m,)
 
 ```
+
+
+# Stein enhanced MCMC dynamics 
+
+## Big picture
+
+**Goal:** Generate high-quality (ideally independent) samples from a target density $\pi$.
+
+**Standard Approaches:**
+
+1. **MCMC** produces asymptotically exact samples but with *autocorrelation*; thinning/post-processing is usually required.
+2. **SVGD** (Stein Variational Gradient Descent) gives *deterministic*, interacting particles with built-in **repulsion**, but needs a differentiable score $\nabla\log\pi$ and often struggles on **multimodal** targets.
+
+**Idea:** For *any* $\pi$-invariant Markov kernel $P$ (or generator $\mathcal{A}$) we:
+
+* take its **Stein operator** $T_\pi$,
+* build the **Stein RKHS geometry** induced by a kernel $k$,
+* construct an **analogue of SVGD**
+
+This yields a **generalised SVGD** whose update is a “particle version” of the given MCMC—preserving invariance while adding SVGD style **repulsion**. With Metropolis–Hastings (MH), you get a **Stein-tilted MH** step that remains $\pi$-invariant but encourages diversity.
+
+## Aside: Stein Operators {.scrollable}
+
+A **Stein operator** for a target $\pi$ is any operator $T_\pi$ such that
+
+$$
+\mathbb{E}_{X\sim \pi}[ (T_\pi f)(X)] = 0.
+$$
+
+There are *three kinds* of "Stein" operators which can make things confusing:
+
+* **Generators on scalars:** An operator $\mathcal{A}_\pi$ which takes in **scalar-valued** functions and outputs **scalar-valued** functions. 
+   
+  $$
+  \mathcal{A}_\pi f = \nabla \cdot \nabla f + \nabla\log\pi \cdot \nabla f
+  $$
+
+* **Vector to scalar:** An operator $\mathcal{S}_\pi$ which takes in **vector-valued** functions and outputs **scalar-valued** functions. 
+  $$
+  \mathcal{S}_\pi \phi = \nabla \cdot \phi + \nabla\log\pi \cdot \phi.
+  $$
+
+* **Scalar to vector (Stein feature operator):** An operator $\mathcal{G}_\pi$ which takes in **scalar-valued** functions and outputs **vector valued** functions. 
+  $$
+  \mathcal{G}_\pi f = \nabla f + f \, \nabla \log \pi.
+  $$
+
+They are related:
+
+$$
+\mathcal{A}_\pi f = \mathcal{S}_\pi (\nabla f) = \nabla \cdot (\mathcal{G}_\pi f).
+$$
+
+### Creating Stein Operators
+
+A **natural** way to construct a Stein operator is through Markov processes which leave the target $\pi$ invariant.
+
+#### Discrete Time
+
+For a **discrete time** $\pi$-invariant Markov process with Markov kernel $P$, we can define the **Markov-Stein** operator associated with $P$:
+
+$$
+(T_\pi f)(x) \coloneqq (P f)(x)-f(x).
+$$
+
+It satisfies the Stein identity $\mathbb E_\pi[T_\pi f]=0$ for bounded measurable $f$ since $\pi P = \pi$ and $\int P f\,\mathrm{d}\pi = \int f\,\mathrm{d}\pi$.
+
+#### Continuous Time
+
+In a continuous time $\pi$-invariant Markov process, we can **construct** a Stein operator via the **semigroup** or its **generator**:
+
+1. **Semigroup:** Define $\mathcal{S}_t f := P_t f - f$, with $(P_t)_{t\geq 0}$ a $\pi$ invariant semigroup. Then
+  $$
+  \mathbb{E}_\pi[\mathcal{S}_t f] = \int (P_t f - f) \, d\pi = 0,
+  $$
+1. **Generator:** Define $\mathcal{S}_\pi := \mathcal{A}$ with $\mathcal{A}$ a $\pi$ invariant generator, then
+   $$
+   \mathbb{E}_\pi[\mathcal{S}_\pi f] = \mathbb{E}_\pi[\mathcal{A} f] = \mathbb{E}_\pi\left[\lim_{t\to 0^+} \frac{P_t f - f}{t}\right] = 0.
+   $$
+
+
+## Introduction to Vanilla SVGD {.scrollable}
+
+Let $\pi$ be a target density on $\mathbb{R}^d$ and $Q$ a current approximation. The KL divergence is:
+
+$$
+\mathrm{KL}(Q \| \pi) = \int \log\left(\frac{dQ}{d\pi}\right) \,\mathrm{d}Q.
+$$
+
+Consider the infinitesimal transport $T_\varepsilon(x)=x+\varepsilon\,\phi(x)$ with a vector field $\phi:\mathbb{R}^d\to\mathbb{R}^d$. We choose $\phi$ to maximise the **instantaneous decrease** of KL:
+
+$$
+\min_{\phi}\ \left.\frac{d}{d\varepsilon} \mathrm{KL}\big((T_\varepsilon)_\# Q \| \pi\big)\right|_{\varepsilon=0}.
+$$
+
+By a calculation involving change of variables and a Taylor series expansion of the density of $(T_\varepsilon)_\# Q$, it can be shown:
+
+$$
+\frac{d}{d\varepsilon} \left.\mathrm{KL}( (T_\varepsilon)_\# Q \| \pi  )\right|_{\varepsilon = 0} = -\mathbb{E}_{X\sim Q}\left[ (\mathcal{S}_\pi \phi)(X) \right],
+$$
+
+where $\mathcal{S}_\pi \phi = \phi \cdot \nabla \log \pi  + \nabla\cdot\phi$.
+
+Now restrict $\phi$ to the **vector-valued RKHS**
+$$
+\mathcal H_K = \bigoplus_{i=1}^d \mathcal H_k,
+\qquad K(z,x)=k(z,x)\,I_d,
+$$
+where $k:\mathbb{R}^d\times\mathbb{R}^d\to\mathbb{R}$ is a **scalar** positive-definite kernel and $I_d$ is the $d\times d$ identity. Using the reproducing properties in $\mathcal H_K$, the functional $\phi \mapsto \mathbb{E}_Q[\mathcal{S}_\pi \phi]$ has Riesz representer 
+$$
+\boxed{\;
+\Phi_Q(z) = \mathbb{E}_{X\sim Q}\left[k(z,X)\nabla\log\pi(X) + \nabla_X k(z,X)\right].
+\;}
+$$
+where $\nabla_X k(z,X)$ denotes the gradient of $k$ w.r.t. its **second** argument.
+
+Then, since $\mathcal{H}_K$ is a Hilbert space, Cauchy-Schwarz tells us:
+
+$$
+-\frac{d}{d\varepsilon} \left.\mathrm{KL}( (T_\varepsilon)_\# Q \| \pi  )\right|_{\varepsilon = 0} = \mathbb{E}_{X\sim Q}\left[ (\mathcal{S}_\pi \phi)(X) \right] = \langle \phi, \Phi_Q \rangle_{\mathcal{H}_K} \leq \|\phi\|_{\mathcal{H}_K} \|\Phi_Q\|_{\mathcal{H}_K}.
+$$
+
+We wish to **maximise this**. Therefore, the **steepest descent direction** over the unit ball is $\phi^* = \tfrac{\Phi_Q}{\|\Phi_Q\|_{\mathcal{H}_K}}$.  In practice we use the field
+$$
+\boxed{\;\phi_{\text{SVGD}}(z) = \Phi_Q(z)
+=\mathbb{E}_{X\sim Q}\left[k(z,X)\nabla\log\pi(X) + \nabla_X k(z,X)\right].}
+$$
+
+A single Euler step updates particles $x_i\leftarrow x_i+\eta\,\phi_{\text{SVGD}}(x_i)$. Moreover,
+$$
+\left.\frac{d}{d\varepsilon}\ \mathrm{KL}\big((T_\varepsilon)_\# Q  \| \pi\big) \right|_{\varepsilon = 0}
+= -\|\Phi_Q\|_{\mathcal H_K}^2,
+$$
+i.e. the squared **kernel Stein discrepancy** (KSD) equals the instantaneous KL decrease along $\phi_{\text{SVGD}}$.
+
+**Empirical form:** With particles $\{x_j\}_{j=1}^n$ defining an empirical measure $Q = \tfrac{1}{n}\sum_{j=1}^n \delta_{x_j}$, the SVGD update becomes:
+$$
+\phi_{\text{SVGD}}(z) = \frac{1}{n}\sum_{j=1}^n \Big[k(z,x_j)\,\nabla\log\pi(x_j) + \nabla_{x_j} k(z,x_j)\Big].
+$$
+
+## The (rough) Generalisation {.scrollable}
+
+In **vanilla SVGD**, the "Stein field" was
+$$
+\phi_{\text{SVGD}}(z)
+=\mathbb{E}_{X\sim Q}\left[k(z,X)\nabla\log\pi(X) + \nabla_X k(z,X)\right] = \mathbb{E}_{X\sim Q}[\mathcal{G}_\pi^X k(z,X)],
+$$
+where $(\mathcal{G}_\pi f)(x) = f(x) \nabla\log\pi(x) + \nabla f(x)$ is the scalar $\to$ vector Stein feature operator.
+
+For a **Markov-Stein** operator $\mathcal{S}_P f = Pf - f$, this implies we want something like:
+
+$$
+\phi_{P\text{-SVGD}}(z) = \mathbb{E}_{X\sim Q}[\mathcal{S}_P^X k(z,X)].
+$$
+
+### Issues 
+
+::: {.incremental}
+
+- As written, the $\phi_{P\text{-SVGD}}(z)$ is not a **transport map** - it is **scalar-valued**!
+- Even if it did make sense, how can it be justified?
+- The derivation of the standard SVGD assumed the use of **KL divergence** and transports of the form
+  $$
+  T_\varepsilon = \mathrm{Id} + \varepsilon\,\phi.
+  $$
+- With these assumptions, the **Langevin Stein operator** $\mathcal{S}_\pi$ appeared.
+
+:::
+
+## Alternative View {.scrollable}
+
+Instead of considering a **transport map** to move $Q$, we consider a family of **Markov kernels**:
+
+$$
+\{ P_{\varepsilon} \mid -\epsilon_0 \leq \varepsilon \leq \epsilon_0, \; P_0 = P \}.
+$$
+
+Define
+
+$$
+F(\varepsilon) = \mathrm{KL}(Q \, P_\varepsilon \| \pi ).
+$$
+
+We seek the Markov kernel which **maximises the instaneous decrease of KL**:
+
+$$
+F'(0) = \frac{d}{d\varepsilon} \left. \mathrm{KL}(Q \, P_\varepsilon \| \pi ) \right|_{\varepsilon = 0}.
+$$
+
+### Constraints on $P_\varepsilon$
+
+Let $(P_\varepsilon)_{\varepsilon}$ be a family of Markov kernels with $P_0=P$. For bounded measurable $f$, write
+$$
+(P_\varepsilon f)(x)=\int f(y)\,P_\varepsilon(x,dy).
+$$
+If the map $\varepsilon\mapsto P_\varepsilon f$ is differentiable at $0$ for all bounded $f$, define the **signed kernel derivative** $M$ by
+$$
+(M f)(x)\;:=\;\left.\frac{d}{d\varepsilon}\,(P_\varepsilon f)(x)\right|_{\varepsilon=0}.
+$$
+By Riesz–Markov, this means that for each fixed $x$, there exists a finite **signed** measure $M(x,\cdot)$ on the state space so that
+$$
+(M f)(x)=\int f(y)\,M(x,dy).
+$$
+
+**Intuitively**: $P_\varepsilon = P + \varepsilon M + o(\varepsilon)$ in the weak sense.
+
+Now differentiate the standard identities:
+
+**Stochasticity (row sums $=1$).**  
+For every $\varepsilon$ and $x$, $\int P_\varepsilon(x,dy)=1$. Differentiate at $0$:
+$$
+\int M(x,dy)=0\quad\text{for all }x
+\qquad\Longleftrightarrow\qquad
+M\, 1 =0.
+$$
+
+**$\pi$-invariance to first order.**  
+If $P_\varepsilon$ leaves $\pi$ invariant for all $\varepsilon$, then for every bounded $f$,
+$$
+\int (P_\varepsilon f)(x)\,\mathrm{d}\pi(x)=\int f(x)\,\mathrm{d}\pi(x).
+$$
+Differentiate at $0$:
+$$
+\int (M f)(x)\,\mathrm{d}\pi(x)=0\quad\text{for all }f.
+$$
+Equivalently, as a signed measure in $y$,
+$$
+\int M(x,dy)\,\mathrm{d}\pi(x)=0
+\qquad\Longleftrightarrow\qquad
+\pi M=0.
+$$
+
+**Reversibility (detailed balance) to first order.**  
+If each $P_\varepsilon$ is $\pi$-reversible, then for all measurable sets $A,B$:
+$$
+\int_A\!\!\int_B \mathrm{d}\pi(x)\,P_\varepsilon(x,dy)
+=
+\int_A\!\!\int_B \pi(dy)\,P_\varepsilon(y,dx).
+$$
+Differentiate at $0$ and use symmetry in $(A,B)$ to get, as measures on $\mathcal X\times\mathcal X$,
+$$
+\pi(dx)\,M(x,dy)\;=\;\pi(dy)\,M(y,dx).
+$$
+This is the “detailed balance at first order”.
+
+### Parameterising $P_\varepsilon$
+
+Assume $P$ is $\pi$-reversible and set
+$$
+\mu(dx,dy):=\pi(dx)\,P(x,dy).
+$$
+Then $\mu$ is symmetric: $\mu(dx,dy)=\mu(dy,dx)$.
+
+A class of perturbations is obtained by weighting the jump $x\to y$ with a function $A(x,y)$ and compensating on the diagonal so rows still sum to zero:
+$$
+(Mf)(x)=\int\big(f(y)-f(x)\big)\,A(x,y)\,P(x,dy).
+$$
+Equivalently, as (signed) kernels,
+$$
+M(x,dy)=A(x,y)\,P(x,dy)\;-\;\Big[\int A(x,z)\,P(x,dz)\Big]\,\delta_x(dy).
+\tag{†}
+$$
+
+Let’s check the three constraints and see what symmetry of $A$ is forced:
+
+**Row sums.** With $f\equiv 1$, $(Mf)(x)=\int(1-1)\,A(\cdot)\,P=0$. So $M\mathbf 1=0$ holds for **any** $A$.
+
+**$\pi$-invariance at first order.** For any $f$,
+$$
+\int (Mf)(x)\,\mathrm{d}\pi(x)=\iint \big(f(y)-f(x)\big)\,A(x,y)\,\mu(dx,dy).
+$$
+Swap $(x,y)$ and use symmetry of $\mu$ to see this integral is the negative of itself, hence $0$ **regardless of the symmetry of $A$**. Thus $\pi M=0$ always holds.
+
+**Reversibility at first order.** Here the symmetry of $A$ matters. From (†),
+$$
+\pi(dx)\,M(x,dy)=A(x,y)\,\mu(dx,dy)\;-\;\pi(dx)\,a(x)\,\delta_x(dy),
+\qquad a(x):=\int A(x,z)\,P(x,dz).
+$$
+Swapping $(x,y)$ we obtain
+$\pi(dy)\,M(y,dx)=A(y,x)\,\mu(dx,dy)-\pi(dy)\,a(y)\,\delta_y(dx)$.
+For these two signed measures to be equal, we must have on the **off-diagonal** (where $\delta$-terms vanish)
+$$
+A(x,y)\,\mu(dx,dy)=A(y,x)\,\mu(dx,dy)
+\quad\Rightarrow\quad
+A(x,y)=A(y,x)\quad(\mu\text{-a.e.}).
+$$
+The diagonal compensation terms then match automatically.
+
+**Conclusion:** to *preserve reversibility to first order*, $A$ must be **symmetric** $\mu$-a.e.
+
+## Derivation {.scrollable}
+
+### Step 1: Gâteaux derivative of $\mathrm{KL}$
+
+Let $Q\ll \pi$ with density $\rho=\dfrac{dQ}{d\pi}$ and
+$$
+\mathrm{KL}(Q\|\pi)=\int \rho\log\rho\,d\pi.
+$$
+Consider a differentiable path of probability measures $(Q_\varepsilon)_{\varepsilon}$ with $Q_0=Q$ and
+$$
+\dot Q := \left.\frac{d}{d\varepsilon} Q_\varepsilon \right|_{\varepsilon=0},
+\qquad \dot Q(\mathcal X)=0.
+$$
+Assume $Q_\varepsilon\ll\pi$ for $|\varepsilon|$ small with densities $\rho_\varepsilon=\dfrac{dQ_\varepsilon}{d\pi}$ differentiable at $\varepsilon=0$ $\pi$-a.e., and $\dot\rho:=\left.\dfrac{d}{d\varepsilon}\rho_\varepsilon \right|_{\varepsilon=0}$. Then $d\dot q=\dot\rho\,d\pi$.
+
+Write $\varphi(t)=t\log t$. Then $\varphi'(t)=1+\log t$ and
+$$
+F(\varepsilon):=\mathrm{KL}(Q_\varepsilon\|\pi)=\int \varphi(\rho_\varepsilon)\,d\pi.
+$$
+By differentiation under the integral sign:
+$$
+F'(0)=\int \varphi'(\rho)\,\dot\rho\,d\pi
+=\int \bigl(1+\log\rho\bigr)\,d\dot Q.
+$$
+Because $\dot Q(\mathcal X)=\int 1\,d\dot Q=0$, the constant “$1$” drops out:
+$$
+F'(0)=\int \log\rho\,d\dot Q
+=\int \log\!\Big(\frac{dQ}{d\pi}\Big)\,d\dot Q.
+$$
+
+
+### Step 2: What is the allowable $\dot q$?
+
+Given a current law $Q$, the one–step pushforward along $P_\varepsilon$ is $Q_\varepsilon:=Q\,P_\varepsilon$.
+Its tangent is
+$$
+\dot Q
+:=\left.\frac{d}{d\varepsilon}\, Q\,P_\varepsilon\right|_{\varepsilon=0}
+= QM,
+\qquad\text{i.e.}\quad
+\langle f,\dot Q\rangle
+=\int (Mf)(x)\,Q(dx).
+$$
+
+Using the property of $M$:
+$$
+\boxed{\;
+\langle f,\dot q\rangle
+=\iint \big(f(y)-f(x)\big)\,A(x,y)\,\underbrace{q(dx)\,P(x,dy)}_{=:~\mu_Q(dx,dy)}\;.
+}
+\tag{Tangent}
+$$
+Here $\mu_q$ is the one–step coupling of $(Q,P)$. Note $\mu_q$ is generally **not symmetric** unless $Q=\pi$.
+
+
+### Step 3: First variation of $\mathrm{KL}$
+
+The Gâteaux derivative of KL gives
+$$
+\frac{d}{d\varepsilon}\left.\mathrm{KL}(Q\,P_\varepsilon\|\pi) \right|_{\varepsilon=0}
+=\int \log\!\Big(\frac{dQ}{d\pi}\Big)\,d\dot Q
+=\left\langle \log\dfrac{dQ}{d\pi},\dot Q\right\rangle.
+$$
+Therefore:
+$$
+\boxed{\;
+\frac{d}{d\varepsilon}\Big|_{\varepsilon=0}\mathrm{KL}(Q\,P_\varepsilon\|\pi)
+= \iint \big(\log\dfrac{dQ}{d\pi}(y)-\log\dfrac{dQ}{d\pi}(x)\big)\,A(x,y)\,\mu_Q(dx,dy)\;.
+}
+$$
+
+This is the **general first–order formula** for any admissible perturbation (i.e. any symmetric $A$ in $(\dagger)$).
+
+
+
+<!-- 
+
+## Alternative View of Vanilla SVGD {.scrollable}
+
+It turns out, you can derive the "vanilla" SVGD updates by using a **different objective**! 
+
+### Ingredients
+
+1. **Target:** Density $\pi$ on $\mathbb R^d$.
+
+2. **Feature operator:** $\mathcal G_\pi f=\nabla f+f\, \nabla \log \pi$ (scalar $\to$ vector).
+
+3. **Divergence Stein operator:** $(\mathcal S_\pi\phi)=\nabla\cdot\phi+\phi\cdot \nabla \log \pi$ (vector $\to$ scalar).
+
+4. **Scalar base kernel:** $k: \mathbb{R}^d\times\mathbb{R}^d\rightarrow\mathbb{R}$.
+
+### Matrix Stein Kernel and its RKHS
+
+Using the feature operator $\mathcal{G}_\pi$, define the **matrix stein kernel**:
+$$
+K_{\mathcal G_\pi}(z,x) = \big(\nabla_z+\nabla \log \pi(z)\big)\big(\nabla_x+\nabla \log \pi(x)\big)^{\top}k(z,x)\in\mathbb R^{d\times d}.
+$$
+
+Its RKHS $\mathcal H_{K_{\mathcal G_\pi}}$ consists of **vector-valued** functions with reproducing property
+
+$$
+\big\langle \phi,\ K_{\mathcal G_\pi}(\cdot,x)v\big\rangle_{\mathcal H}
+= v^{\top}(\mathcal S_\pi\phi)(x)\qquad(\forall\,\phi\in\mathcal H,\,v\in\mathbb R^d).
+$$
+
+### Defining $\Phi_Q$
+
+As in the previous derivation, we define:
+$$
+\Phi_Q(z) = \mathbb E_{X\sim Q}\!\big[k(z,X)(\nabla \log \pi(X)+\nabla_X k(z,X))\big] = \mathbb E_{X\sim Q}\!\big[K_{\mathcal G_\pi}(z,X)\mathbf 1\big]
+$$
+
+By the reproducing property, we have
+$$
+\langle \phi,\Phi_Q\rangle_{\mathcal H}
+=\mathbb E_{X\sim Q}\big[(\mathcal S_\pi \phi)(X)\big]\quad(\forall\,\phi\in\mathcal H).
+\tag{*}
+$$
+
+**KSD and the objective.**
+$$
+\mathrm{KSD}(Q|\pi)=|\Phi_Q|_{\mathcal H},
+\qquad
+J(Q)=\tfrac12|\Phi_Q|_{\mathcal H}^2.
+$$
+
+
+### Goal
+
+Show that the **Gâteaux derivative** of $J$ along a transport $Q_\varepsilon=(\mathrm{Id}+\varepsilon\phi)_\# Q$ with direction $\phi\in\mathcal H$ is
+$$
+\boxed{\;\left.\frac{d}{d\varepsilon}\right|_{\varepsilon=0}J(Q_\varepsilon)=\langle \phi,\ \Phi_Q\rangle_{\mathcal H}.\;}
+\tag{G}
+$$
+Hence the **steepest descent** over $|\phi|_{\mathcal H}\le 1$ is $\phi^\star=-\Phi_Q/|\Phi_Q|$, and using $\phi=-\Phi_Q$ yields the **SVGD field**.
+
+
+### Derivation
+
+We proceed entirely inside the Stein RKHS $(\mathcal H,\langle\cdot,\cdot\rangle_{\mathcal H})$.
+
+#### Step 1 — Differentiate $J(Q_\varepsilon)$ via $\Phi_{Q_\varepsilon}$.
+
+Since $J(Q)=\tfrac12\langle \Phi_Q,\Phi_Q\rangle_{\mathcal H}$,
+$$
+\left.\frac{d}{d\varepsilon}\right|_{\varepsilon=0}J(Q_\varepsilon)
+=\big\langle \Phi_Q,\ \dot\Phi_Q\big\rangle_{\mathcal H},
+\qquad \dot\Phi_Q:=\left.\frac{d}{d\varepsilon}\right|_{\varepsilon=0}\Phi_{Q_\varepsilon}\in\mathcal H.
+\tag{1}
+$$
+
+To identify $\dot\Phi_Q$, use only the reproducing identity (*).
+
+### Step 2 — Characterise $\dot\Phi_Q$ by testing against $\psi\in\mathcal H$.
+
+For any $\psi\in\mathcal H$,
+$$
+\langle \psi,\ \Phi_{Q_\varepsilon}\rangle_{\mathcal H}
+=\mathbb E_{X\sim Q_\varepsilon}\big[(\mathcal S_\pi\psi)(X)\big].
+$$
+Differentiate at $\varepsilon=0$. The pushforward path $Q_\varepsilon=(\mathrm{Id}+\varepsilon\phi)_\# Q$ satisfies the **continuity equation** at $\varepsilon=0$:
+$\partial_\varepsilon Q_\varepsilon|_{\varepsilon=0}=-\nabla\cdot(q\phi)$.
+Hence for any smooth test $h$,
+$$
+\left.\frac{d}{d\varepsilon}\right|_{\varepsilon=0}\mathbb E_{Q_\varepsilon}[h]
+= \int h\,\partial_\varepsilon Q_\varepsilon\Big|_{\varepsilon=0}
+= -\int h\,\nabla\cdot(q\phi)
+= \int q\,\nabla h\cdot \phi
+= \mathbb E_Q[\nabla h\cdot \phi].
+$$
+Apply this with $h=\mathcal S_\pi\psi$ (a scalar):
+$$
+\left.\frac{d}{d\varepsilon}\right|_{\varepsilon=0}
+\langle \psi,\ \Phi_{Q_\varepsilon}\rangle_{\mathcal H}
+= \mathbb E_Q\!\big[\nabla(\mathcal S_\pi\psi)(X)\cdot \phi(X)\big].
+\tag{2}
+$$
+
+On the other hand,
+$$
+\left.\frac{d}{d\varepsilon}\right|_{\varepsilon=0}
+\langle \psi,\ \Phi_{Q_\varepsilon}\rangle_{\mathcal H}
+= \langle \psi,\ \dot\Phi_Q\rangle_{\mathcal H}.
+\tag{3}
+$$
+
+Thus $\dot\Phi_Q\in\mathcal H$ is the unique element satisfying, for all $\psi\in\mathcal H$,
+$$
+\boxed{\;\langle \psi,\ \dot\Phi_Q\rangle_{\mathcal H}
+= \mathbb E_Q\!\big[\nabla(\mathcal S_\pi\psi)\cdot \phi\big].\;}
+\tag{4}
+$$
+
+### Step 3 — Identify the directional derivative of $J$.
+
+Set $\psi=\Phi_Q$ in (4) and use (1):
+$$
+\left.\frac{d}{d\varepsilon}\right|_{\varepsilon=0}J(Q_\varepsilon)
+= \langle \Phi_Q,\ \dot\Phi_Q\rangle_{\mathcal H}
+= \mathbb E_Q\!\big[\nabla(\mathcal S_\pi\Phi_Q)\cdot \phi\big].
+\tag{5}
+$$
+
+Now invoke the **Stein reproducing property (R)** with the specific kernel $K_{\mathcal G_\pi}$: by construction of $\mathcal H$ one has the identity
+$$
+\boxed{\;\mathbb E_Q\!\big[\nabla(\mathcal S_\pi\psi)\cdot \phi\big]
+= \langle \phi,\ \psi\rangle_{\mathcal H}\qquad(\forall\,\phi,\psi\in\mathcal H),\;}
+\tag{IP}
+$$
+which is the RKHS version of integration by parts generated by $K_{\mathcal G_\pi}$.
+Applying (IP) with $\psi=\Phi_Q$ yields
+$$
+\left.\frac{d}{d\varepsilon}\right|_{\varepsilon=0}J(Q_\varepsilon)
+= \langle \phi,\ \Phi_Q\rangle_{\mathcal H}.
+$$
+This is exactly (G).
+
+
+### Step 4 — Steepest descent and the SVGD field
+
+By Cauchy–Schwarz in $\mathcal H$,
+$$
+\left.\frac{d}{d\varepsilon}\right|_{\varepsilon=0}J(Q_\varepsilon)
+= \langle \phi,\ \Phi_Q\rangle_{\mathcal H}
+\;\ge\; -\,|\phi|_{\mathcal H}\,|\Phi_Q|_{\mathcal H}.
+$$
+Over the unit ball $\{\phi:|\phi|_{\mathcal H}\le 1\}$, the **minimiser** is
+$$
+\boxed{\;\phi^\star=-\frac{\Phi_Q}{|\Phi_Q|_{\mathcal H}};}
+$$
+(and in practice one uses $\phi=-\Phi_Q$ with a stepsize). Expanding $\Phi_Q$ gives the familiar **SVGD field**
+$$
+\phi_{\text{SVGD}}(z)
+= -\,\mathbb E_{X\sim Q}\big[k(z,X)(\nabla \log \pi(X)+\nabla_X k(z,X))\big].
+$$
+
+Thus the *gradient flow of $J=\tfrac12\mathrm{KSD}^2$ in the Stein RKHS geometry* coincides with **SVGD**. -->
+
+<!-- 
+## How to generalise SVGD {.scrollable}
+
+### Standard SVGD and the Langevin Stein operator
+
+SVGD is built on the observation that the gradient flow of a variational objective between a particle approximation $Q$ and the target $\pi$ can be expressed through a **Stein operator**.
+
+In the **standard setting**, SVGD uses the *Langevin Stein operator*, which arises from the infinitesimal generator of the Langevin diffusion:
+
+$$
+\mathrm{d}X_t = \tfrac{1}{2}\nabla \log \pi(X_t)\,\mathrm{d}t + \mathrm{d}W_t.
+$$
+
+This diffusion leaves $\pi$ invariant. Its generator $\mathcal{A}$ acts on smooth test functions $f:\mathbb{R}^d\to\mathbb{R}$ by
+
+$$
+(\mathcal{A}f)(x) = \tfrac{1}{2}\nabla \log \pi(x)^\top \nabla f(x) + \tfrac{1}{2}\Delta f(x).
+$$
+
+The Stein operator is then defined as $\mathcal{S}_\pi f = \mathcal{A}f$. By reversibility of the diffusion w.r.t. $\pi$,
+
+$$
+\mathbb{E}_{X\sim \pi}[(\mathcal{S}_\pi f)(X)] = 0,
+$$
+
+which is the Stein identity. SVGD then searches for the steepest descent direction in an RKHS defined by a kernel $k$, leading to the update
+
+$$
+\phi^*(z) = \mathbb{E}_{x\sim Q}\left[\,\nabla_x \log \pi(x)\,k(z,x) + \nabla_x k(z,x)\,\right].
+$$
+
+### Stein operators from Markov kernels
+
+The Langevin diffusion is only one possible Markov process with invariant law $\pi$. In fact, any Markov kernel $P$ that leaves $\pi$ invariant can be used to define a valid Stein operator:
+
+$$
+(\mathcal{S}_\pi f)(x) := (P f)(x) - f(x),
+$$
+
+because stationarity gives
+
+$$
+\mathbb{E}_{\pi}[(\mathcal{S}_\pi f)(X)] = \mathbb{E}_{\pi}[Pf(X)] - \mathbb{E}_{\pi}[f(X)] = \mathbb{E}_{\pi}[f(X)] - \mathbb{E}_{\pi}[f(X)] = 0.
+$$
+
+This form is the **discrete-time analogue** of the Langevin generator.
+
+* If $P$ is a small-step Euler–Maruyama discretisation of Langevin, then $(Pf-f)/\delta t \to \mathcal{A}f$.
+* If $P$ is a Metropolis–Hastings kernel, the operator encodes both proposals and accept/reject.
+* If $P$ is Hamiltonian dynamics, the operator encodes HMC.
+
+Thus, SVGD can be viewed as one instance of a *general recipe*: **pick any $\pi$-invariant kernel $P$, form its Stein operator, and use this to construct an RKHS descent direction.**
+
+
+### What changes when replacing Langevin with a general $P$?
+
+The steepest descent field now becomes
+
+$$
+\phi^*(z) \;=\; \mathbb{E}_{x\sim q}\big[ (P k)(z,x) - k(z,x)\big],
+$$
+
+where $(Pk)(z,x) := \mathbb{E}_{x'\sim P(\cdot|x)}[,k(z,x')\,]$.
+
+* For Langevin, $(Pk)(z,x)$ reduces (in the $\delta t \to 0$ limit) to terms involving $\nabla_x\log \pi(x)$ and $\nabla_x k(z,x)$.
+* For MH, it involves an expectation over proposals and accept/rejects, which can be estimated by Monte Carlo.
+* For HMC, it involves simulating a Hamiltonian trajectory and averaging kernel evaluations.
+
+The result is an **SVGD-like update that inherits the structure of the chosen MCMC kernel**. We can think of this as a *Steinised MCMC scheme*: each particle update is guided by the kernelised Stein operator of $P$, while (depending on the MCMC sheme/choice) retainin an MH correction to ensure correctness.
+
+### Issues with Langevin-only SVGD
+
+Why go beyond Langevin?
+
+* **Autocorrelation and mixing:** Standard SVGD uses only local Langevin gradients; it may explore poorly in multimodal targets.
+* **Accept/reject structure:** Langevin has no accept/reject, so SVGD inherits its bias.
+* **Rigid operator choice:** The Langevin generator enforces a gradient form; other MCMC kernels encode richer moves (e.g. Hamiltonian trajectories, independence proposals).
+* **Differentiable Structure:** The use of Langevin generator assumes a gradient can be computed - not the case for $\mathbb{Q}_p$ spaces.
+
+By generalising SVGD to arbitrary $\pi$-invariant kernels, we can:
+
+1. Design particle-based samplers that **retain MH corrections** (hence exactness).
+2. Incorporate **repulsive Stein interactions** directly into MCMC updates, reducing the need for post-processing (like Stein thinning).
+3. Leverage **richer dynamics** (HMC, independence MH, etc.) while still benefiting from the RKHS optimisation framework.
+
+## Aside: Standard SVGD {.scrollable}
+
+Let $\pi$ be a target density on $\mathbb{R}^d$, $Q$ a current particle law, and let $\mathcal H_K$ be a vector-valued RKHS of vector fields $\phi:\mathbb{R}^d \to \mathbb{R}^d$ with matrix kernel $K:\mathbb{R}^d\times\mathbb{R}^d\to\mathbb{R}^{d\times d}$. The **Langevin Stein operator on vector fields** is
+$$
+\big(\mathcal S^{\mathrm{Lan}}_\pi \phi\big)(x) = \nabla\cdot\phi(x) +\phi(x)^\top \nabla \log \pi(x)
+$$
+
+### First variation of KL (explicit form)
+
+Consider the transport $T_\varepsilon(x)=x+\varepsilon\,\phi(x)$ and the pushed law $Q_\varepsilon=(T_\varepsilon)_\# Q$. A calculation (change of variables + integration by parts) gives
+$$
+\left.\frac{d}{d\varepsilon}\mathrm{KL}(Q_\varepsilon|\pi) \right|_{\varepsilon=0} \;=\; -\,\mathbb E_{x\sim Q}\Big[\,\nabla\cdot\phi(x) + \phi(x)^\top \nabla \log \pi(x)\,\Big]
+= -\mathbb E_{Q}\big[\mathcal S^{\mathrm{Lan}}_\pi \phi\big].
+\tag{1}
+$$
+
+To work in $\mathcal H_K$, use the reproducing identities (for any $z\in\mathbb{R}^d$ and $v\in\mathbb{R}^d)$:
+$$
+\langle \phi,K(\cdot,z)\,v\rangle_{\mathcal H_K}= v^\top \phi(z),
+\qquad
+\langle \phi,\nabla_z K(\cdot,z)\rangle_{\mathcal H_K}= \nabla\cdot\phi(z),
+\tag{2}
+$$
+where $\nabla_z K(\cdot,z)\in \mathcal H_K$ is the $\mathcal H_K$ member whose inner product with $\phi$ equals $\nabla \cdot \phi(z)$. Combining (1)–(2),
+$$
+\left.\frac{d}{d\varepsilon}\mathrm{KL}(Q_\varepsilon|\pi)\right|_{\varepsilon=0}
+= -\,\Big\langle \phi, 
+\mathbb E_{x\sim Q}\big[\,K(\cdot,x)\nabla \log \pi(x) + \nabla_x K(\cdot,x)\,\big]\Big\rangle_{\mathcal H_K}.
+\tag{3}
+$$
+
+Thus the **(unconstrained) steepest descent direction** is the field $\phi$ that appears inside the bracket on the right-hand side of (3):
+$$
+\boxed{\;
+\phi_{\mathrm{SVGD}}(z) =
+\mathbb E_{x\sim Q}\big[\,K(z,x)\,\nabla\log \pi + \nabla_x K(z,x)\,\big].
+\;}
+\tag{4}
+$$
+The practical particle update is $x_i \leftarrow x_i + \varepsilon\,\phi_{\mathrm{SVGD}}(x_i)$.
+
+
+ -->
+
+
