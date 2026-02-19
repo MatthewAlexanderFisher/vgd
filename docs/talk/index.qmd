@@ -1,0 +1,699 @@
+---
+title: "Generalising Kernelised Gradient Flows"
+author: "Matthew Fisher"
+project:
+  type: website
+#   output-dir: /docs
+
+editor:
+  render-on-save: true
+format:
+  revealjs:
+    template-partials:
+      - title-slide.html
+    transition: fade
+
+    theme: custom.scss
+    css: custom.css
+    fig-align: center
+    margin: 0.06        # default ~0.04; smaller = slide closer to edges
+    embed-resources: true   # inlines images/CSS/JS
+    highlight-style: dracula
+    incremental: false
+    navigation-mode: vertical   # enables up/down within stacks
+    slide-number: h.v   # show 1.2 style numbering
+    controls-tutorial: true
+    code-fold: true       # collapsible code blocks
+    code-tools: true      # show a small code/clipboard toolbar
+    html-math-method: katex
+
+execute:
+  echo: false              # show code by default (set false to hide globally)
+  eval: true
+
+jupyter: python3
+---
+
+
+# Introduction
+
+```{python}
+#| echo: False
+import jax
+from jax import config
+from jax import Array
+import jax.numpy as jnp
+config.update("jax_enable_x64", True)  # do this at the very top
+
+import matplotlib.pyplot as plt
+import seaborn as sns
+import numpy as np
+
+plt.rcParams["figure.figsize"] = (5, 3)
+plt.rcParams["text.usetex"] = True
+plt.rcParams["font.family"] = "serif"
+plt.rcParams["font.serif"] = ["Computer Modern Roman"]  # matches LaTeX default
+
+import mplcyberpunk
+plt.style.use("cyberpunk")
+
+from vgd.model import FourierPredictor, PAdicFourierPredictor
+from vgd.distribution import FourierParticles, NormalDiag, SignedMixtureLike, PAdicMixtureLike
+from vgd.kernel import RBFKernel, KernelParams
+from vgd.loss import DeterministicRiskLoss, squared_loss_and_grad, logistic_loss_and_grad, ISFDeterministicRiskLoss
+from vgd.methods import vgd, vgd_weight, mfld, vgd_random
+from vgd.util import plot_1d_predictive_output, plot_isf_results, plot_1d_fit, plot_p_adic_tree_with_predictor
+from vgd.methods.isf import isf
+from vgd.methods.ridge import solve_alpha_ridge
+```
+
+
+
+## Overview and Goals
+
+- By a **kernelised gradient flow**, I precisely mean something like:
+  $$
+  \partial_t q = -\nabla\cdot\left(q \, \mathcal{K}_q \nabla \frac{\delta \mathcal{J}}{\delta q} \right),
+  $$
+  where $q$ is a PDF, $\partial_t q = -\nabla\cdot\left(q \nabla \frac{\delta \mathcal{J}}{\delta q} \right)$ defines a **continuity equation**, $\mathcal{J}$ is a functional defined over distributions, and $\mathcal{K}_q$ is a kernel operator:
+  $$
+  \mathcal{K}_q v = \int K(x,\cdot) v(x) \,\mathrm{d}q(x).
+  $$
+- This defines a **gradient flow** over a Riemannian manifold of probability measures. Precisely: Otto's Wasserstein space $W_2$ with its tangent spaces restricted to an RKHS:
+  $$
+  T^{(K)}_q \mathcal{P}_2 = \{ - \nabla\cdot(q \varphi) \mid \varphi \in \mathcal{H}_K \}.
+  $$
+
+**Goals of the talk:**
+
+1. Present a brief intro/review of different **Kernelised Gradient Flows**.
+2. Present potential avenues of future research (*e.g. discrete analogues*).
+
+## Intuition Building
+
+Suppose we want to minimise an objective  
+$$
+\mathcal{J} : \mathcal{X} \to \mathbb{R}.
+$$  
+To define a *flow* (a continuous-time optimisation), we only need two ingredients:
+
+1. **Allowed directions.** Which way can we move from a point $x \in \mathcal{X}$?  
+   
+   → This defines the **tangent space** or “neighbourhood structure” around $x$.
+
+2. **Cost of motion.** How expensive is it to move a small amount in a given direction?  
+   
+   → This defines a **local metric**, measuring infinitesimal displacement cost.
+
+Together, these determine the *geometry* of the space. 
+
+Once we have geometry, a **flow** is simply “move downhill as fast as possible given that geometry”:
+  $$
+  \dot{x}_t = -\,\operatorname{grad}_{g}\mathcal{J}(x_t).
+  $$
+
+## Flows on Riemannian Manifolds {.scrollable}
+
+A *Riemannian manifold* $(\mathcal{M}, g)$ gives us exactly the two ingredients we need:
+
+1. **Allowed directions:**  
+   → The **tangent space** $T_x\mathcal{M}$ specifies all directions we can move from $x$.
+
+2. **Cost of motion:**  
+   → The **Riemannian metric** $g_x : T_x\mathcal{M} \times T_x\mathcal{M} \to \mathbb{R}$ assigns an inner product to each tangent space.
+
+Given an objective $\mathcal{J}:\mathcal{M}\rightarrow \mathbb{R}$, its differential at $x\in\mathcal{M}$ is:
+$$
+D\mathcal{J}(x) : T_x\mathcal{M} \to \mathbb{R}, \quad
+D\mathcal{J}(x)[v] =
+\left.\frac{d}{d\varepsilon}\,\mathcal{J}(\gamma(\varepsilon))\right|_{\varepsilon=0},
+$$
+where $\gamma$ is *any smooth curve* in $\mathcal{M}$ with $\gamma(0)=x$ and $\dot{\gamma}(0)=v$.
+
+* So $D\mathcal{J}(x)\in T^*_x \mathcal{M}$ and $D\mathcal{J}(x)[h] \in \mathbb{R}$ is the **directional derivative** of $\mathcal{J}$ in direction $h\in T_x\mathcal{M}$.
+
+* The *metric* $g$ defines the **Riemannian gradient**
+  $$
+  g_x(\operatorname{grad}_{g}\mathcal{J}(x), v) = D\mathcal{J}(x)[v],\quad \forall \, v\in T_x \mathcal{M}
+  $$
+* The **Riemannian gradient** defines the flow
+  $$
+  \dot{x}_t = -\,\operatorname{grad}_{g}\mathcal{J}(x_t).
+  $$
+
+
+## Example: Euclidean Space {.scrollable}
+
+$\mathbb{R}^d$ equipped with the metric $g_x(u, v) = u^\top v$ defines a **Riemannian manifold**.
+
+1. **Objective and Differential:** Given an objective $\mathcal{J}$, its differential is the Euclidean **total derivative**
+   $$
+   D\mathcal{J}(x) = \begin{pmatrix} \tfrac{\partial}{\partial x_1} \mathcal{J}(x), \ldots, \tfrac{\partial}{\partial x_d} \mathcal{J}(x)  \end{pmatrix}.
+   $$
+2. **Metric inverse (Onsager Operator):** The metric defines an isomorphism between the tangent and cotangent spaces:
+   $$
+   g_x : T_x\mathbb{R}^d \longrightarrow T_x^*\mathbb{R}^d,
+   \qquad
+   g_x(u) = u^\top,
+   $$
+   with inverse
+   $$
+   g_x^{-1} : T_x^*\mathbb{R}^d \longrightarrow T_x\mathbb{R}^d.
+   $$
+   Applying $g_x^{-1}$ to the differential gives the **Riemannian gradient**:
+   $$
+   \operatorname{grad}_g \mathcal{J}(x)
+   = g_x^{-1}(D\mathcal{J}(x))
+   = \nabla \mathcal{J}(x) = 
+   \begin{pmatrix}
+   \tfrac{\partial \mathcal{J}}{\partial x_1} \\
+   \vdots \\
+   \tfrac{\partial \mathcal{J}}{\partial x_d}
+   \end{pmatrix}.
+   $$
+
+3. **Gradient Flow:** The gradient flow is
+   $$
+     \dot{x}_t = -\,\nabla \mathcal{J}(x_t).
+   $$
+   
+
+## Example: Wasserstein Space {.scrollable}
+
+Let $\mathcal{P}_2(\mathbb{R}^d)$ denote the Wasserstein–2 space of probability densities with finite second moments.
+When endowed with the Otto Riemannian structure, it becomes an (infinite-dimensional) Riemannian manifold.
+
+**Motivation:** [Otto's construction](https://www.math.toronto.edu/mccann/assignments/477/Otto01.pdf) is based upon the [Benamou and Brenier](https://www.iap.fr/actualites/laune/2022/TransportOptimal/ark%20_67375_VQC-XB4DR0Z3-2.pdf) characterisation of Wasserstein 2-distance:
+
+$$
+W_2(\rho_0, \rho_1)^2 = \inf_{\rho_t, v_t} \int_0^1 \int_{\mathbb{R}^d} \|v_t(x)\|^2 \rho_t(x) \, \mathrm{d}x \, \mathrm{d}t
+$$
+
+with $\rho_t$ and $v_t$ constrained to follow the **continuity equation**
+
+$$
+\partial_t \rho_t = -\nabla\cdot(\rho_t v_t), \quad \rho_{t=0} = \rho_0,\; \rho_{t=1} = \rho_1.
+$$
+
+1. **Tangent space:**  
+  The tangent space at $\rho \in \mathcal{P}_2(\mathbb{R}^d)$ is the $L^2(\rho)$-closure of smooth velocity fields, modulo divergence-free components:  
+  $$
+  T_\rho \mathcal{P}_2
+  \;=\;
+  \overline{
+  \{\, \nabla \phi : \phi \in C_c^\infty(\mathbb{R}^d) \,\}
+  }^{\,L^2(\rho)}.
+  $$
+  Each tangent vector $\xi$ can be represented as  
+  $$
+  \xi = -\,\nabla \!\cdot (\rho v),
+  \quad v \in L^2(\rho; \mathbb{R}^d),
+  $$
+  where $v$ is defined up to $\rho$-divergence-free components.
+
+2. **Objective and Differential:** Given 
+
+<!-- ## Example: Stein Variational Gradient Descent (SVGD) {.scrollable}
+
+[SVGD](https://arxiv.org/abs/1608.04471) was first presented in the following way:
+
+#### Setting:
+
+Target density $\pi$. Densities defined over $\mathbb{R}^d$. 
+
+#### Ingredients:
+
+1. **Transport Map:** $T_\varepsilon(x) = x + \varepsilon \varphi(x)$, where $\varphi:\mathbb{R}^d\rightarrow\mathbb{R}^d$ is a **(smooth) vector field**.
+2. **Approximating Distribution:** $q_t$ at time $t$.
+3. **Variational Objective:** The Kullback-Leibler divergence (KLD) between the target $\pi$ and current distribution $\mathrm{KLD}(q_t\|\pi)$.
+
+#### Approach:
+
+Find the $\varphi$ which maximises the *instantaneous* decrease of the objective:
+$$
+\argmax_{\varphi} \, -\left.\frac{\partial}{\partial\varepsilon} \mathrm{KLD}(\,(T_\varepsilon)_\# q_t \, \| \, \pi) \right\lvert_{\varepsilon = 0}
+$$
+
+#### Solution:
+
+One can show:
+
+\begin{align*}
+\left.\frac{\partial}{\partial\varepsilon}\mathrm{KLD}\big((T_\varepsilon)_\# q_t \,\|\, \pi\big)\right|_{\varepsilon=0}
+&= \mathbb{E}_{x\sim q_t}\!\left[\,\varphi(x)\cdot\big(\nabla \log q_t(x)-\nabla \log \pi(x)\big)+\nabla\!\cdot\!\varphi(x)\,\right] \\
+&= -\,\mathbb{E}_{x\sim q_t}\!\left[\,\varphi(x)\cdot\nabla \log \pi(x)+\nabla\!\cdot\!\varphi(x)\,\right] \\
+&= -\,\mathbb{E}_{x\sim q_t}\!\left[\,\mathcal{T}_\pi \varphi(x)\,\right].
+\end{align*}
+
+#### Stein Identity:
+
+Here 
+$$
+\mathcal{T}_\pi \varphi(x) \coloneqq \varphi(x)\cdot\nabla \log \pi(x)+\nabla\!\cdot\!\varphi(x)
+$$ 
+is a **Stein operator** for $\pi$, and we used the identity $\mathbb{E}_{q_t}\!\left[\mathcal{T}_\pi \varphi \right]=0$.
+
+#### Kernelisation + Update Equation:
+
+Hence, maximising the instantaneous decrease amounts to maximising $\mathbb{E}_{q_t}[\mathcal{T}_\pi \varphi]$ over a function class for $\varphi$ (e.g. a vector-valued RKHS), which yields the classical SVGD update. In an RKHS with kernel $k$, the optimal direction is
+$$
+\varphi^\star(\cdot)=\mathbb{E}_{x\sim q_t}\!\left[k(x,\cdot)\,\nabla \log \pi(x)+\nabla_x k(x,\cdot)\right],
+$$
+and with particles $\{x_i\}_{i=1}^n$ the empirical update is
+$$
+x_i \leftarrow x_i \;+\; \varepsilon\,\frac{1}{n}\sum_{j=1}^n \Big[\,k(x_j,x_i)\,\nabla \log \pi(x_j)\;+\;\nabla_{x_j}k(x_j,x_i)\Big].
+$$
+ -->
+<!-- 
+## Example: Wasserstein Space
+
+#### Wasserstein Space $\mathcal{P}_2(\mathbb{R}^d)$ as a Metric Space
+
+The Wasserstein space 
+$$
+\mathcal{P}_2(\mathbb{R}^d) = \left\{ P \,\middle|\, \int \|x\|^2 \,\mathrm{d}P(x) < \infty \right\}
+$$
+consists of probability measures over $\mathbb{R}^d$ which have *finite second moments*.  
+It becomes a **metric space** when equipped with the 2-Wasserstein metric:
+$$
+W_2(P,Q) = \inf_{\gamma \in \Gamma(P,Q)} 
+\left(\int_{\mathbb{R}^d \times \mathbb{R}^d} \|x - y\|^2 \,\mathrm{d}\gamma(x,y)\right)^{1/2},
+$$
+where $\Gamma(P,Q)$ denotes the set of *couplings* (joint distributions) with marginals $P$ and $Q$.
+
+## Example: SVGD from a different perspective
+
+#### Wasserstein Space $\mathcal{P}_2(\mathbb{R}^d)$ as a Riemannian Manifold
+
+When restricted to **smooth, strictly positive densities** $\rho$ on $\mathbb{R}^d$, the space $\mathcal{P}_2(\mathbb{R}^d)$ can be given the structure of a **Riemannian manifold**, known as the [Otto manifold](https://www.math.toronto.edu/mccann/assignments/477/Otto01.pdf).
+
+At a point $\rho \in \mathcal{P}_2(\mathbb{R}^d)$, the **tangent space** is identified with smooth vector fields $v$ satisfying the **continuity equation constraint**:
+$$
+T_\rho \mathcal{P}_2 = \left\{ -\nabla \cdot (\rho v) \;\middle|\; v \in L^2(\rho; \mathbb{R}^d) \right\}.
+$$
+
+The **Riemannian inner product** between two tangent vectors $\xi_1 = -\nabla \cdot (\rho v_1)$ and $\xi_2 = -\nabla \cdot (\rho v_2)$ is defined as:
+$$
+\langle \xi_1, \xi_2 \rangle_\rho 
+= \int_{\mathbb{R}^d} v_1(x) \cdot v_2(x) \,\rho(x)\,\mathrm{d}x.
+$$
+
+This induces a **Riemannian metric** under which the **gradient flow** of a functional $\mathcal{J}[\rho]$ over $\mathcal{P}_2(\mathbb{R}^d)$ satisfies the **continuity equation**:
+$$
+\frac{\partial \rho_t}{\partial t} 
+= \nabla \cdot \!\left(\rho_t \nabla \frac{\delta \mathcal{J}}{\delta \rho_t}\right),
+$$
+where $\frac{\delta \mathcal{J}}{\delta \rho}$ denotes the first variation (Gateaux derivative).
+
+## Example: SVGD from a different perspective
+
+#### Connection to SVGD
+
+In this formalism, SVGD can be viewed as a **particle approximation** to the gradient flow of the Kullback–Leibler divergence functional:
+$$
+\mathcal{J}[\rho] = \mathrm{KLD}(\rho \,\|\, \pi)
+= \int \rho(x) \log \frac{\rho(x)}{\pi(x)}\,\mathrm{d}x,
+$$
+whose Wasserstein gradient flow is the **Fokker–Planck equation**:
+$$
+\frac{\partial \rho_t}{\partial t}
+= \nabla \cdot \!\left(\rho_t \nabla (\log \rho_t - \log \pi)\right).
+$$
+
+SVGD discretises this evolution by projecting the velocity field
+$$
+v^\star(x) = \nabla \log \pi(x) - \nabla \log \rho_t(x)
+$$
+onto a finite-dimensional function space (typically an RKHS), producing a practical, deterministic particle method that follows the Wasserstein gradient flow of the KL divergence.
+ -->
+
+<!-- 
+#### Ingredients:
+
+1. **Wasserstein Space:** The Wasserstein space $\mathcal{P}_2(\mathbb{R}^d)$ restricted to densities has a Riemannian manifold structure, when the tangent space is restricted to smooth
+2. **Approximating Distribution:** $q_t$ at time $t$.
+3. **Variational Objective:** The Kullback-Leibler divergence (KLD) between the target $\pi$ and current distribution $\mathrm{KLD}(q_t\|\pi)$. -->
+
+# Research Directions
+
+## Research Ideas
+
+1. **Consider more general objectives:** As we saw, not all continuity equations correspond to a **Fokker-Planck Equation**. In general, they would correspond to a McKean-Vlasov SDE (i.e. a mean-field Markov process). This setup underlies SMC...
+2. **General Markov Processes:** A general (Levy) Markov process consists of a *drift*, *diffusion* and a **jump**:
+   $$
+   \mathcal{J}f = f + \nabla + \int g ... 
+   $$
+   Including jumps still defines a valid Stein operator! Does a gradient flow make sense here?
+3. **Discretise Time:** Almost all MCMC methods used in practice discretise time and correct this discretisation error via an accept-reject scheme. 
+4. **Discretise Space:** Pretty sure that SVGD has only ever been constructed over continuous space!
+
+## Discretising Space {.scrollable}
+
+In order to deal with discrete scenarios, we require the notion of a **gradient flow** in discrete space.
+
+The paper ["Gradient flows of the entropy for finite Markov chains"](https://arxiv.org/pdf/1102.5238) by Jan Maas provides precisely this construction, defining a **Wasserstein-type Riemannian manifold** structure over discrete (finite) state spaces.
+
+### Setting
+
+Let the state space be a finite set $X$, and let $K(x,y)$ denote the transition probabilities of an **irreducible, reversible Markov kernel** with stationary measure $\pi$ satisfying detailed balance:
+$$
+\pi(x) K(x,y) = \pi(y) K(y,x) \quad \forall\, x,y \in X.
+$$
+
+We work with densities with respect to $\pi$:
+$$
+\mathcal{P}(X) = \left\{ \rho : X \to [0,\infty) \;\middle|\; \sum_{x \in X} \pi(x)\rho(x) = 1 \right\}.
+$$
+
+### Entropy Functional
+
+The analogue of the continuous entropy functional is the **relative entropy**
+$$
+\mathcal{H}(\rho) = \sum_{x \in X} \pi(x) \, \rho(x) \log \rho(x).
+$$
+
+The goal is to define a metric on $\mathcal{P}(X)$ such that the **heat flow** associated with $K$ is the **gradient flow** of $\mathcal{H}$.
+
+### Continuity Equation on a Graph
+
+A curve $(\rho_t)_{t \in [0,1]}$ in $\mathcal{P}(X)$ satisfies the **discrete continuity equation**
+$$
+\frac{d}{dt}\rho_t(x)
++ \sum_{y \in X} (\psi_t(y) - \psi_t(x))\, K(x,y)\, \rho_t(x,y)
+= 0,
+$$
+where $\psi_t : X \to \mathbb{R}$ plays the role of a potential function, and
+$$
+\rho_t(x,y) = \theta(\rho_t(x), \rho_t(y))
+$$
+is a symmetric *edge-density function*, typically taken to be the **logarithmic mean**
+$$
+\theta(s,t) = 
+\begin{cases}
+\dfrac{s - t}{\log s - \log t}, & s,t > 0,\, s \neq t,\\[1.2em]
+s, & s = t.
+\end{cases}
+$$
+
+This discrete continuity equation is the analogue of 
+$\partial_t \rho + \nabla \cdot (\rho \nabla \psi) = 0$ in the continuous Benamou–Brenier formulation.
+
+### Discrete Wasserstein Metric
+
+The **Maas metric** $W$ between two densities $\rho^0, \rho^1 \in \mathcal{P}(X)$ is defined via a **discrete Benamou–Brenier formula**:
+$$
+W(\rho^0, \rho^1)^2
+=
+\inf_{\substack{(\rho_t, \psi_t) \\ \rho_0 = \rho^0,\, \rho_1 = \rho^1}}
+\int_0^1 
+\frac{1}{2}
+\sum_{x,y \in X}
+(\psi_t(x) - \psi_t(y))^2
+\, K(x,y)\, \rho_t(x,y)\, \pi(x)
+\, dt,
+$$
+subject to the discrete continuity equation above.
+
+
+### Riemannian Structure
+
+At a fixed $\rho \in \mathcal{P}(X)$, the **tangent space** $T_\rho \mathcal{P}(X)$ consists of discrete gradients of potentials $\psi : X \to \mathbb{R}$,
+$$
+T_\rho \mathcal{P}(X)
+= \{ \nabla \psi : \psi \in \mathbb{R}^X \},
+\quad
+(\nabla \psi)(x,y) = \psi(x) - \psi(y),
+$$
+and the **Riemannian inner product** between two tangent vectors $\nabla \varphi$ and $\nabla \psi$ is
+$$
+\langle \nabla \varphi, \nabla \psi \rangle_\rho
+=
+\frac{1}{2} \sum_{x,y \in X}
+(\varphi(x) - \varphi(y))(\psi(x) - \psi(y))
+\, K(x,y)\, \rho(x,y)\, \pi(x).
+$$
+
+This induces a genuine Riemannian metric, and the geodesic distance associated with it is precisely $W(\rho^0, \rho^1)$.
+
+
+### Gradient Flow of the Entropy
+
+Under this metric, the **Markov semigroup** $(P_t)_{t \ge 0}$ generated by $K$ is the **Wasserstein gradient flow** of the entropy functional $\mathcal{H}$.  
+That is,
+$$
+\frac{d}{dt}\rho_t = -\mathrm{grad}_W\, \mathcal{H}(\rho_t),
+$$
+and the explicit evolution is the discrete heat equation:
+$$
+\frac{d}{dt}\rho_t(x)
+= \sum_{y \in X} K(x,y) \big(\log \rho_t(y) - \log \rho_t(x)\big).
+$$
+
+
+### Intuition
+
+- The logarithmic mean $\theta$ plays the role of an **interpolation between densities** at neighbouring nodes, analogous to how $\rho(x)\nabla\psi(x)$ represents mass flux in the continuum.
+- The metric $W$ behaves like the $L^2$-Wasserstein distance but is **adapted to the topology and transition structure of the Markov chain**.
+- The resulting geometry turns $\mathcal{P}(X)$ into a **Riemannian manifold**, often referred to as the **Maas–Mielke–Erbar discrete Wasserstein manifold**.
+
+## Dirichlet‐form view: continuum ↔ discrete
+
+### 0) Data
+- **Continuum:** domain $\Omega\subset\mathbb{R}^d$, background metric Euclidean, reference law $\pi(dx)=e^{-V(x)}dx$ (reversible for Langevin).
+- **Discrete:** finite state space $X$, reversible kernel $K(x,y)$ with stationary law $\pi$:
+  $$
+  \pi(x)K(x,y)=\pi(y)K(y,x).
+  $$
+
+
+
+### 1) Generator and Dirichlet form
+
+**Continuum**
+- Generator (symmetric in $L^2(\pi)$): 
+  $$
+  L f = \Delta f - \nabla V\!\cdot\!\nabla f.
+  $$
+- Dirichlet form (carré du champ $\Gamma$):
+  $$
+  \mathcal{E}(f,g)=\int \nabla f\cdot \nabla g\, d\pi, 
+  \qquad \Gamma(f)=|\nabla f|^2.
+  $$
+
+**Discrete**
+- Generator (on functions $f:X\to\mathbb{R}$):
+  $$
+  L f(x)=\sum_{y}K(x,y)\,\big(f(y)-f(x)\big).
+  $$
+- Dirichlet form and discrete $\Gamma$:
+  $$
+  \mathcal{E}(f,g)=\tfrac12\sum_{x,y}\big(f(y)-f(x)\big)\big(g(y)-g(x)\big)\,K(x,y)\,\pi(x),
+  $$
+  $$
+  \Gamma(f)(x)=\tfrac12\sum_{y}\big(f(y)-f(x)\big)^2 K(x,y).
+  $$
+
+These encode the **dissipation** intrinsic to the dynamics (diffusion vs. jumps).
+
+
+
+### 2) Onsager operator and Riemannian metric tensor
+
+**Continuum (Otto calculus)**
+- Identify a tangent vector at $\rho$ by a potential $\psi$ via the continuity equation:
+  $$
+  \partial_t \rho + \nabla\!\cdot(\rho \nabla \psi)=0.
+  $$
+- **Onsager operator** $K_\rho$ (maps potentials to density–velocities):
+  $$
+  K_\rho \psi = -\,\nabla\!\cdot(\rho \nabla \psi).
+  $$
+- **Metric tensor** at $\rho$:
+  $$
+  \langle \nabla\varphi,\nabla\psi\rangle_\rho
+  =\int \nabla\varphi\cdot\nabla\psi\,\rho\,dx.
+  $$
+
+**Discrete (Maas)**
+- Discrete continuity equation for a curve $\rho_t$ and potential $\psi_t$:
+  $$
+  \frac{d}{dt}\rho_t(x)
+  +\sum_{y}\big(\psi_t(y)-\psi_t(x)\big)K(x,y)\,\theta\!\big(\rho_t(x),\rho_t(y)\big)=0.
+  $$
+- **Edge‐interpolation (logarithmic mean)**:
+  $$
+  \theta(s,t)=\frac{s-t}{\log s-\log t},\quad \text{symm., positive}.
+  $$
+- **Onsager operator** $K_\rho$ (discrete):
+  $$
+  (K_\rho \psi)(x)
+  =-\sum_{y}\big(\psi(y)-\psi(x)\big)\,K(x,y)\,\theta\!\big(\rho(x),\rho(y)\big).
+  $$
+- **Metric tensor** at $\rho$:
+  $$
+  \langle \nabla\varphi,\nabla\psi\rangle_\rho
+  =\tfrac12\sum_{x,y}\big(\varphi(x)-\varphi(y)\big)\big(\psi(x)-\psi(y)\big)\,
+  K(x,y)\,\theta\!\big(\rho(x),\rho(y)\big)\,\pi(x).
+  $$
+
+> Heuristics: the continuum weight $\rho(x)$ on fluxes is replaced by an **edge weight** $\theta(\rho(x),\rho(y))$ that is the correct discrete analogue for entropy dissipation.
+
+
+
+### 3) Gradient flow of entropy
+
+**Functional in both cases:** relative entropy w.r.t. $\pi$
+$$
+\mathcal{H}(\rho)=\int \rho\log\frac{\rho}{\pi}\,dx
+\;\;\;\text{(continuum)},\qquad
+\mathcal{H}(\rho)=\sum_x \pi(x)\rho(x)\log\rho(x)
+\;\;\;\text{(discrete)}.
+$$
+
+**Steepest descent:** $\partial_t \rho_t=-K_{\rho_t}\big(\delta\mathcal{H}/\delta\rho_t\big)$.
+
+- **Continuum:** $\delta\mathcal{H}/\delta\rho=\log\rho+\text{const}$ gives
+  $$
+  \partial_t \rho_t
+  =\nabla\!\cdot\big(\rho_t \nabla \log \rho_t\big)
+  =\Delta \rho_t \quad (\text{w.r.t. }dx),
+  $$
+  or with $\pi\propto e^{-V}$,
+  $$
+  \partial_t \rho_t=\nabla\!\cdot\!\big(\rho_t\nabla(\log \rho_t+V)\big)
+  =\Delta \rho_t+\nabla\!\cdot(\rho_t\nabla V),
+  $$
+  i.e. **Fokker–Planck/heat** as $W_2$–gradient flow of entropy.
+
+- **Discrete (with logarithmic mean):**
+  $$
+  \partial_t \rho_t(x)
+  =\sum_{y}K(x,y)\,\theta\!\big(\rho_t(x),\rho_t(y)\big)\,\big(\log \rho_t(y)-\log \rho_t(x)\big),
+  $$
+  which is exactly the **Markov heat flow** (the symmetric gradient flow of $\mathcal{H}$).
+
+
+
+### 4) Dynamic (Benamou–Brenier) distances and JKO schemes
+
+**Continuum $W_2$**
+- Benamou–Brenier:
+  $$
+  W_2^2(\rho^0,\rho^1)=\inf_{\rho_t,v_t}\int_0^1\!\!\int |v_t|^2\,\rho_t\,dx\,dt
+  \;\;\text{s.t.}\;\;
+  \partial_t\rho_t+\nabla\!\cdot(\rho_t v_t)=0.
+  $$
+- JKO (minimising movement):
+  $$
+  \rho^{k+1}\in\arg\min_\rho\Big\{\mathcal{H}(\rho)+\tfrac{1}{2\tau}W_2^2(\rho,\rho^k)\Big\}.
+  $$
+
+**Discrete (Maas distance $W$)**
+- Discrete Benamou–Brenier:
+  $$
+  W(\rho^0,\rho^1)^2
+  =\inf_{\rho_t,\psi_t}\int_0^1 \tfrac12\sum_{x,y}\big(\psi_t(x)-\psi_t(y)\big)^2
+  K(x,y)\,\theta(\rho_t(x),\rho_t(y))\,\pi(x)\,dt
+  $$
+  s.t. the discrete continuity equation.
+- Discrete JKO:
+  $$
+  \rho^{k+1}\in\arg\min_\rho\Big\{\mathcal{H}(\rho)+\tfrac{1}{2\tau}W(\rho,\rho^k)^2\Big\},
+  $$
+  and as $\tau\downarrow0$ this time–steps the Markov semigroup.
+
+
+
+### 5) Diffusive limit: how the discrete recovers the continuum
+
+Consider a random walk on the lattice $h\mathbb{Z}^d$ with jump rates $K_h(x,x\pm h e_i)\sim h^{-2}$ (reversible w.r.t. uniform $\pi_h$).  
+As $h\to0$:
+- The generator $L_h$ converges to the Laplacian (or to $\Delta-\nabla V\cdot\nabla$ in a weighted setup).
+- The edge weight $\theta\!\big(\rho(x),\rho(y)\big)$ between nearest neighbours satisfies
+  $$
+  \theta(\rho(x),\rho(x+h e_i))=\rho(x)+\mathcal{O}(h),
+  $$
+  so the discrete fluxes
+  $
+  K_h\,\theta(\rho)\,(\psi(y)-\psi(x))
+  $
+  approximate $\rho\,\partial_{e_i}\psi$.
+- The Maas metric $W_h$ $\Gamma$–converges (in suitable senses) to $W_2$, and the discrete JKO scheme converges to the continuous JKO for entropy.
+
+**Moral:** in the continuum you “see” $\rho$ weighting $|\nabla\psi|^2$; on graphs you must weight **edges** by $\theta(\rho_x,\rho_y)$ so that, under mesh refinement, this becomes the correct $\rho$ weight.
+
+
+
+### 6) Why the dependence on $\pi$ appears only discretely
+- **Continuum:** geometry comes from the base metric; $\pi$ only enters the **functional** (entropy w.r.t. $\pi$) or the **drift** in the generator.
+- **Discrete:** geometry must be *engineered* from the chain; reversibility $\pi(x)K(x,y)$ fixes the symmetric Dirichlet form, and the **logarithmic mean** aligns dissipation with the entropy’s first variation.
+
+
+
+### One‐line dictionary
+
+$$
+\boxed{
+\text{Continuum: } K_\rho \psi = -\nabla\!\cdot(\rho\nabla\psi)
+\quad\longleftrightarrow\quad
+\text{Discrete: } (K_\rho \psi)(x) = -\sum_y (\psi(y)-\psi(x))K(x,y)\,\theta(\rho_x,\rho_y)
+}
+$$
+
+This is the precise Dirichlet‐form/Onsager correspondence that makes
+“**heat = entropy gradient flow**” true on both sides.
+
+
+
+# Details
+
+## Markov Processes (diffusions)
+
+A **Markov process** 
+
+## SVGD for general diffusions {.scrollable}
+
+From ["De-randomizing MCMC dynamics with the diffusion Stein operator"](https://arxiv.org/pdf/2110.03768), there is a **general correspondence:**
+
+$$
+\text{Stein Operators} \iff \text{Diffusions} \iff \text{Gradient Flows}
+$$
+
+#### Diffusions 
+
+The general form of an Ito diffusion with stationary distribution $\pi$ is
+
+$$
+dX_t = f() dt + (A + C) dW_t.
+$$
+
+This defines both a **generator** and a **Fokker-Planck equation**:
+
+\begin{align*}
+\mathcal{J}f &= ... \\
+\partial_t q &= \mathcal{J}^* q.
+\end{align*}
+
+#### Gradient Flow
+
+It was shown that the Fokker-Planck can always be written as a "gradient flow" with respect to the KLD:
+
+$$
+\partial_t q = -\nabla\cdot(q (A+C) \nabla \frac{\delta \mathrm{KLD}(q\|\pi)}{\delta q}).
+$$
+
+Here:
+
+1. $A$ defines a *intrinsic metric* on $\mathbb{R}^d$, which adjusts the Wasserstein metric accordingly 
+   $$
+   W_2(P,Q) = \inf_{\gamma \in \Gamma(P,Q)} \left(\int \|x - y\|_A^2 \,\mathrm{d}\gamma(x,y) \right)^{1/2}
+   $$
+2. $C$ defines a *symplectic form* (Hamiltonian part) giving the manifold *symplectic* structure as well. (Flows have rotations around level sets.)
+
+#### Stein Operators
+
+The generator defines a Stein operator over test functions:
+
+$$
+\mathbb{E}[\mathcal{J} f] = 0.
+$$

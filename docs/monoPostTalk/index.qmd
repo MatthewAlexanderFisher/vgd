@@ -1,0 +1,876 @@
+---
+title: "Monotonicity of Gaussian Process Posterior Variance"
+subtitle: "Kernel Conditions and Input Scaling"
+author: "Matthew Fisher"
+
+editor:
+  render-on-save: true
+
+format:
+  revealjs:
+    template-partials:
+      - title-slide.html
+    transition: fade
+    theme: custom.scss
+    css: custom.css
+    fig-align: center
+    margin: 0.2
+    highlight-style: dracula
+    incremental: false
+    navigation-mode: vertical
+    slide-number: h.v
+    controls-tutorial: true
+    code-fold: true
+    code-tools: true
+    html-math-method: katex
+
+execute:
+  echo: false
+  eval: true
+
+jupyter: python3
+---
+
+
+
+# Introduction
+
+```{python}
+#| echo: False
+import jax
+from jax import config
+from jax import Array
+import jax.numpy as jnp
+config.update("jax_enable_x64", True)  # do this at the very top
+
+import matplotlib.pyplot as plt
+import seaborn as sns
+import numpy as np
+
+plt.rcParams["figure.figsize"] = (5, 3)
+plt.rcParams["text.usetex"] = True
+plt.rcParams["font.family"] = "serif"
+plt.rcParams["font.serif"] = ["Computer Modern Roman"]  # matches LaTeX default
+
+import mplcyberpunk
+plt.style.use("cyberpunk")
+
+from vgd.model import FourierPredictor, PAdicFourierPredictor
+from vgd.distribution import FourierParticles, NormalDiag, SignedMixtureLike, PAdicMixtureLike
+from vgd.kernel import RBFKernel, KernelParams
+from vgd.loss import DeterministicRiskLoss, squared_loss_and_grad, logistic_loss_and_grad, ISFDeterministicRiskLoss
+from vgd.methods import vgd, vgd_weight, mfld, vgd_random
+from vgd.util import plot_1d_predictive_output, plot_isf_results, plot_1d_fit, plot_p_adic_tree_with_predictor
+from vgd.methods.isf import isf
+from vgd.methods.ridge import solve_alpha_ridge
+```
+
+## Gaussian Process Regression
+
+**Prior:**
+$$
+f \sim \mathcal{GP}(m, k)
+$$
+
+**Posterior mean:**
+$$
+\tilde m(x)
+=
+m(x)
++
+k(x,X)[K+\lambda I]^{-1}(Y-m(X))
+$$
+
+**Posterior variance:**
+$$
+\sigma^2(x; X)
+=
+k(x,x)
+-
+k(x,X)[K+\lambda I]^{-1}k(X,x)
+$$
+
+
+**Notes:**
+
+- $X$ is the training data, $Y$ are the corresponding targets
+- $\lambda$ is the noise variance
+- $K = k(X,X)$ is the kernel matrix on the training data
+
+
+
+## Posterior Variance Under Input Scaling
+
+Move observations toward the origin using a scale $r > 0$:
+$$
+k_r(x,y) = k(rx, ry)
+\qquad
+\text{(stationary: } k_r(x,y) = k(r(x-y))\text{)}
+$$
+
+**Posterior variance at the origin:**
+$$
+\sigma^2(0; rX)
+=
+k(0,0)
+-
+g(r),
+\qquad
+g(r) = a(r)^\top A(r)^{-1} a(r)
+$$
+
+$$
+A(r) = k_r(X,X) + \lambda I,
+\qquad
+a(r) = k_r(X,0)
+$$
+
+
+**Central question**
+Does posterior uncertainty at the origin decrease as observations move closer?
+
+**Equivalent mathematical question:** Is $g(r)$ increasing as $r \rightarrow 0$?
+
+
+**Derivative identity** Let $\alpha(r) = A(r)^{-1} a(r)$. Then
+
+$$
+g'(r)
+=
+2 a'(r)^\top \alpha(r)
+-
+\alpha(r)^\top A'(r) \alpha(r)
+$$
+
+**Research problem:**  
+Under what conditions on the kernel $k$ does $g'(r) \le 0$ hold for all $r > 0$?
+
+
+
+## Visualisation of Posterior Variance Under Input Scaling
+
+Using
+$$
+k(x,y) = \exp\!\biggl(-\frac{\|x-y\|^2}{2\ell^2}\biggr)
+$$
+
+
+```{ojs}
+// --- Block 1: Controls + data ---
+
+n = 20
+
+X = {
+  function mulberry32(a) {
+    return function() {
+      a |= 0; a = a + 0x6D2B79F5 | 0;
+      var t = Math.imul(a ^ a >>> 15, 1 | a);
+      t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+      return ((t ^ t >>> 14) >>> 0) / 4294967296;
+    }
+  }
+  const rng = mulberry32(42);
+  return Array.from({length: n}, (_, i) => {
+    const t = (2 * Math.PI * i) / n;
+    return [1.2 * Math.cos(t) + 0.25 * (rng() - 0.5),
+            1.2 * Math.sin(t) + 0.25 * (rng() - 0.5)];
+  });
+}
+
+ell = 0.7
+sigmaF2 = 1.0
+lambda = 1e-3
+
+// Inject styles to fix slider accent and plot text on dark Reveal background
+themeStyle = html`<style>
+  .ojs-cell input[type="range"],
+  .reveal input[type="range"] {
+    accent-color: var(--accent, #ee4558);
+  }
+  .ojs-cell input[type="number"],
+  .reveal input[type="number"] {
+    background: rgba(255,255,255,0.08);
+    color: rgba(255,255,255,0.9);
+    border: 1px solid rgba(255,255,255,0.2);
+    border-radius: 4px;
+  }
+  .ojs-cell label, .ojs-cell output,
+  .reveal form label, .reveal form output {
+    color: rgba(255,255,255,0.85) !important;
+  }
+  .reveal .ojs-cell {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+</style>`
+
+viewof r = Inputs.range([0, 2], {step: 0.01, value: 1.0, label: "scale r"})
+```
+
+```{ojs}
+// --- Block 2: Kernel + linear algebra ---
+
+function k(x, y) {
+  const dx = x[0] - y[0], dy = x[1] - y[1];
+  return sigmaF2 * Math.exp(-(dx*dx + dy*dy) / (2 * ell * ell));
+}
+
+function gram(XA, XB) {
+  const nA = XA.length, nB = XB.length;
+  const K = Array.from({length: nA}, () => Array(nB).fill(0));
+  for (let i = 0; i < nA; i++)
+    for (let j = 0; j < nB; j++)
+      K[i][j] = k(XA[i], XB[j]);
+  return K;
+}
+
+function cholesky(A) {
+  const m = A.length;
+  const L = Array.from({length: m}, () => Array(m).fill(0));
+  for (let i = 0; i < m; i++) {
+    for (let j = 0; j <= i; j++) {
+      let s = A[i][j];
+      for (let p = 0; p < j; p++) s -= L[i][p] * L[j][p];
+      L[i][j] = (i === j) ? Math.sqrt(Math.max(s, 1e-14)) : s / L[j][j];
+    }
+  }
+  return L;
+}
+
+function cholSolve(A, b) {
+  const L = cholesky(A), m = A.length;
+  const z = Array(m).fill(0);
+  for (let i = 0; i < m; i++) {
+    let s = b[i];
+    for (let p = 0; p < i; p++) s -= L[i][p] * z[p];
+    z[i] = s / L[i][i];
+  }
+  const x = Array(m).fill(0);
+  for (let i = m - 1; i >= 0; i--) {
+    let s = z[i];
+    for (let p = i + 1; p < m; p++) s -= L[p][i] * x[p];
+    x[i] = s / L[i][i];
+  }
+  return x;
+}
+```
+
+```{ojs}
+// --- Block 3: Posterior variance computation ---
+
+origin = [0, 0]
+rX = X.map(([x1, x2]) => [r * x1, r * x2])
+
+posteriorResult = {
+  const Krr = gram(rX, rX);
+  for (let i = 0; i < n; i++) Krr[i][i] += lambda;
+  const a = rX.map(xi => k(xi, origin));
+  const u = cholSolve(Krr, a);
+  const g = a.reduce((acc, ai, i) => acc + ai * u[i], 0);
+  return {g, sigma2: k(origin, origin) - g};
+}
+```
+
+```{ojs}
+// --- Block 4: Two-panel visualisation (dark-theme aware, fixed axes) ---
+
+// Fixed axis extent: max |coord| at r=2 is ≈ 2 × 1.35 ≈ 2.7 → use 3
+axisLim = 3
+
+// Dark-theme-friendly plot style string
+darkStyle = "background:transparent; color:rgba(255,255,255,0.82); font-size:13px;"
+
+curve = {
+  function sigma2At(rv) {
+    const sX = X.map(([x1, x2]) => [rv * x1, rv * x2]);
+    const A = gram(sX, sX);
+    for (let i = 0; i < n; i++) A[i][i] += lambda;
+    const av = sX.map(xi => k(xi, origin));
+    const uv = cholSolve(A, av);
+    const gv = av.reduce((acc, ai, i) => acc + ai * uv[i], 0);
+    return k(origin, origin) - gv;
+  }
+  return Array.from({length: 201}, (_, i) => {
+    const rv = i * (2 / 200);
+    return {r: rv, sigma2: sigma2At(rv)};
+  });
+}
+
+leftPlot = Plot.plot({
+  width: 380,
+  height: 340,
+  style: darkStyle,
+  x: {label: "x₁", domain: [-axisLim, axisLim]},
+  y: {label: "x₂", domain: [-axisLim, axisLim]},
+  marks: [
+    Plot.dot(rX, {
+      x: d => d[0], y: d => d[1],
+      fill: "#93c5fd", r: 4, opacity: 0.9
+    }),
+    Plot.dot([[0, 0]], {
+      x: d => d[0], y: d => d[1],
+      stroke: "#ee4558", fill: "none",
+      strokeWidth: 2.5, r: 7, symbol: "cross"
+    })
+  ]
+})
+
+rightPlot = Plot.plot({
+  width: 380,
+  height: 340,
+  style: darkStyle,
+  x: {label: "scale r", domain: [0, 2]},
+  y: {label: "σ²(0; rX)", domain: [0, sigmaF2 * 1.05]},
+  marks: [
+    Plot.ruleY([0], {stroke: "rgba(255,255,255,0.15)"}),
+    Plot.line(curve, {x: "r", y: "sigma2", stroke: "#93c5fd", strokeWidth: 2}),
+    Plot.dot([{r: +r, sigma2: posteriorResult.sigma2}], {
+      x: "r", y: "sigma2", r: 6, fill: "#ee4558"
+    })
+  ]
+})
+
+html`<div style="display:flex; gap:24px; align-items:flex-start; flex-wrap:wrap; justify-content:center;">
+  <div style="text-align:center;">
+    <div style="font-weight:600; margin-bottom:6px; color:rgba(255,255,255,0.85);">
+      Scaled locations <i>r</i><b>X</b> in ℝ²
+    </div>
+    ${leftPlot}
+  </div>
+  <div style="text-align:center;">
+    <div style="font-weight:600; margin-bottom:6px; color:rgba(255,255,255,0.85);">
+      Posterior variance at the origin
+    </div>
+    ${rightPlot}
+  </div>
+</div>`
+``` 
+
+
+# Background Material
+
+
+## Radial Gaussian Process Kernels
+
+We focus on isotropic kernels:
+
+$$
+k(x,y) = \varphi(\|x-y\|^2)
+$$
+
+**Examples:**
+
+- Gaussian
+- Matérn
+- Rational quadratic
+
+## Completely Monotone Kernels
+
+A kernel is completely monotone if
+
+$$
+k(x,y) = \varphi(\|x-y\|^2)
+$$
+
+where
+
+$$
+(-1)^n \varphi^{(n)}(h) \ge 0
+$$
+
+**Examples:**
+
+- Gaussian (yes)
+- Matérn (not always)
+- Rational quadratic (yes)
+
+## Bernstein functions generate kernels
+
+A Bernstein function satisfies:
+
+- increasing
+- concave
+- $f'(h)$ completely monotone
+
+These generate kernels:
+
+$$
+k(x,y)
+=
+e^{-f(\|x-y\|^2)}
+$$
+
+This defines a valid Gaussian process kernel.
+
+## Correspondence with completely monotone kernels
+
+There is a one-to-one correspondence:
+
+$$
+\varphi(h)
+=
+e^{-f(h)}
+$$
+
+Then
+
+- $f$ Bernstein  $\iff$ $\varphi$ completely monotone
+
+Therefore Bernstein functions parameterise completely monotone kernels.
+
+## Why Bernstein structure is useful
+
+Our (scaled) kernel has form:
+
+$$
+k_r(x,y) = e^{-f(r^2\|x-y\|^2)}
+$$
+
+Derivative introduces term:
+
+$$
+h f'(h)
+$$
+
+We need this to preserve the Bernstein property.
+
+## Thorin–Bernstein functions
+
+A Thorin–Bernstein function is a **Bernstein function** which additionally satisfies:
+
+$$
+h f'(h)
+\text{ is Bernstein}
+$$
+
+This ensures
+
+- derivative kernel remains CND
+- monotonicity holds
+
+
+# Main results
+
+## Representation of $k$
+
+Assume the (scaled) kernel can be written as
+$$
+k_r(x,y) = \exp\{-\eta_r(x,y)\}, \qquad \eta_r(x,y) = \eta(rx,ry),
+$$
+where $\eta$ is **conditionally negative definite (CND)**.
+
+- By **Schoenberg's criterion**, $k_r$ is positive definite (PD) for all $r>0$ iff $\eta_r$ is CND.
+
+
+::: {.theorem #thm-monotonicity-condition}
+## Monotonicity condition
+If, for some $r>0$, the derivative $\partial_r \eta_r(x,y)$ is a CND function, then
+$$
+g'(r) \le 0.
+$$
+:::
+
+## Proof sketch {.scroll}
+
+We start from the derivative identity:
+
+$$
+g'(r)
+=
+-2\sum_i \eta_r'(x_i,0)\,k_r(x_i,0)\,\alpha_i
++
+\sum_{i,j}
+\alpha_i\alpha_j\,
+\eta_r'(x_i,x_j)\,
+k_r(x_i,x_j)
+$$
+
+### Use the CND structure
+
+If $\eta_r'$ is CND, then by the polarisation identity:
+
+$$
+\eta_r'(x,y)
+=
+\eta_r'(x,0)
++
+\eta_r'(y,0)
+-
+\psi_r(x,y)
+$$
+
+where $\psi_r$ is **positive definite**.
+
+### Use the linear system
+
+Recall:
+
+$$
+(K_r + \lambda I)\alpha = k_r(0,X)
+$$
+
+This implies
+
+$$
+\sum_j k_r(x_i,x_j)\alpha_j
+=
+k_r(x_i,0)
+-
+\lambda \alpha_i
+$$
+
+Substitute into $g'(r)$.
+
+### Result
+
+After simplification:
+
+$$
+g'(r)
+=
+-2\lambda
+\sum_i
+\alpha_i^2
+\eta_r'(x_i,0)
+-
+\sum_{i,j}
+\alpha_i\alpha_j
+\psi_r(x_i,x_j)
+k_r(x_i,x_j)
+$$
+
+### Sign of each term
+
+Since:
+
+- $\eta_r'$ is CND ⇒ $\eta_r'(x_i,0) \ge 0$
+- $\psi_r$ is PD
+- $k_r$ is PD
+
+both terms are **non-positive**
+
+
+### Conclusion
+
+$$
+g'(r) \le 0
+$$
+
+Therefore posterior variance decreases.
+
+
+## Main theorem
+
+
+::: {.theorem #thm-monotonicity-condition}
+## Sufficient Condtion for Monotonicity of Posterior Variance
+
+If
+$$
+k(x,y) = \exp\{-f(\|x-y\|^2)\}
+$$
+
+and $f$ is Thorin–Bernstein, then
+
+$$
+g'(r) \le 0
+$$
+
+:::
+
+
+
+**Key reason**
+
+Thorin–Bernstein $\Rightarrow$ $\eta_r'$ is CND $\Rightarrow$ monotonicity
+
+
+
+## Proof sketch {.scroll}
+
+Start from the representation
+
+$$
+\eta_r(x,y)
+=
+f\!\left(r^2 \|x-y\|^2\right),
+\qquad
+f \in \mathcal{TBF}
+$$
+
+
+### Differentiate with respect to $r$:
+
+$$
+\eta_r'(x,y)
+=
+2r \|x-y\|^2
+\, f'\!\left(r^2 \|x-y\|^2\right)
+$$
+
+
+### Key structural property:
+
+If $f$ is Thorin–Bernstein, then
+
+$$
+u(h) = h f'(h)
+$$
+
+is a **Bernstein function**
+
+
+Therefore
+
+- $u(\|x-y\|^2)$ is **CND**
+- scaling preserves the CND property
+
+so
+
+$$
+\eta_r'
+\text{ is CND}
+$$
+
+Apply previous theorem:
+
+$$
+\eta_r' \text{ CND}
+\quad \Rightarrow \quad
+g'(r) \le 0
+$$
+
+
+# Implications and counter-examples
+
+## Kernels satisfying the conditions
+
+Recall the main result. If
+$$
+k(x,y) = \exp\{-f(\|x-y\|^2)\},
+$$
+where $f$ is a Thorin–Bernstein function, then $g'(r) \le 0$.
+
+**Examples:**
+
+- Gaussian kernel (yes)
+- Rational quadratic kernel (yes)
+- Matérn kernel (not always)
+
+## A counterexample kernel (Bernstein but not Thorin–Bernstein)
+
+From the Levy–Khintchine representation, take
+$$
+f(h)=a+bh+\int_0^\infty (1-e^{-ht})\,\mu(dt),
+$$
+and choose $a=b=0$ and $\mu=\delta_1$ (Dirac mass at $t=1$). Then
+$$
+f(h)=1-e^{-h}
+$$
+is a **Bernstein function**.
+
+Therefore the kernel
+$$
+k(x,y)=\exp\!\Big\{-f(\|x-y\|^2)\Big\}
+=\exp\!\left\{-\left(1-e^{-\|x-y\|^2}\right)\right\}
+$$
+is **completely monotone** (and hence PD).
+
+We call this the **Exp–Exp kernel**.
+
+## Visualisation of Posterior Variance Under Input Scaling (Exp–Exp)
+
+Using
+$$
+k(x,y) = \exp\!\Big\{-\bigl(1 - e^{-\|x-y\|^2}\bigr)\Big\}
+$$
+
+```{ojs}
+// --- Block 1ee: Controls + data ---
+
+n_ee = 8
+
+X_ee = {
+  function mulberry32(a) {
+    return function() {
+      a |= 0; a = a + 0x6D2B79F5 | 0;
+      var t = Math.imul(a ^ a >>> 15, 1 | a);
+      t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+      return ((t ^ t >>> 14) >>> 0) / 4294967296;
+    }
+  }
+  const rng = mulberry32(42);
+  return Array.from({length: n_ee}, (_, i) => {
+    const t = (2 * Math.PI * i) / n_ee;
+    return [1.2 * Math.cos(t) + 0.25 * (rng() - 0.5),
+            1.2 * Math.sin(t) + 0.25 * (rng() - 0.5)];
+  });
+}
+
+lambda_ee = 1e-3
+
+themeStyle_ee = html`<style>
+  .ojs-cell input[type="range"],
+  .reveal input[type="range"] {
+    accent-color: var(--accent, #ee4558);
+  }
+  .ojs-cell input[type="number"],
+  .reveal input[type="number"] {
+    background: rgba(255,255,255,0.08);
+    color: rgba(255,255,255,0.9);
+    border: 1px solid rgba(255,255,255,0.2);
+    border-radius: 4px;
+  }
+  .ojs-cell label, .ojs-cell output,
+  .reveal form label, .reveal form output {
+    color: rgba(255,255,255,0.85) !important;
+  }
+  .reveal .ojs-cell {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+</style>`
+
+viewof r_ee = Inputs.range([0, 32], {step: 0.01, value: 1.0, label: "scale r"})
+```
+
+```{ojs}
+
+// --- Block 2ee: Exp-Exp kernel + linear algebra ---
+
+// k(x,y) = exp(-(1 - exp(-||x-y||²)))
+function k_ee(x, y) {
+  const dx = x[0] - y[0], dy = x[1] - y[1];
+  const dist2 = dx*dx + dy*dy;
+  return Math.exp(-(1 - Math.exp(-dist2)));
+}
+
+function gram_ee(XA, XB) {
+  const nA = XA.length, nB = XB.length;
+  const K = Array.from({length: nA}, () => Array(nB).fill(0));
+  for (let i = 0; i < nA; i++)
+    for (let j = 0; j < nB; j++)
+      K[i][j] = k_ee(XA[i], XB[j]);
+  return K;
+}
+
+function cholesky_ee(A) {
+  const m = A.length;
+  const L = Array.from({length: m}, () => Array(m).fill(0));
+  for (let i = 0; i < m; i++) {
+    for (let j = 0; j <= i; j++) {
+      let s = A[i][j];
+      for (let p = 0; p < j; p++) s -= L[i][p] * L[j][p];
+      L[i][j] = (i === j) ? Math.sqrt(Math.max(s, 1e-14)) : s / L[j][j];
+    }
+  }
+  return L;
+}
+
+function cholSolve_ee(A, b) {
+  const L = cholesky_ee(A), m = A.length;
+  const z = Array(m).fill(0);
+  for (let i = 0; i < m; i++) {
+    let s = b[i];
+    for (let p = 0; p < i; p++) s -= L[i][p] * z[p];
+    z[i] = s / L[i][i];
+  }
+  const x = Array(m).fill(0);
+  for (let i = m - 1; i >= 0; i--) {
+    let s = z[i];
+    for (let p = i + 1; p < m; p++) s -= L[p][i] * x[p];
+    x[i] = s / L[i][i];
+  }
+  return x;
+}
+```
+
+```{ojs}
+// --- Block 3ee: Posterior variance computation ---
+
+origin_ee = [0, 0]
+rX_ee = X_ee.map(([x1, x2]) => [r_ee * x1, r_ee * x2])
+
+posteriorResult_ee = {
+  const Krr = gram_ee(rX_ee, rX_ee);
+  for (let i = 0; i < n_ee; i++) Krr[i][i] += lambda_ee;
+  const a = rX_ee.map(xi => k_ee(xi, origin_ee));
+  const u = cholSolve_ee(Krr, a);
+  const g = a.reduce((acc, ai, i) => acc + ai * u[i], 0);
+  return {g, sigma2: k_ee(origin_ee, origin_ee) - g};
+}
+```
+
+```{ojs}
+// --- Block 4ee: Two-panel visualisation ---
+
+axisLim_ee = 36
+darkStyle_ee = "background:transparent; color:rgba(255,255,255,0.82); font-size:13px;"
+
+curve_ee = {
+  function sigma2At(rv) {
+    const sX = X_ee.map(([x1, x2]) => [rv * x1, rv * x2]);
+    const A = gram_ee(sX, sX);
+    for (let i = 0; i < n_ee; i++) A[i][i] += lambda_ee;
+    const av = sX.map(xi => k_ee(xi, origin_ee));
+    const uv = cholSolve_ee(A, av);
+    const gv = av.reduce((acc, ai, i) => acc + ai * uv[i], 0);
+    return k_ee(origin_ee, origin_ee) - gv;
+  }
+  return Array.from({length: 201}, (_, i) => {
+    const rv = i * (32 / 200);
+    return {r: rv, sigma2: sigma2At(rv)};
+  });
+}
+
+leftPlot_ee = Plot.plot({
+  width: 380,
+  height: 340,
+  style: darkStyle_ee,
+  x: {label: "x₁", domain: [-axisLim_ee, axisLim_ee]},
+  y: {label: "x₂", domain: [-axisLim_ee, axisLim_ee]},
+  marks: [
+    Plot.dot(rX_ee, {
+      x: d => d[0], y: d => d[1],
+      fill: "#93c5fd", r: 4, opacity: 0.9
+    }),
+    Plot.dot([[0, 0]], {
+      x: d => d[0], y: d => d[1],
+      stroke: "#ee4558", fill: "none",
+      strokeWidth: 2.5, r: 7, symbol: "cross"
+    })
+  ]
+})
+
+rightPlot_ee = Plot.plot({
+  width: 380,
+  height: 340,
+  style: darkStyle_ee,
+  x: {label: "scale r", domain: [0, 32]},
+  y: {label: "σ²(0; rX)", domain: [0, 1.05]},
+  marks: [
+    Plot.ruleY([0], {stroke: "rgba(255,255,255,0.15)"}),
+    Plot.line(curve_ee, {x: "r", y: "sigma2", stroke: "#93c5fd", strokeWidth: 2}),
+    Plot.dot([{r: +r_ee, sigma2: posteriorResult_ee.sigma2}], {
+      x: "r", y: "sigma2", r: 6, fill: "#ee4558"
+    })
+  ]
+})
+
+html`<div style="display:flex; gap:24px; align-items:flex-start; flex-wrap:wrap; justify-content:center;">
+  <div style="text-align:center;">
+    <div style="font-weight:600; margin-bottom:6px; color:rgba(255,255,255,0.85);">
+      Scaled locations <i>r</i><b>X</b> in ℝ²
+    </div>
+    ${leftPlot_ee}
+  </div>
+  <div style="text-align:center;">
+    <div style="font-weight:600; margin-bottom:6px; color:rgba(255,255,255,0.85);">
+      Posterior variance at the origin
+    </div>
+    ${rightPlot_ee}
+  </div>
+</div>`
+``` 

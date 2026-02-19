@@ -1,0 +1,1599 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+<script src="../site_libs/clipboard/clipboard.min.js"></script>
+<script src="../site_libs/quarto-html/tabby.min.js"></script>
+<script src="../site_libs/quarto-html/popper.min.js"></script>
+<script src="../site_libs/quarto-html/tippy.umd.min.js"></script>
+<link href="../site_libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="../site_libs/quarto-html/light-border.css" rel="stylesheet">
+<link href="../site_libs/quarto-html/quarto-syntax-highlighting-dark-12b3df05fff64bd15c9bad32e15a2ea0.css" rel="stylesheet" id="quarto-text-highlighting-styles"><meta charset="utf-8">
+  <meta name="generator" content="quarto-1.8.24">
+
+  <meta name="author" content="Matthew Fisher">
+  <title>VGD Docs – Monotonicity of Gaussian Process Posterior Variance</title>
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, minimal-ui">
+  <link rel="stylesheet" href="../site_libs/revealjs/dist/reset.css">
+  <link rel="stylesheet" href="../site_libs/revealjs/dist/reveal.css">
+  <style>
+    code{white-space: pre-wrap;}
+    span.smallcaps{font-variant: small-caps;}
+    div.columns{display: flex; gap: min(4vw, 1.5em);}
+    div.column{flex: auto; overflow-x: auto;}
+    div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+    ul.task-list{list-style: none;}
+    ul.task-list li input[type="checkbox"] {
+      width: 0.8em;
+      margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
+      vertical-align: middle;
+    }
+    /* CSS for syntax highlighting */
+    html { -webkit-text-size-adjust: 100%; }
+    pre > code.sourceCode { white-space: pre; position: relative; }
+    pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+    pre > code.sourceCode > span:empty { height: 1.2em; }
+    .sourceCode { overflow: visible; }
+    code.sourceCode > span { color: inherit; text-decoration: inherit; }
+    div.sourceCode { margin: 1em 0; }
+    pre.sourceCode { margin: 0; }
+    @media screen {
+    div.sourceCode { overflow: auto; }
+    }
+    @media print {
+    pre > code.sourceCode { white-space: pre-wrap; }
+    pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+    }
+    pre.numberSource code
+      { counter-reset: source-line 0; }
+    pre.numberSource code > span
+      { position: relative; left: -4em; counter-increment: source-line; }
+    pre.numberSource code > span > a:first-child::before
+      { content: counter(source-line);
+        position: relative; left: -1em; text-align: right; vertical-align: baseline;
+        border: none; display: inline-block;
+        -webkit-touch-callout: none; -webkit-user-select: none;
+        -khtml-user-select: none; -moz-user-select: none;
+        -ms-user-select: none; user-select: none;
+        padding: 0 4px; width: 4em;
+      }
+    pre.numberSource { margin-left: 3em;  padding-left: 4px; }
+    div.sourceCode
+      { color: #f8f8f2; background-color: #282a36; }
+    @media screen {
+    pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+    }
+    code span { color: #f8f8f2; } /* Normal */
+    code span.al { color: #ff5555; font-weight: bold; } /* Alert */
+    code span.an { color: #ff79c6; } /* Annotation */
+    code span.at { color: #ff79c6; } /* Attribute */
+    code span.bn { color: #bd93f9; } /* BaseN */
+    code span.bu { color: #8be9fd; } /* BuiltIn */
+    code span.cf { color: #ff79c6; } /* ControlFlow */
+    code span.ch { color: #f1fa8c; } /* Char */
+    code span.cn { color: #bd93f9; font-weight: bold; } /* Constant */
+    code span.co { color: #6272a4; } /* Comment */
+    code span.cv { color: #8be9fd; } /* CommentVar */
+    code span.do { color: #ffb86c; } /* Documentation */
+    code span.dt { color: #8be9fd; font-style: italic; } /* DataType */
+    code span.dv { color: #bd93f9; } /* DecVal */
+    code span.er { color: #ff5555; text-decoration: underline; } /* Error */
+    code span.ex { color: #8be9fd; } /* Extension */
+    code span.fl { color: #bd93f9; } /* Float */
+    code span.fu { color: #50fa7b; } /* Function */
+    code span.im { color: #ff79c6; } /* Import */
+    code span.in { color: #f1fa8c; } /* Information */
+    code span.kw { color: #ff79c6; } /* Keyword */
+    code span.op { color: #f8f8f2; } /* Operator */
+    code span.ot { color: #50fa7b; } /* Other */
+    code span.pp { color: #ff79c6; } /* Preprocessor */
+    code span.re { color: #8be9fd; } /* RegionMarker */
+    code span.sc { color: #ff79c6; } /* SpecialChar */
+    code span.ss { color: #f1fa8c; } /* SpecialString */
+    code span.st { color: #f1fa8c; } /* String */
+    code span.va { color: #8be9fd; } /* Variable */
+    code span.vs { color: #f1fa8c; } /* VerbatimString */
+    code span.wa { color: #ff5555; } /* Warning */
+  </style>
+  <link rel="stylesheet" href="../site_libs/revealjs/dist/theme/quarto-3fb39374d9f60974b51e775818bdb6f2.css">
+  <link rel="stylesheet" href="custom.css">
+  <script>window.backupDefine = window.define; window.define = undefined;</script><script src="https://cdn.jsdelivr.net/npm/katex@latest/dist/katex.min.js"></script>
+  <script>document.addEventListener("DOMContentLoaded", function () {
+ var mathElements = document.getElementsByClassName("math");
+ var macros = [];
+ for (var i = 0; i < mathElements.length; i++) {
+  var texText = mathElements[i].firstChild;
+  if (mathElements[i].tagName == "SPAN") {
+   katex.render(texText.data, mathElements[i], {
+    displayMode: mathElements[i].classList.contains('display'),
+    throwOnError: false,
+    macros: macros,
+    fleqn: false
+   });
+}}});
+  </script>
+  <script>window.define = window.backupDefine; window.backupDefine = undefined;</script><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@latest/dist/katex.min.css">
+  <link href="../site_libs/revealjs/plugin/quarto-line-highlight/line-highlight.css" rel="stylesheet">
+  <link href="../site_libs/revealjs/plugin/reveal-menu/menu.css" rel="stylesheet">
+  <link href="../site_libs/revealjs/plugin/reveal-menu/quarto-menu.css" rel="stylesheet">
+  <link href="../site_libs/revealjs/plugin/quarto-support/footer.css" rel="stylesheet">
+  <style type="text/css">
+    .reveal div.sourceCode {
+      margin: 0;
+      overflow: auto;
+    }
+    .reveal div.hanging-indent {
+      margin-left: 1em;
+      text-indent: -1em;
+    }
+    .reveal .slide:not(.center) {
+      height: 100%;
+    }
+    .reveal .slide.scrollable {
+      overflow-y: auto;
+    }
+    .reveal .footnotes {
+      height: 100%;
+      overflow-y: auto;
+    }
+    .reveal .slide .absolute {
+      position: absolute;
+      display: block;
+    }
+    .reveal .footnotes ol {
+      counter-reset: ol;
+      list-style-type: none; 
+      margin-left: 0;
+    }
+    .reveal .footnotes ol li:before {
+      counter-increment: ol;
+      content: counter(ol) ". "; 
+    }
+    .reveal .footnotes ol li > p:first-child {
+      display: inline-block;
+    }
+    .reveal .slide ul,
+    .reveal .slide ol {
+      margin-bottom: 0.5em;
+    }
+    .reveal .slide ul li,
+    .reveal .slide ol li {
+      margin-top: 0.4em;
+      margin-bottom: 0.2em;
+    }
+    .reveal .slide ul[role="tablist"] li {
+      margin-bottom: 0;
+    }
+    .reveal .slide ul li > *:first-child,
+    .reveal .slide ol li > *:first-child {
+      margin-block-start: 0;
+    }
+    .reveal .slide ul li > *:last-child,
+    .reveal .slide ol li > *:last-child {
+      margin-block-end: 0;
+    }
+    .reveal .slide .columns:nth-child(3) {
+      margin-block-start: 0.8em;
+    }
+    .reveal blockquote {
+      box-shadow: none;
+    }
+    .reveal .tippy-content>* {
+      margin-top: 0.2em;
+      margin-bottom: 0.7em;
+    }
+    .reveal .tippy-content>*:last-child {
+      margin-bottom: 0.2em;
+    }
+    .reveal .slide > img.stretch.quarto-figure-center,
+    .reveal .slide > img.r-stretch.quarto-figure-center {
+      display: block;
+      margin-left: auto;
+      margin-right: auto; 
+    }
+    .reveal .slide > img.stretch.quarto-figure-left,
+    .reveal .slide > img.r-stretch.quarto-figure-left  {
+      display: block;
+      margin-left: 0;
+      margin-right: auto; 
+    }
+    .reveal .slide > img.stretch.quarto-figure-right,
+    .reveal .slide > img.r-stretch.quarto-figure-right  {
+      display: block;
+      margin-left: auto;
+      margin-right: 0; 
+    }
+  </style>
+  <script type="module" src="../site_libs/quarto-ojs/quarto-ojs-runtime.js"></script>
+  <link href="../site_libs/quarto-ojs/quarto-ojs.css" rel="stylesheet">
+</head>
+<body class="quarto-dark">
+  <div class="reveal">
+    <div class="slides">
+
+<section id="title-slide" class="quarto-title-block center">
+  <h1 class="title">Monotonicity of Gaussian Process Posterior Variance</h1>
+    <p class="subtitle">Kernel Conditions and Input Scaling</p>
+  
+  <!-- Logos row (add your images in the same folder as the HTML/QMD) -->
+<div class="title-logos">
+  <div class="title-logo-wrap">
+    <!-- <img src="newcastlelogo.jpg" alt="Newcastle University" class="title-logo"> -->
+  </div>
+  <div class="title-logo-wrap">
+    <!-- <img src="EPSRC.png" alt="EPSRC" class="title-logo"> -->
+  </div>
+</div>
+
+  <div class="quarto-title-authors">
+      <div class="quarto-title-author">
+      <div class="quarto-title-author-name">
+        Matthew Fisher
+        
+      </div>
+                </div>
+    </div>
+
+  </section>
+<section>
+<section id="introduction" class="title-slide slide level1 center">
+<h1>Introduction</h1>
+
+</section>
+<section id="gaussian-process-regression" class="slide level2">
+<h2>Gaussian Process Regression</h2>
+<p><strong>Prior:</strong> <span class="math display">
+f \sim \mathcal{GP}(m, k)
+</span></p>
+<p><strong>Posterior mean:</strong> <span class="math display">
+\tilde m(x)
+=
+m(x)
++
+k(x,X)[K+\lambda I]^{-1}(Y-m(X))
+</span></p>
+<p><strong>Posterior variance:</strong> <span class="math display">
+\sigma^2(x; X)
+=
+k(x,x)
+-
+k(x,X)[K+\lambda I]^{-1}k(X,x)
+</span></p>
+<p><strong>Notes:</strong></p>
+<ul>
+<li><span class="math inline">X</span> is the training data, <span class="math inline">Y</span> are the corresponding targets</li>
+<li><span class="math inline">\lambda</span> is the noise variance</li>
+<li><span class="math inline">K = k(X,X)</span> is the kernel matrix on the training data</li>
+</ul>
+</section>
+<section id="posterior-variance-under-input-scaling" class="slide level2">
+<h2>Posterior Variance Under Input Scaling</h2>
+<p>Move observations toward the origin using a scale <span class="math inline">r &gt; 0</span>: <span class="math display">
+k_r(x,y) = k(rx, ry)
+\qquad
+\text{(stationary: } k_r(x,y) = k(r(x-y))\text{)}
+</span></p>
+<p><strong>Posterior variance at the origin:</strong> <span class="math display">
+\sigma^2(0; rX)
+=
+k(0,0)
+-
+g(r),
+\qquad
+g(r) = a(r)^\top A(r)^{-1} a(r)
+</span></p>
+<p><span class="math display">
+A(r) = k_r(X,X) + \lambda I,
+\qquad
+a(r) = k_r(X,0)
+</span></p>
+<p><strong>Central question</strong> Does posterior uncertainty at the origin decrease as observations move closer?</p>
+<p><strong>Equivalent mathematical question:</strong> Is <span class="math inline">g(r)</span> increasing as <span class="math inline">r \rightarrow 0</span>?</p>
+<p><strong>Derivative identity</strong> Let <span class="math inline">\alpha(r) = A(r)^{-1} a(r)</span>. Then</p>
+<p><span class="math display">
+g'(r)
+=
+2 a'(r)^\top \alpha(r)
+-
+\alpha(r)^\top A'(r) \alpha(r)
+</span></p>
+<p><strong>Research problem:</strong><br>
+Under what conditions on the kernel <span class="math inline">k</span> does <span class="math inline">g'(r) \le 0</span> hold for all <span class="math inline">r &gt; 0</span>?</p>
+</section>
+<section id="visualisation-of-posterior-variance-under-input-scaling" class="slide level2">
+<h2>Visualisation of Posterior Variance Under Input Scaling</h2>
+<p>Using <span class="math display">
+k(x,y) = \exp\!\biggl(-\frac{\|x-y\|^2}{2\ell^2}\biggr)
+</span></p>
+<div class="cell">
+<details class="code-fold hidden">
+<summary>Code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code hidden" id="cb1" data-startfrom="161" data-source-offset="-37"><pre class="sourceCode numberSource js number-lines code-with-copy"><code class="sourceCode javascript" style="counter-reset: source-line 160;"><span id="cb1-161"><a></a>n <span class="op">=</span> <span class="dv">20</span></span>
+<span id="cb1-162"><a></a></span>
+<span id="cb1-163"><a></a>X <span class="op">=</span> {</span>
+<span id="cb1-164"><a></a>  <span class="kw">function</span> <span class="fu">mulberry32</span>(a) {</span>
+<span id="cb1-165"><a></a>    <span class="cf">return</span> <span class="kw">function</span>() {</span>
+<span id="cb1-166"><a></a>      a <span class="op">|=</span> <span class="dv">0</span><span class="op">;</span> a <span class="op">=</span> a <span class="op">+</span> <span class="bn">0x6D2B79F5</span> <span class="op">|</span> <span class="dv">0</span><span class="op">;</span></span>
+<span id="cb1-167"><a></a>      <span class="kw">var</span> t <span class="op">=</span> <span class="bu">Math</span><span class="op">.</span><span class="fu">imul</span>(a <span class="op">^</span> a <span class="op">&gt;&gt;&gt;</span> <span class="dv">15</span><span class="op">,</span> <span class="dv">1</span> <span class="op">|</span> a)<span class="op">;</span></span>
+<span id="cb1-168"><a></a>      t <span class="op">=</span> t <span class="op">+</span> <span class="bu">Math</span><span class="op">.</span><span class="fu">imul</span>(t <span class="op">^</span> t <span class="op">&gt;&gt;&gt;</span> <span class="dv">7</span><span class="op">,</span> <span class="dv">61</span> <span class="op">|</span> t) <span class="op">^</span> t<span class="op">;</span></span>
+<span id="cb1-169"><a></a>      <span class="cf">return</span> ((t <span class="op">^</span> t <span class="op">&gt;&gt;&gt;</span> <span class="dv">14</span>) <span class="op">&gt;&gt;&gt;</span> <span class="dv">0</span>) <span class="op">/</span> <span class="dv">4294967296</span><span class="op">;</span></span>
+<span id="cb1-170"><a></a>    }</span>
+<span id="cb1-171"><a></a>  }</span>
+<span id="cb1-172"><a></a>  <span class="kw">const</span> rng <span class="op">=</span> <span class="fu">mulberry32</span>(<span class="dv">42</span>)<span class="op">;</span></span>
+<span id="cb1-173"><a></a>  <span class="cf">return</span> <span class="bu">Array</span><span class="op">.</span><span class="fu">from</span>({<span class="dt">length</span><span class="op">:</span> n}<span class="op">,</span> (_<span class="op">,</span> i) <span class="kw">=&gt;</span> {</span>
+<span id="cb1-174"><a></a>    <span class="kw">const</span> t <span class="op">=</span> (<span class="dv">2</span> <span class="op">*</span> <span class="bu">Math</span><span class="op">.</span><span class="cn">PI</span> <span class="op">*</span> i) <span class="op">/</span> n<span class="op">;</span></span>
+<span id="cb1-175"><a></a>    <span class="cf">return</span> [<span class="fl">1.2</span> <span class="op">*</span> <span class="bu">Math</span><span class="op">.</span><span class="fu">cos</span>(t) <span class="op">+</span> <span class="fl">0.25</span> <span class="op">*</span> (<span class="fu">rng</span>() <span class="op">-</span> <span class="fl">0.5</span>)<span class="op">,</span></span>
+<span id="cb1-176"><a></a>            <span class="fl">1.2</span> <span class="op">*</span> <span class="bu">Math</span><span class="op">.</span><span class="fu">sin</span>(t) <span class="op">+</span> <span class="fl">0.25</span> <span class="op">*</span> (<span class="fu">rng</span>() <span class="op">-</span> <span class="fl">0.5</span>)]<span class="op">;</span></span>
+<span id="cb1-177"><a></a>  })<span class="op">;</span></span>
+<span id="cb1-178"><a></a>}</span>
+<span id="cb1-179"><a></a></span>
+<span id="cb1-180"><a></a>ell <span class="op">=</span> <span class="fl">0.7</span></span>
+<span id="cb1-181"><a></a>sigmaF2 <span class="op">=</span> <span class="fl">1.0</span></span>
+<span id="cb1-182"><a></a>lambda <span class="op">=</span> <span class="fl">1e-3</span></span>
+<span id="cb1-183"><a></a></span>
+<span id="cb1-184"><a></a><span class="co">// Inject styles to fix slider accent and plot text on dark Reveal background</span></span>
+<span id="cb1-185"><a></a>themeStyle <span class="op">=</span> <span class="fu">html</span><span class="vs">`&lt;style&gt;</span></span>
+<span id="cb1-186"><a></a><span class="vs">  .ojs-cell input[type="range"],</span></span>
+<span id="cb1-187"><a></a><span class="vs">  .reveal input[type="range"] {</span></span>
+<span id="cb1-188"><a></a><span class="vs">    accent-color: var(--accent, #ee4558);</span></span>
+<span id="cb1-189"><a></a><span class="vs">  }</span></span>
+<span id="cb1-190"><a></a><span class="vs">  .ojs-cell input[type="number"],</span></span>
+<span id="cb1-191"><a></a><span class="vs">  .reveal input[type="number"] {</span></span>
+<span id="cb1-192"><a></a><span class="vs">    background: rgba(255,255,255,0.08);</span></span>
+<span id="cb1-193"><a></a><span class="vs">    color: rgba(255,255,255,0.9);</span></span>
+<span id="cb1-194"><a></a><span class="vs">    border: 1px solid rgba(255,255,255,0.2);</span></span>
+<span id="cb1-195"><a></a><span class="vs">    border-radius: 4px;</span></span>
+<span id="cb1-196"><a></a><span class="vs">  }</span></span>
+<span id="cb1-197"><a></a><span class="vs">  .ojs-cell label, .ojs-cell output,</span></span>
+<span id="cb1-198"><a></a><span class="vs">  .reveal form label, .reveal form output {</span></span>
+<span id="cb1-199"><a></a><span class="vs">    color: rgba(255,255,255,0.85) !important;</span></span>
+<span id="cb1-200"><a></a><span class="vs">  }</span></span>
+<span id="cb1-201"><a></a><span class="vs">  .reveal .ojs-cell {</span></span>
+<span id="cb1-202"><a></a><span class="vs">    display: flex;</span></span>
+<span id="cb1-203"><a></a><span class="vs">    flex-direction: column;</span></span>
+<span id="cb1-204"><a></a><span class="vs">    align-items: center;</span></span>
+<span id="cb1-205"><a></a><span class="vs">  }</span></span>
+<span id="cb1-206"><a></a><span class="vs">&lt;/style&gt;`</span></span>
+<span id="cb1-207"><a></a></span>
+<span id="cb1-208"><a></a>viewof r <span class="op">=</span> Inputs<span class="op">.</span><span class="fu">range</span>([<span class="dv">0</span><span class="op">,</span> <span class="dv">2</span>]<span class="op">,</span> {<span class="dt">step</span><span class="op">:</span> <span class="fl">0.01</span><span class="op">,</span> <span class="dt">value</span><span class="op">:</span> <span class="fl">1.0</span><span class="op">,</span> <span class="dt">label</span><span class="op">:</span> <span class="st">"scale r"</span>})</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</details>
+<div class="cell-output cell-output-display">
+<div>
+<div id="ojs-cell-1-1" data-nodetype="declaration">
+
+</div>
+</div>
+</div>
+<div class="cell-output cell-output-display">
+<div>
+<div id="ojs-cell-1-2" data-nodetype="declaration">
+
+</div>
+</div>
+</div>
+<div class="cell-output cell-output-display">
+<div>
+<div id="ojs-cell-1-3" data-nodetype="declaration">
+
+</div>
+</div>
+</div>
+<div class="cell-output cell-output-display">
+<div>
+<div id="ojs-cell-1-4" data-nodetype="declaration">
+
+</div>
+</div>
+</div>
+<div class="cell-output cell-output-display">
+<div>
+<div id="ojs-cell-1-5" data-nodetype="declaration">
+
+</div>
+</div>
+</div>
+<div class="cell-output cell-output-display">
+<div>
+<div id="ojs-cell-1-6" data-nodetype="declaration">
+
+</div>
+</div>
+</div>
+<div class="cell-output cell-output-display">
+<div>
+<div id="ojs-cell-1-7" data-nodetype="declaration">
+
+</div>
+</div>
+</div>
+</div>
+<div class="cell">
+<details class="code-fold hidden">
+<summary>Code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code hidden" id="cb2" data-startfrom="214" data-source-offset="-45"><pre class="sourceCode numberSource js number-lines code-with-copy"><code class="sourceCode javascript" style="counter-reset: source-line 213;"><span id="cb2-214"><a></a><span class="kw">function</span> <span class="fu">k</span>(x<span class="op">,</span> y) {</span>
+<span id="cb2-215"><a></a>  <span class="kw">const</span> dx <span class="op">=</span> x[<span class="dv">0</span>] <span class="op">-</span> y[<span class="dv">0</span>]<span class="op">,</span> dy <span class="op">=</span> x[<span class="dv">1</span>] <span class="op">-</span> y[<span class="dv">1</span>]<span class="op">;</span></span>
+<span id="cb2-216"><a></a>  <span class="cf">return</span> sigmaF2 <span class="op">*</span> <span class="bu">Math</span><span class="op">.</span><span class="fu">exp</span>(<span class="op">-</span>(dx<span class="op">*</span>dx <span class="op">+</span> dy<span class="op">*</span>dy) <span class="op">/</span> (<span class="dv">2</span> <span class="op">*</span> ell <span class="op">*</span> ell))<span class="op">;</span></span>
+<span id="cb2-217"><a></a>}</span>
+<span id="cb2-218"><a></a></span>
+<span id="cb2-219"><a></a><span class="kw">function</span> <span class="fu">gram</span>(XA<span class="op">,</span> XB) {</span>
+<span id="cb2-220"><a></a>  <span class="kw">const</span> nA <span class="op">=</span> XA<span class="op">.</span><span class="at">length</span><span class="op">,</span> nB <span class="op">=</span> XB<span class="op">.</span><span class="at">length</span><span class="op">;</span></span>
+<span id="cb2-221"><a></a>  <span class="kw">const</span> K <span class="op">=</span> <span class="bu">Array</span><span class="op">.</span><span class="fu">from</span>({<span class="dt">length</span><span class="op">:</span> nA}<span class="op">,</span> () <span class="kw">=&gt;</span> <span class="bu">Array</span>(nB)<span class="op">.</span><span class="fu">fill</span>(<span class="dv">0</span>))<span class="op">;</span></span>
+<span id="cb2-222"><a></a>  <span class="cf">for</span> (<span class="kw">let</span> i <span class="op">=</span> <span class="dv">0</span><span class="op">;</span> i <span class="op">&lt;</span> nA<span class="op">;</span> i<span class="op">++</span>)</span>
+<span id="cb2-223"><a></a>    <span class="cf">for</span> (<span class="kw">let</span> j <span class="op">=</span> <span class="dv">0</span><span class="op">;</span> j <span class="op">&lt;</span> nB<span class="op">;</span> j<span class="op">++</span>)</span>
+<span id="cb2-224"><a></a>      K[i][j] <span class="op">=</span> <span class="fu">k</span>(XA[i]<span class="op">,</span> XB[j])<span class="op">;</span></span>
+<span id="cb2-225"><a></a>  <span class="cf">return</span> K<span class="op">;</span></span>
+<span id="cb2-226"><a></a>}</span>
+<span id="cb2-227"><a></a></span>
+<span id="cb2-228"><a></a><span class="kw">function</span> <span class="fu">cholesky</span>(A) {</span>
+<span id="cb2-229"><a></a>  <span class="kw">const</span> m <span class="op">=</span> A<span class="op">.</span><span class="at">length</span><span class="op">;</span></span>
+<span id="cb2-230"><a></a>  <span class="kw">const</span> L <span class="op">=</span> <span class="bu">Array</span><span class="op">.</span><span class="fu">from</span>({<span class="dt">length</span><span class="op">:</span> m}<span class="op">,</span> () <span class="kw">=&gt;</span> <span class="bu">Array</span>(m)<span class="op">.</span><span class="fu">fill</span>(<span class="dv">0</span>))<span class="op">;</span></span>
+<span id="cb2-231"><a></a>  <span class="cf">for</span> (<span class="kw">let</span> i <span class="op">=</span> <span class="dv">0</span><span class="op">;</span> i <span class="op">&lt;</span> m<span class="op">;</span> i<span class="op">++</span>) {</span>
+<span id="cb2-232"><a></a>    <span class="cf">for</span> (<span class="kw">let</span> j <span class="op">=</span> <span class="dv">0</span><span class="op">;</span> j <span class="op">&lt;=</span> i<span class="op">;</span> j<span class="op">++</span>) {</span>
+<span id="cb2-233"><a></a>      <span class="kw">let</span> s <span class="op">=</span> A[i][j]<span class="op">;</span></span>
+<span id="cb2-234"><a></a>      <span class="cf">for</span> (<span class="kw">let</span> p <span class="op">=</span> <span class="dv">0</span><span class="op">;</span> p <span class="op">&lt;</span> j<span class="op">;</span> p<span class="op">++</span>) s <span class="op">-=</span> L[i][p] <span class="op">*</span> L[j][p]<span class="op">;</span></span>
+<span id="cb2-235"><a></a>      L[i][j] <span class="op">=</span> (i <span class="op">===</span> j) <span class="op">?</span> <span class="bu">Math</span><span class="op">.</span><span class="fu">sqrt</span>(<span class="bu">Math</span><span class="op">.</span><span class="fu">max</span>(s<span class="op">,</span> <span class="fl">1e-14</span>)) <span class="op">:</span> s <span class="op">/</span> L[j][j]<span class="op">;</span></span>
+<span id="cb2-236"><a></a>    }</span>
+<span id="cb2-237"><a></a>  }</span>
+<span id="cb2-238"><a></a>  <span class="cf">return</span> L<span class="op">;</span></span>
+<span id="cb2-239"><a></a>}</span>
+<span id="cb2-240"><a></a></span>
+<span id="cb2-241"><a></a><span class="kw">function</span> <span class="fu">cholSolve</span>(A<span class="op">,</span> b) {</span>
+<span id="cb2-242"><a></a>  <span class="kw">const</span> L <span class="op">=</span> <span class="fu">cholesky</span>(A)<span class="op">,</span> m <span class="op">=</span> A<span class="op">.</span><span class="at">length</span><span class="op">;</span></span>
+<span id="cb2-243"><a></a>  <span class="kw">const</span> z <span class="op">=</span> <span class="bu">Array</span>(m)<span class="op">.</span><span class="fu">fill</span>(<span class="dv">0</span>)<span class="op">;</span></span>
+<span id="cb2-244"><a></a>  <span class="cf">for</span> (<span class="kw">let</span> i <span class="op">=</span> <span class="dv">0</span><span class="op">;</span> i <span class="op">&lt;</span> m<span class="op">;</span> i<span class="op">++</span>) {</span>
+<span id="cb2-245"><a></a>    <span class="kw">let</span> s <span class="op">=</span> b[i]<span class="op">;</span></span>
+<span id="cb2-246"><a></a>    <span class="cf">for</span> (<span class="kw">let</span> p <span class="op">=</span> <span class="dv">0</span><span class="op">;</span> p <span class="op">&lt;</span> i<span class="op">;</span> p<span class="op">++</span>) s <span class="op">-=</span> L[i][p] <span class="op">*</span> z[p]<span class="op">;</span></span>
+<span id="cb2-247"><a></a>    z[i] <span class="op">=</span> s <span class="op">/</span> L[i][i]<span class="op">;</span></span>
+<span id="cb2-248"><a></a>  }</span>
+<span id="cb2-249"><a></a>  <span class="kw">const</span> x <span class="op">=</span> <span class="bu">Array</span>(m)<span class="op">.</span><span class="fu">fill</span>(<span class="dv">0</span>)<span class="op">;</span></span>
+<span id="cb2-250"><a></a>  <span class="cf">for</span> (<span class="kw">let</span> i <span class="op">=</span> m <span class="op">-</span> <span class="dv">1</span><span class="op">;</span> i <span class="op">&gt;=</span> <span class="dv">0</span><span class="op">;</span> i<span class="op">--</span>) {</span>
+<span id="cb2-251"><a></a>    <span class="kw">let</span> s <span class="op">=</span> z[i]<span class="op">;</span></span>
+<span id="cb2-252"><a></a>    <span class="cf">for</span> (<span class="kw">let</span> p <span class="op">=</span> i <span class="op">+</span> <span class="dv">1</span><span class="op">;</span> p <span class="op">&lt;</span> m<span class="op">;</span> p<span class="op">++</span>) s <span class="op">-=</span> L[p][i] <span class="op">*</span> x[p]<span class="op">;</span></span>
+<span id="cb2-253"><a></a>    x[i] <span class="op">=</span> s <span class="op">/</span> L[i][i]<span class="op">;</span></span>
+<span id="cb2-254"><a></a>  }</span>
+<span id="cb2-255"><a></a>  <span class="cf">return</span> x<span class="op">;</span></span>
+<span id="cb2-256"><a></a>}</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</details>
+<div class="cell-output cell-output-display">
+<div>
+<div id="ojs-cell-2-1" data-nodetype="declaration">
+
+</div>
+</div>
+</div>
+<div class="cell-output cell-output-display">
+<div>
+<div id="ojs-cell-2-2" data-nodetype="declaration">
+
+</div>
+</div>
+</div>
+<div class="cell-output cell-output-display">
+<div>
+<div id="ojs-cell-2-3" data-nodetype="declaration">
+
+</div>
+</div>
+</div>
+<div class="cell-output cell-output-display">
+<div>
+<div id="ojs-cell-2-4" data-nodetype="declaration">
+
+</div>
+</div>
+</div>
+</div>
+<div class="cell">
+<details class="code-fold hidden">
+<summary>Code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code hidden" id="cb3" data-startfrom="262" data-source-offset="-52"><pre class="sourceCode numberSource js number-lines code-with-copy"><code class="sourceCode javascript" style="counter-reset: source-line 261;"><span id="cb3-262"><a></a>origin <span class="op">=</span> [<span class="dv">0</span><span class="op">,</span> <span class="dv">0</span>]</span>
+<span id="cb3-263"><a></a>rX <span class="op">=</span> X<span class="op">.</span><span class="fu">map</span>(([x1<span class="op">,</span> x2]) <span class="kw">=&gt;</span> [r <span class="op">*</span> x1<span class="op">,</span> r <span class="op">*</span> x2])</span>
+<span id="cb3-264"><a></a></span>
+<span id="cb3-265"><a></a>posteriorResult <span class="op">=</span> {</span>
+<span id="cb3-266"><a></a>  <span class="kw">const</span> Krr <span class="op">=</span> <span class="fu">gram</span>(rX<span class="op">,</span> rX)<span class="op">;</span></span>
+<span id="cb3-267"><a></a>  <span class="cf">for</span> (<span class="kw">let</span> i <span class="op">=</span> <span class="dv">0</span><span class="op">;</span> i <span class="op">&lt;</span> n<span class="op">;</span> i<span class="op">++</span>) Krr[i][i] <span class="op">+=</span> lambda<span class="op">;</span></span>
+<span id="cb3-268"><a></a>  <span class="kw">const</span> a <span class="op">=</span> rX<span class="op">.</span><span class="fu">map</span>(xi <span class="kw">=&gt;</span> <span class="fu">k</span>(xi<span class="op">,</span> origin))<span class="op">;</span></span>
+<span id="cb3-269"><a></a>  <span class="kw">const</span> u <span class="op">=</span> <span class="fu">cholSolve</span>(Krr<span class="op">,</span> a)<span class="op">;</span></span>
+<span id="cb3-270"><a></a>  <span class="kw">const</span> g <span class="op">=</span> a<span class="op">.</span><span class="fu">reduce</span>((acc<span class="op">,</span> ai<span class="op">,</span> i) <span class="kw">=&gt;</span> acc <span class="op">+</span> ai <span class="op">*</span> u[i]<span class="op">,</span> <span class="dv">0</span>)<span class="op">;</span></span>
+<span id="cb3-271"><a></a>  <span class="cf">return</span> {g<span class="op">,</span> <span class="dt">sigma2</span><span class="op">:</span> <span class="fu">k</span>(origin<span class="op">,</span> origin) <span class="op">-</span> g}<span class="op">;</span></span>
+<span id="cb3-272"><a></a>}</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</details>
+<div class="cell-output cell-output-display">
+<div>
+<div id="ojs-cell-3-1" data-nodetype="declaration">
+
+</div>
+</div>
+</div>
+<div class="cell-output cell-output-display">
+<div>
+<div id="ojs-cell-3-2" data-nodetype="declaration">
+
+</div>
+</div>
+</div>
+<div class="cell-output cell-output-display">
+<div>
+<div id="ojs-cell-3-3" data-nodetype="declaration">
+
+</div>
+</div>
+</div>
+</div>
+<div class="cell">
+<details class="code-fold hidden">
+<summary>Code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code hidden" id="cb4" data-startfrom="279" data-source-offset="-145"><pre class="sourceCode numberSource js number-lines code-with-copy"><code class="sourceCode javascript" style="counter-reset: source-line 278;"><span id="cb4-279"><a></a>axisLim <span class="op">=</span> <span class="dv">3</span></span>
+<span id="cb4-280"><a></a></span>
+<span id="cb4-281"><a></a><span class="co">// Dark-theme-friendly plot style string</span></span>
+<span id="cb4-282"><a></a>darkStyle <span class="op">=</span> <span class="st">"background:transparent; color:rgba(255,255,255,0.82); font-size:13px;"</span></span>
+<span id="cb4-283"><a></a></span>
+<span id="cb4-284"><a></a>curve <span class="op">=</span> {</span>
+<span id="cb4-285"><a></a>  <span class="kw">function</span> <span class="fu">sigma2At</span>(rv) {</span>
+<span id="cb4-286"><a></a>    <span class="kw">const</span> sX <span class="op">=</span> X<span class="op">.</span><span class="fu">map</span>(([x1<span class="op">,</span> x2]) <span class="kw">=&gt;</span> [rv <span class="op">*</span> x1<span class="op">,</span> rv <span class="op">*</span> x2])<span class="op">;</span></span>
+<span id="cb4-287"><a></a>    <span class="kw">const</span> A <span class="op">=</span> <span class="fu">gram</span>(sX<span class="op">,</span> sX)<span class="op">;</span></span>
+<span id="cb4-288"><a></a>    <span class="cf">for</span> (<span class="kw">let</span> i <span class="op">=</span> <span class="dv">0</span><span class="op">;</span> i <span class="op">&lt;</span> n<span class="op">;</span> i<span class="op">++</span>) A[i][i] <span class="op">+=</span> lambda<span class="op">;</span></span>
+<span id="cb4-289"><a></a>    <span class="kw">const</span> av <span class="op">=</span> sX<span class="op">.</span><span class="fu">map</span>(xi <span class="kw">=&gt;</span> <span class="fu">k</span>(xi<span class="op">,</span> origin))<span class="op">;</span></span>
+<span id="cb4-290"><a></a>    <span class="kw">const</span> uv <span class="op">=</span> <span class="fu">cholSolve</span>(A<span class="op">,</span> av)<span class="op">;</span></span>
+<span id="cb4-291"><a></a>    <span class="kw">const</span> gv <span class="op">=</span> av<span class="op">.</span><span class="fu">reduce</span>((acc<span class="op">,</span> ai<span class="op">,</span> i) <span class="kw">=&gt;</span> acc <span class="op">+</span> ai <span class="op">*</span> uv[i]<span class="op">,</span> <span class="dv">0</span>)<span class="op">;</span></span>
+<span id="cb4-292"><a></a>    <span class="cf">return</span> <span class="fu">k</span>(origin<span class="op">,</span> origin) <span class="op">-</span> gv<span class="op">;</span></span>
+<span id="cb4-293"><a></a>  }</span>
+<span id="cb4-294"><a></a>  <span class="cf">return</span> <span class="bu">Array</span><span class="op">.</span><span class="fu">from</span>({<span class="dt">length</span><span class="op">:</span> <span class="dv">201</span>}<span class="op">,</span> (_<span class="op">,</span> i) <span class="kw">=&gt;</span> {</span>
+<span id="cb4-295"><a></a>    <span class="kw">const</span> rv <span class="op">=</span> i <span class="op">*</span> (<span class="dv">2</span> <span class="op">/</span> <span class="dv">200</span>)<span class="op">;</span></span>
+<span id="cb4-296"><a></a>    <span class="cf">return</span> {<span class="dt">r</span><span class="op">:</span> rv<span class="op">,</span> <span class="dt">sigma2</span><span class="op">:</span> <span class="fu">sigma2At</span>(rv)}<span class="op">;</span></span>
+<span id="cb4-297"><a></a>  })<span class="op">;</span></span>
+<span id="cb4-298"><a></a>}</span>
+<span id="cb4-299"><a></a></span>
+<span id="cb4-300"><a></a>leftPlot <span class="op">=</span> Plot<span class="op">.</span><span class="fu">plot</span>({</span>
+<span id="cb4-301"><a></a>  <span class="dt">width</span><span class="op">:</span> <span class="dv">380</span><span class="op">,</span></span>
+<span id="cb4-302"><a></a>  <span class="dt">height</span><span class="op">:</span> <span class="dv">340</span><span class="op">,</span></span>
+<span id="cb4-303"><a></a>  <span class="dt">style</span><span class="op">:</span> darkStyle<span class="op">,</span></span>
+<span id="cb4-304"><a></a>  <span class="dt">x</span><span class="op">:</span> {<span class="dt">label</span><span class="op">:</span> <span class="st">"x₁"</span><span class="op">,</span> <span class="dt">domain</span><span class="op">:</span> [<span class="op">-</span>axisLim<span class="op">,</span> axisLim]}<span class="op">,</span></span>
+<span id="cb4-305"><a></a>  <span class="dt">y</span><span class="op">:</span> {<span class="dt">label</span><span class="op">:</span> <span class="st">"x₂"</span><span class="op">,</span> <span class="dt">domain</span><span class="op">:</span> [<span class="op">-</span>axisLim<span class="op">,</span> axisLim]}<span class="op">,</span></span>
+<span id="cb4-306"><a></a>  <span class="dt">marks</span><span class="op">:</span> [</span>
+<span id="cb4-307"><a></a>    Plot<span class="op">.</span><span class="fu">dot</span>(rX<span class="op">,</span> {</span>
+<span id="cb4-308"><a></a>      <span class="dt">x</span><span class="op">:</span> d <span class="kw">=&gt;</span> d[<span class="dv">0</span>]<span class="op">,</span> <span class="dt">y</span><span class="op">:</span> d <span class="kw">=&gt;</span> d[<span class="dv">1</span>]<span class="op">,</span></span>
+<span id="cb4-309"><a></a>      <span class="dt">fill</span><span class="op">:</span> <span class="st">"#93c5fd"</span><span class="op">,</span> <span class="dt">r</span><span class="op">:</span> <span class="dv">4</span><span class="op">,</span> <span class="dt">opacity</span><span class="op">:</span> <span class="fl">0.9</span></span>
+<span id="cb4-310"><a></a>    })<span class="op">,</span></span>
+<span id="cb4-311"><a></a>    Plot<span class="op">.</span><span class="fu">dot</span>([[<span class="dv">0</span><span class="op">,</span> <span class="dv">0</span>]]<span class="op">,</span> {</span>
+<span id="cb4-312"><a></a>      <span class="dt">x</span><span class="op">:</span> d <span class="kw">=&gt;</span> d[<span class="dv">0</span>]<span class="op">,</span> <span class="dt">y</span><span class="op">:</span> d <span class="kw">=&gt;</span> d[<span class="dv">1</span>]<span class="op">,</span></span>
+<span id="cb4-313"><a></a>      <span class="dt">stroke</span><span class="op">:</span> <span class="st">"#ee4558"</span><span class="op">,</span> <span class="dt">fill</span><span class="op">:</span> <span class="st">"none"</span><span class="op">,</span></span>
+<span id="cb4-314"><a></a>      <span class="dt">strokeWidth</span><span class="op">:</span> <span class="fl">2.5</span><span class="op">,</span> <span class="dt">r</span><span class="op">:</span> <span class="dv">7</span><span class="op">,</span> <span class="dt">symbol</span><span class="op">:</span> <span class="st">"cross"</span></span>
+<span id="cb4-315"><a></a>    })</span>
+<span id="cb4-316"><a></a>  ]</span>
+<span id="cb4-317"><a></a>})</span>
+<span id="cb4-318"><a></a></span>
+<span id="cb4-319"><a></a>rightPlot <span class="op">=</span> Plot<span class="op">.</span><span class="fu">plot</span>({</span>
+<span id="cb4-320"><a></a>  <span class="dt">width</span><span class="op">:</span> <span class="dv">380</span><span class="op">,</span></span>
+<span id="cb4-321"><a></a>  <span class="dt">height</span><span class="op">:</span> <span class="dv">340</span><span class="op">,</span></span>
+<span id="cb4-322"><a></a>  <span class="dt">style</span><span class="op">:</span> darkStyle<span class="op">,</span></span>
+<span id="cb4-323"><a></a>  <span class="dt">x</span><span class="op">:</span> {<span class="dt">label</span><span class="op">:</span> <span class="st">"scale r"</span><span class="op">,</span> <span class="dt">domain</span><span class="op">:</span> [<span class="dv">0</span><span class="op">,</span> <span class="dv">2</span>]}<span class="op">,</span></span>
+<span id="cb4-324"><a></a>  <span class="dt">y</span><span class="op">:</span> {<span class="dt">label</span><span class="op">:</span> <span class="st">"σ²(0; rX)"</span><span class="op">,</span> <span class="dt">domain</span><span class="op">:</span> [<span class="dv">0</span><span class="op">,</span> sigmaF2 <span class="op">*</span> <span class="fl">1.05</span>]}<span class="op">,</span></span>
+<span id="cb4-325"><a></a>  <span class="dt">marks</span><span class="op">:</span> [</span>
+<span id="cb4-326"><a></a>    Plot<span class="op">.</span><span class="fu">ruleY</span>([<span class="dv">0</span>]<span class="op">,</span> {<span class="dt">stroke</span><span class="op">:</span> <span class="st">"rgba(255,255,255,0.15)"</span>})<span class="op">,</span></span>
+<span id="cb4-327"><a></a>    Plot<span class="op">.</span><span class="fu">line</span>(curve<span class="op">,</span> {<span class="dt">x</span><span class="op">:</span> <span class="st">"r"</span><span class="op">,</span> <span class="dt">y</span><span class="op">:</span> <span class="st">"sigma2"</span><span class="op">,</span> <span class="dt">stroke</span><span class="op">:</span> <span class="st">"#93c5fd"</span><span class="op">,</span> <span class="dt">strokeWidth</span><span class="op">:</span> <span class="dv">2</span>})<span class="op">,</span></span>
+<span id="cb4-328"><a></a>    Plot<span class="op">.</span><span class="fu">dot</span>([{<span class="dt">r</span><span class="op">:</span> <span class="op">+</span>r<span class="op">,</span> <span class="dt">sigma2</span><span class="op">:</span> posteriorResult<span class="op">.</span><span class="at">sigma2</span>}]<span class="op">,</span> {</span>
+<span id="cb4-329"><a></a>      <span class="dt">x</span><span class="op">:</span> <span class="st">"r"</span><span class="op">,</span> <span class="dt">y</span><span class="op">:</span> <span class="st">"sigma2"</span><span class="op">,</span> <span class="dt">r</span><span class="op">:</span> <span class="dv">6</span><span class="op">,</span> <span class="dt">fill</span><span class="op">:</span> <span class="st">"#ee4558"</span></span>
+<span id="cb4-330"><a></a>    })</span>
+<span id="cb4-331"><a></a>  ]</span>
+<span id="cb4-332"><a></a>})</span>
+<span id="cb4-333"><a></a></span>
+<span id="cb4-334"><a></a><span class="fu">html</span><span class="vs">`&lt;div style="display:flex; gap:24px; align-items:flex-start; flex-wrap:wrap; justify-content:center;"&gt;</span></span>
+<span id="cb4-335"><a></a><span class="vs">  &lt;div style="text-align:center;"&gt;</span></span>
+<span id="cb4-336"><a></a><span class="vs">    &lt;div style="font-weight:600; margin-bottom:6px; color:rgba(255,255,255,0.85);"&gt;</span></span>
+<span id="cb4-337"><a></a><span class="vs">      Scaled locations &lt;i&gt;r&lt;/i&gt;&lt;b&gt;X&lt;/b&gt; in ℝ²</span></span>
+<span id="cb4-338"><a></a><span class="vs">    &lt;/div&gt;</span></span>
+<span id="cb4-339"><a></a><span class="vs">    </span><span class="sc">${</span>leftPlot<span class="sc">}</span></span>
+<span id="cb4-340"><a></a><span class="vs">  &lt;/div&gt;</span></span>
+<span id="cb4-341"><a></a><span class="vs">  &lt;div style="text-align:center;"&gt;</span></span>
+<span id="cb4-342"><a></a><span class="vs">    &lt;div style="font-weight:600; margin-bottom:6px; color:rgba(255,255,255,0.85);"&gt;</span></span>
+<span id="cb4-343"><a></a><span class="vs">      Posterior variance at the origin</span></span>
+<span id="cb4-344"><a></a><span class="vs">    &lt;/div&gt;</span></span>
+<span id="cb4-345"><a></a><span class="vs">    </span><span class="sc">${</span>rightPlot<span class="sc">}</span></span>
+<span id="cb4-346"><a></a><span class="vs">  &lt;/div&gt;</span></span>
+<span id="cb4-347"><a></a><span class="vs">&lt;/div&gt;`</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</details>
+<div class="cell-output cell-output-display">
+<div>
+<div id="ojs-cell-4-1" data-nodetype="declaration">
+
+</div>
+</div>
+</div>
+<div class="cell-output cell-output-display">
+<div>
+<div id="ojs-cell-4-2" data-nodetype="declaration">
+
+</div>
+</div>
+</div>
+<div class="cell-output cell-output-display">
+<div>
+<div id="ojs-cell-4-3" data-nodetype="declaration">
+
+</div>
+</div>
+</div>
+<div class="cell-output cell-output-display">
+<div>
+<div id="ojs-cell-4-4" data-nodetype="declaration">
+
+</div>
+</div>
+</div>
+<div class="cell-output cell-output-display">
+<div>
+<div id="ojs-cell-4-5" data-nodetype="declaration">
+
+</div>
+</div>
+</div>
+<div class="cell-output cell-output-display">
+<div>
+<div id="ojs-cell-4-6" data-nodetype="expression">
+
+</div>
+</div>
+</div>
+</div>
+</section></section>
+<section>
+<section id="background-material" class="title-slide slide level1 center">
+<h1>Background Material</h1>
+
+</section>
+<section id="radial-gaussian-process-kernels" class="slide level2">
+<h2>Radial Gaussian Process Kernels</h2>
+<p>We focus on isotropic kernels:</p>
+<p><span class="math display">
+k(x,y) = \varphi(\|x-y\|^2)
+</span></p>
+<p><strong>Examples:</strong></p>
+<ul>
+<li>Gaussian</li>
+<li>Matérn</li>
+<li>Rational quadratic</li>
+</ul>
+</section>
+<section id="completely-monotone-kernels" class="slide level2">
+<h2>Completely Monotone Kernels</h2>
+<p>A kernel is completely monotone if</p>
+<p><span class="math display">
+k(x,y) = \varphi(\|x-y\|^2)
+</span></p>
+<p>where</p>
+<p><span class="math display">
+(-1)^n \varphi^{(n)}(h) \ge 0
+</span></p>
+<p><strong>Examples:</strong></p>
+<ul>
+<li>Gaussian (yes)</li>
+<li>Matérn (not always)</li>
+<li>Rational quadratic (yes)</li>
+</ul>
+</section>
+<section id="bernstein-functions-generate-kernels" class="slide level2">
+<h2>Bernstein functions generate kernels</h2>
+<p>A Bernstein function satisfies:</p>
+<ul>
+<li>increasing</li>
+<li>concave</li>
+<li><span class="math inline">f'(h)</span> completely monotone</li>
+</ul>
+<p>These generate kernels:</p>
+<p><span class="math display">
+k(x,y)
+=
+e^{-f(\|x-y\|^2)}
+</span></p>
+<p>This defines a valid Gaussian process kernel.</p>
+</section>
+<section id="correspondence-with-completely-monotone-kernels" class="slide level2">
+<h2>Correspondence with completely monotone kernels</h2>
+<p>There is a one-to-one correspondence:</p>
+<p><span class="math display">
+\varphi(h)
+=
+e^{-f(h)}
+</span></p>
+<p>Then</p>
+<ul>
+<li><span class="math inline">f</span> Bernstein <span class="math inline">\iff</span> <span class="math inline">\varphi</span> completely monotone</li>
+</ul>
+<p>Therefore Bernstein functions parameterise completely monotone kernels.</p>
+</section>
+<section id="why-bernstein-structure-is-useful" class="slide level2">
+<h2>Why Bernstein structure is useful</h2>
+<p>Our (scaled) kernel has form:</p>
+<p><span class="math display">
+k_r(x,y) = e^{-f(r^2\|x-y\|^2)}
+</span></p>
+<p>Derivative introduces term:</p>
+<p><span class="math display">
+h f'(h)
+</span></p>
+<p>We need this to preserve the Bernstein property.</p>
+</section>
+<section id="thorinbernstein-functions" class="slide level2">
+<h2>Thorin–Bernstein functions</h2>
+<p>A Thorin–Bernstein function is a <strong>Bernstein function</strong> which additionally satisfies:</p>
+<p><span class="math display">
+h f'(h)
+\text{ is Bernstein}
+</span></p>
+<p>This ensures</p>
+<ul>
+<li>derivative kernel remains CND</li>
+<li>monotonicity holds</li>
+</ul>
+</section></section>
+<section>
+<section id="main-results" class="title-slide slide level1 center">
+<h1>Main results</h1>
+
+</section>
+<section id="representation-of-k" class="slide level2">
+<h2>Representation of <span class="math inline">k</span></h2>
+<p>Assume the (scaled) kernel can be written as <span class="math display">
+k_r(x,y) = \exp\{-\eta_r(x,y)\}, \qquad \eta_r(x,y) = \eta(rx,ry),
+</span> where <span class="math inline">\eta</span> is <strong>conditionally negative definite (CND)</strong>.</p>
+<ul>
+<li>By <strong>Schoenberg’s criterion</strong>, <span class="math inline">k_r</span> is positive definite (PD) for all <span class="math inline">r&gt;0</span> iff <span class="math inline">\eta_r</span> is CND.</li>
+</ul>
+<div id="thm-monotonicity-condition" class="theorem">
+<p><span class="theorem-title"><strong>Theorem 1 (Monotonicity condition)</strong></span> If, for some <span class="math inline">r&gt;0</span>, the derivative <span class="math inline">\partial_r \eta_r(x,y)</span> is a CND function, then <span class="math display">
+g'(r) \le 0.
+</span></p>
+</div>
+</section>
+<section id="proof-sketch" class="slide level2 scroll">
+<h2>Proof sketch</h2>
+<p>We start from the derivative identity:</p>
+<p><span class="math display">
+g'(r)
+=
+-2\sum_i \eta_r'(x_i,0)\,k_r(x_i,0)\,\alpha_i
++
+\sum_{i,j}
+\alpha_i\alpha_j\,
+\eta_r'(x_i,x_j)\,
+k_r(x_i,x_j)
+</span></p>
+<h3 id="use-the-cnd-structure">Use the CND structure</h3>
+<p>If <span class="math inline">\eta_r'</span> is CND, then by the polarisation identity:</p>
+<p><span class="math display">
+\eta_r'(x,y)
+=
+\eta_r'(x,0)
++
+\eta_r'(y,0)
+-
+\psi_r(x,y)
+</span></p>
+<p>where <span class="math inline">\psi_r</span> is <strong>positive definite</strong>.</p>
+<h3 id="use-the-linear-system">Use the linear system</h3>
+<p>Recall:</p>
+<p><span class="math display">
+(K_r + \lambda I)\alpha = k_r(0,X)
+</span></p>
+<p>This implies</p>
+<p><span class="math display">
+\sum_j k_r(x_i,x_j)\alpha_j
+=
+k_r(x_i,0)
+-
+\lambda \alpha_i
+</span></p>
+<p>Substitute into <span class="math inline">g'(r)</span>.</p>
+<h3 id="result">Result</h3>
+<p>After simplification:</p>
+<p><span class="math display">
+g'(r)
+=
+-2\lambda
+\sum_i
+\alpha_i^2
+\eta_r'(x_i,0)
+-
+\sum_{i,j}
+\alpha_i\alpha_j
+\psi_r(x_i,x_j)
+k_r(x_i,x_j)
+</span></p>
+<h3 id="sign-of-each-term">Sign of each term</h3>
+<p>Since:</p>
+<ul>
+<li><span class="math inline">\eta_r'</span> is CND ⇒ <span class="math inline">\eta_r'(x_i,0) \ge 0</span></li>
+<li><span class="math inline">\psi_r</span> is PD</li>
+<li><span class="math inline">k_r</span> is PD</li>
+</ul>
+<p>both terms are <strong>non-positive</strong></p>
+<h3 id="conclusion">Conclusion</h3>
+<p><span class="math display">
+g'(r) \le 0
+</span></p>
+<p>Therefore posterior variance decreases.</p>
+</section>
+<section id="main-theorem" class="slide level2">
+<h2>Main theorem</h2>
+<div id="thm-monotonicity-condition" class="theorem">
+<p><span class="theorem-title"><strong>Theorem 2 (Sufficient Condtion for Monotonicity of Posterior Variance)</strong></span> If <span class="math display">
+k(x,y) = \exp\{-f(\|x-y\|^2)\}
+</span></p>
+<p>and <span class="math inline">f</span> is Thorin–Bernstein, then</p>
+<p><span class="math display">
+g'(r) \le 0
+</span></p>
+</div>
+<p><strong>Key reason</strong></p>
+<p>Thorin–Bernstein <span class="math inline">\Rightarrow</span> <span class="math inline">\eta_r'</span> is CND <span class="math inline">\Rightarrow</span> monotonicity</p>
+</section>
+<section id="proof-sketch-1" class="slide level2 scroll">
+<h2>Proof sketch</h2>
+<p>Start from the representation</p>
+<p><span class="math display">
+\eta_r(x,y)
+=
+f\!\left(r^2 \|x-y\|^2\right),
+\qquad
+f \in \mathcal{TBF}
+</span></p>
+<h3 id="differentiate-with-respect-to-r">Differentiate with respect to <span class="math inline">r</span>:</h3>
+<p><span class="math display">
+\eta_r'(x,y)
+=
+2r \|x-y\|^2
+\, f'\!\left(r^2 \|x-y\|^2\right)
+</span></p>
+<h3 id="key-structural-property">Key structural property:</h3>
+<p>If <span class="math inline">f</span> is Thorin–Bernstein, then</p>
+<p><span class="math display">
+u(h) = h f'(h)
+</span></p>
+<p>is a <strong>Bernstein function</strong></p>
+<p>Therefore</p>
+<ul>
+<li><span class="math inline">u(\|x-y\|^2)</span> is <strong>CND</strong></li>
+<li>scaling preserves the CND property</li>
+</ul>
+<p>so</p>
+<p><span class="math display">
+\eta_r'
+\text{ is CND}
+</span></p>
+<p>Apply previous theorem:</p>
+<p><span class="math display">
+\eta_r' \text{ CND}
+\quad \Rightarrow \quad
+g'(r) \le 0
+</span></p>
+</section></section>
+<section>
+<section id="implications-and-counter-examples" class="title-slide slide level1 center">
+<h1>Implications and counter-examples</h1>
+
+</section>
+<section id="kernels-satisfying-the-conditions" class="slide level2">
+<h2>Kernels satisfying the conditions</h2>
+<p>Recall the main result. If <span class="math display">
+k(x,y) = \exp\{-f(\|x-y\|^2)\},
+</span> where <span class="math inline">f</span> is a Thorin–Bernstein function, then <span class="math inline">g'(r) \le 0</span>.</p>
+<p><strong>Examples:</strong></p>
+<ul>
+<li>Gaussian kernel (yes)</li>
+<li>Rational quadratic kernel (yes)</li>
+<li>Matérn kernel (not always)</li>
+</ul>
+</section>
+<section id="a-counterexample-kernel-bernstein-but-not-thorinbernstein" class="slide level2">
+<h2>A counterexample kernel (Bernstein but not Thorin–Bernstein)</h2>
+<p>From the Levy–Khintchine representation, take <span class="math display">
+f(h)=a+bh+\int_0^\infty (1-e^{-ht})\,\mu(dt),
+</span> and choose <span class="math inline">a=b=0</span> and <span class="math inline">\mu=\delta_1</span> (Dirac mass at <span class="math inline">t=1</span>). Then <span class="math display">
+f(h)=1-e^{-h}
+</span> is a <strong>Bernstein function</strong>.</p>
+<p>Therefore the kernel <span class="math display">
+k(x,y)=\exp\!\Big\{-f(\|x-y\|^2)\Big\}
+=\exp\!\left\{-\left(1-e^{-\|x-y\|^2}\right)\right\}
+</span> is <strong>completely monotone</strong> (and hence PD).</p>
+<p>We call this the <strong>Exp–Exp kernel</strong>.</p>
+</section>
+<section id="visualisation-of-posterior-variance-under-input-scaling-expexp" class="slide level2">
+<h2>Visualisation of Posterior Variance Under Input Scaling (Exp–Exp)</h2>
+<p>Using <span class="math display">
+k(x,y) = \exp\!\Big\{-\bigl(1 - e^{-\|x-y\|^2}\bigr)\Big\}
+</span></p>
+<div class="cell">
+<details class="code-fold hidden">
+<summary>Code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code hidden" id="cb5" data-startfrom="692" data-source-offset="-39"><pre class="sourceCode numberSource js number-lines code-with-copy"><code class="sourceCode javascript" style="counter-reset: source-line 691;"><span id="cb5-692"><a></a>n_ee <span class="op">=</span> <span class="dv">8</span></span>
+<span id="cb5-693"><a></a></span>
+<span id="cb5-694"><a></a>X_ee <span class="op">=</span> {</span>
+<span id="cb5-695"><a></a>  <span class="kw">function</span> <span class="fu">mulberry32</span>(a) {</span>
+<span id="cb5-696"><a></a>    <span class="cf">return</span> <span class="kw">function</span>() {</span>
+<span id="cb5-697"><a></a>      a <span class="op">|=</span> <span class="dv">0</span><span class="op">;</span> a <span class="op">=</span> a <span class="op">+</span> <span class="bn">0x6D2B79F5</span> <span class="op">|</span> <span class="dv">0</span><span class="op">;</span></span>
+<span id="cb5-698"><a></a>      <span class="kw">var</span> t <span class="op">=</span> <span class="bu">Math</span><span class="op">.</span><span class="fu">imul</span>(a <span class="op">^</span> a <span class="op">&gt;&gt;&gt;</span> <span class="dv">15</span><span class="op">,</span> <span class="dv">1</span> <span class="op">|</span> a)<span class="op">;</span></span>
+<span id="cb5-699"><a></a>      t <span class="op">=</span> t <span class="op">+</span> <span class="bu">Math</span><span class="op">.</span><span class="fu">imul</span>(t <span class="op">^</span> t <span class="op">&gt;&gt;&gt;</span> <span class="dv">7</span><span class="op">,</span> <span class="dv">61</span> <span class="op">|</span> t) <span class="op">^</span> t<span class="op">;</span></span>
+<span id="cb5-700"><a></a>      <span class="cf">return</span> ((t <span class="op">^</span> t <span class="op">&gt;&gt;&gt;</span> <span class="dv">14</span>) <span class="op">&gt;&gt;&gt;</span> <span class="dv">0</span>) <span class="op">/</span> <span class="dv">4294967296</span><span class="op">;</span></span>
+<span id="cb5-701"><a></a>    }</span>
+<span id="cb5-702"><a></a>  }</span>
+<span id="cb5-703"><a></a>  <span class="kw">const</span> rng <span class="op">=</span> <span class="fu">mulberry32</span>(<span class="dv">42</span>)<span class="op">;</span></span>
+<span id="cb5-704"><a></a>  <span class="cf">return</span> <span class="bu">Array</span><span class="op">.</span><span class="fu">from</span>({<span class="dt">length</span><span class="op">:</span> n_ee}<span class="op">,</span> (_<span class="op">,</span> i) <span class="kw">=&gt;</span> {</span>
+<span id="cb5-705"><a></a>    <span class="kw">const</span> t <span class="op">=</span> (<span class="dv">2</span> <span class="op">*</span> <span class="bu">Math</span><span class="op">.</span><span class="cn">PI</span> <span class="op">*</span> i) <span class="op">/</span> n_ee<span class="op">;</span></span>
+<span id="cb5-706"><a></a>    <span class="cf">return</span> [<span class="fl">1.2</span> <span class="op">*</span> <span class="bu">Math</span><span class="op">.</span><span class="fu">cos</span>(t) <span class="op">+</span> <span class="fl">0.25</span> <span class="op">*</span> (<span class="fu">rng</span>() <span class="op">-</span> <span class="fl">0.5</span>)<span class="op">,</span></span>
+<span id="cb5-707"><a></a>            <span class="fl">1.2</span> <span class="op">*</span> <span class="bu">Math</span><span class="op">.</span><span class="fu">sin</span>(t) <span class="op">+</span> <span class="fl">0.25</span> <span class="op">*</span> (<span class="fu">rng</span>() <span class="op">-</span> <span class="fl">0.5</span>)]<span class="op">;</span></span>
+<span id="cb5-708"><a></a>  })<span class="op">;</span></span>
+<span id="cb5-709"><a></a>}</span>
+<span id="cb5-710"><a></a></span>
+<span id="cb5-711"><a></a>lambda_ee <span class="op">=</span> <span class="fl">1e-3</span></span>
+<span id="cb5-712"><a></a></span>
+<span id="cb5-713"><a></a>themeStyle_ee <span class="op">=</span> <span class="fu">html</span><span class="vs">`&lt;style&gt;</span></span>
+<span id="cb5-714"><a></a><span class="vs">  .ojs-cell input[type="range"],</span></span>
+<span id="cb5-715"><a></a><span class="vs">  .reveal input[type="range"] {</span></span>
+<span id="cb5-716"><a></a><span class="vs">    accent-color: var(--accent, #ee4558);</span></span>
+<span id="cb5-717"><a></a><span class="vs">  }</span></span>
+<span id="cb5-718"><a></a><span class="vs">  .ojs-cell input[type="number"],</span></span>
+<span id="cb5-719"><a></a><span class="vs">  .reveal input[type="number"] {</span></span>
+<span id="cb5-720"><a></a><span class="vs">    background: rgba(255,255,255,0.08);</span></span>
+<span id="cb5-721"><a></a><span class="vs">    color: rgba(255,255,255,0.9);</span></span>
+<span id="cb5-722"><a></a><span class="vs">    border: 1px solid rgba(255,255,255,0.2);</span></span>
+<span id="cb5-723"><a></a><span class="vs">    border-radius: 4px;</span></span>
+<span id="cb5-724"><a></a><span class="vs">  }</span></span>
+<span id="cb5-725"><a></a><span class="vs">  .ojs-cell label, .ojs-cell output,</span></span>
+<span id="cb5-726"><a></a><span class="vs">  .reveal form label, .reveal form output {</span></span>
+<span id="cb5-727"><a></a><span class="vs">    color: rgba(255,255,255,0.85) !important;</span></span>
+<span id="cb5-728"><a></a><span class="vs">  }</span></span>
+<span id="cb5-729"><a></a><span class="vs">  .reveal .ojs-cell {</span></span>
+<span id="cb5-730"><a></a><span class="vs">    display: flex;</span></span>
+<span id="cb5-731"><a></a><span class="vs">    flex-direction: column;</span></span>
+<span id="cb5-732"><a></a><span class="vs">    align-items: center;</span></span>
+<span id="cb5-733"><a></a><span class="vs">  }</span></span>
+<span id="cb5-734"><a></a><span class="vs">&lt;/style&gt;`</span></span>
+<span id="cb5-735"><a></a></span>
+<span id="cb5-736"><a></a>viewof r_ee <span class="op">=</span> Inputs<span class="op">.</span><span class="fu">range</span>([<span class="dv">0</span><span class="op">,</span> <span class="dv">32</span>]<span class="op">,</span> {<span class="dt">step</span><span class="op">:</span> <span class="fl">0.01</span><span class="op">,</span> <span class="dt">value</span><span class="op">:</span> <span class="fl">1.0</span><span class="op">,</span> <span class="dt">label</span><span class="op">:</span> <span class="st">"scale r"</span>})</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</details>
+<div class="cell-output cell-output-display">
+<div>
+<div id="ojs-cell-5-1" data-nodetype="declaration">
+
+</div>
+</div>
+</div>
+<div class="cell-output cell-output-display">
+<div>
+<div id="ojs-cell-5-2" data-nodetype="declaration">
+
+</div>
+</div>
+</div>
+<div class="cell-output cell-output-display">
+<div>
+<div id="ojs-cell-5-3" data-nodetype="declaration">
+
+</div>
+</div>
+</div>
+<div class="cell-output cell-output-display">
+<div>
+<div id="ojs-cell-5-4" data-nodetype="declaration">
+
+</div>
+</div>
+</div>
+<div class="cell-output cell-output-display">
+<div>
+<div id="ojs-cell-5-5" data-nodetype="declaration">
+
+</div>
+</div>
+</div>
+</div>
+<div class="cell">
+<details class="code-fold hidden">
+<summary>Code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code hidden" id="cb6" data-startfrom="744" data-source-offset="-95"><pre class="sourceCode numberSource js number-lines code-with-copy"><code class="sourceCode javascript" style="counter-reset: source-line 743;"><span id="cb6-744"><a></a><span class="kw">function</span> <span class="fu">k_ee</span>(x<span class="op">,</span> y) {</span>
+<span id="cb6-745"><a></a>  <span class="kw">const</span> dx <span class="op">=</span> x[<span class="dv">0</span>] <span class="op">-</span> y[<span class="dv">0</span>]<span class="op">,</span> dy <span class="op">=</span> x[<span class="dv">1</span>] <span class="op">-</span> y[<span class="dv">1</span>]<span class="op">;</span></span>
+<span id="cb6-746"><a></a>  <span class="kw">const</span> dist2 <span class="op">=</span> dx<span class="op">*</span>dx <span class="op">+</span> dy<span class="op">*</span>dy<span class="op">;</span></span>
+<span id="cb6-747"><a></a>  <span class="cf">return</span> <span class="bu">Math</span><span class="op">.</span><span class="fu">exp</span>(<span class="op">-</span>(<span class="dv">1</span> <span class="op">-</span> <span class="bu">Math</span><span class="op">.</span><span class="fu">exp</span>(<span class="op">-</span>dist2)))<span class="op">;</span></span>
+<span id="cb6-748"><a></a>}</span>
+<span id="cb6-749"><a></a></span>
+<span id="cb6-750"><a></a><span class="kw">function</span> <span class="fu">gram_ee</span>(XA<span class="op">,</span> XB) {</span>
+<span id="cb6-751"><a></a>  <span class="kw">const</span> nA <span class="op">=</span> XA<span class="op">.</span><span class="at">length</span><span class="op">,</span> nB <span class="op">=</span> XB<span class="op">.</span><span class="at">length</span><span class="op">;</span></span>
+<span id="cb6-752"><a></a>  <span class="kw">const</span> K <span class="op">=</span> <span class="bu">Array</span><span class="op">.</span><span class="fu">from</span>({<span class="dt">length</span><span class="op">:</span> nA}<span class="op">,</span> () <span class="kw">=&gt;</span> <span class="bu">Array</span>(nB)<span class="op">.</span><span class="fu">fill</span>(<span class="dv">0</span>))<span class="op">;</span></span>
+<span id="cb6-753"><a></a>  <span class="cf">for</span> (<span class="kw">let</span> i <span class="op">=</span> <span class="dv">0</span><span class="op">;</span> i <span class="op">&lt;</span> nA<span class="op">;</span> i<span class="op">++</span>)</span>
+<span id="cb6-754"><a></a>    <span class="cf">for</span> (<span class="kw">let</span> j <span class="op">=</span> <span class="dv">0</span><span class="op">;</span> j <span class="op">&lt;</span> nB<span class="op">;</span> j<span class="op">++</span>)</span>
+<span id="cb6-755"><a></a>      K[i][j] <span class="op">=</span> <span class="fu">k_ee</span>(XA[i]<span class="op">,</span> XB[j])<span class="op">;</span></span>
+<span id="cb6-756"><a></a>  <span class="cf">return</span> K<span class="op">;</span></span>
+<span id="cb6-757"><a></a>}</span>
+<span id="cb6-758"><a></a></span>
+<span id="cb6-759"><a></a><span class="kw">function</span> <span class="fu">cholesky_ee</span>(A) {</span>
+<span id="cb6-760"><a></a>  <span class="kw">const</span> m <span class="op">=</span> A<span class="op">.</span><span class="at">length</span><span class="op">;</span></span>
+<span id="cb6-761"><a></a>  <span class="kw">const</span> L <span class="op">=</span> <span class="bu">Array</span><span class="op">.</span><span class="fu">from</span>({<span class="dt">length</span><span class="op">:</span> m}<span class="op">,</span> () <span class="kw">=&gt;</span> <span class="bu">Array</span>(m)<span class="op">.</span><span class="fu">fill</span>(<span class="dv">0</span>))<span class="op">;</span></span>
+<span id="cb6-762"><a></a>  <span class="cf">for</span> (<span class="kw">let</span> i <span class="op">=</span> <span class="dv">0</span><span class="op">;</span> i <span class="op">&lt;</span> m<span class="op">;</span> i<span class="op">++</span>) {</span>
+<span id="cb6-763"><a></a>    <span class="cf">for</span> (<span class="kw">let</span> j <span class="op">=</span> <span class="dv">0</span><span class="op">;</span> j <span class="op">&lt;=</span> i<span class="op">;</span> j<span class="op">++</span>) {</span>
+<span id="cb6-764"><a></a>      <span class="kw">let</span> s <span class="op">=</span> A[i][j]<span class="op">;</span></span>
+<span id="cb6-765"><a></a>      <span class="cf">for</span> (<span class="kw">let</span> p <span class="op">=</span> <span class="dv">0</span><span class="op">;</span> p <span class="op">&lt;</span> j<span class="op">;</span> p<span class="op">++</span>) s <span class="op">-=</span> L[i][p] <span class="op">*</span> L[j][p]<span class="op">;</span></span>
+<span id="cb6-766"><a></a>      L[i][j] <span class="op">=</span> (i <span class="op">===</span> j) <span class="op">?</span> <span class="bu">Math</span><span class="op">.</span><span class="fu">sqrt</span>(<span class="bu">Math</span><span class="op">.</span><span class="fu">max</span>(s<span class="op">,</span> <span class="fl">1e-14</span>)) <span class="op">:</span> s <span class="op">/</span> L[j][j]<span class="op">;</span></span>
+<span id="cb6-767"><a></a>    }</span>
+<span id="cb6-768"><a></a>  }</span>
+<span id="cb6-769"><a></a>  <span class="cf">return</span> L<span class="op">;</span></span>
+<span id="cb6-770"><a></a>}</span>
+<span id="cb6-771"><a></a></span>
+<span id="cb6-772"><a></a><span class="kw">function</span> <span class="fu">cholSolve_ee</span>(A<span class="op">,</span> b) {</span>
+<span id="cb6-773"><a></a>  <span class="kw">const</span> L <span class="op">=</span> <span class="fu">cholesky_ee</span>(A)<span class="op">,</span> m <span class="op">=</span> A<span class="op">.</span><span class="at">length</span><span class="op">;</span></span>
+<span id="cb6-774"><a></a>  <span class="kw">const</span> z <span class="op">=</span> <span class="bu">Array</span>(m)<span class="op">.</span><span class="fu">fill</span>(<span class="dv">0</span>)<span class="op">;</span></span>
+<span id="cb6-775"><a></a>  <span class="cf">for</span> (<span class="kw">let</span> i <span class="op">=</span> <span class="dv">0</span><span class="op">;</span> i <span class="op">&lt;</span> m<span class="op">;</span> i<span class="op">++</span>) {</span>
+<span id="cb6-776"><a></a>    <span class="kw">let</span> s <span class="op">=</span> b[i]<span class="op">;</span></span>
+<span id="cb6-777"><a></a>    <span class="cf">for</span> (<span class="kw">let</span> p <span class="op">=</span> <span class="dv">0</span><span class="op">;</span> p <span class="op">&lt;</span> i<span class="op">;</span> p<span class="op">++</span>) s <span class="op">-=</span> L[i][p] <span class="op">*</span> z[p]<span class="op">;</span></span>
+<span id="cb6-778"><a></a>    z[i] <span class="op">=</span> s <span class="op">/</span> L[i][i]<span class="op">;</span></span>
+<span id="cb6-779"><a></a>  }</span>
+<span id="cb6-780"><a></a>  <span class="kw">const</span> x <span class="op">=</span> <span class="bu">Array</span>(m)<span class="op">.</span><span class="fu">fill</span>(<span class="dv">0</span>)<span class="op">;</span></span>
+<span id="cb6-781"><a></a>  <span class="cf">for</span> (<span class="kw">let</span> i <span class="op">=</span> m <span class="op">-</span> <span class="dv">1</span><span class="op">;</span> i <span class="op">&gt;=</span> <span class="dv">0</span><span class="op">;</span> i<span class="op">--</span>) {</span>
+<span id="cb6-782"><a></a>    <span class="kw">let</span> s <span class="op">=</span> z[i]<span class="op">;</span></span>
+<span id="cb6-783"><a></a>    <span class="cf">for</span> (<span class="kw">let</span> p <span class="op">=</span> i <span class="op">+</span> <span class="dv">1</span><span class="op">;</span> p <span class="op">&lt;</span> m<span class="op">;</span> p<span class="op">++</span>) s <span class="op">-=</span> L[p][i] <span class="op">*</span> x[p]<span class="op">;</span></span>
+<span id="cb6-784"><a></a>    x[i] <span class="op">=</span> s <span class="op">/</span> L[i][i]<span class="op">;</span></span>
+<span id="cb6-785"><a></a>  }</span>
+<span id="cb6-786"><a></a>  <span class="cf">return</span> x<span class="op">;</span></span>
+<span id="cb6-787"><a></a>}</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</details>
+<div class="cell-output cell-output-display">
+<div>
+<div id="ojs-cell-6-1" data-nodetype="declaration">
+
+</div>
+</div>
+</div>
+<div class="cell-output cell-output-display">
+<div>
+<div id="ojs-cell-6-2" data-nodetype="declaration">
+
+</div>
+</div>
+</div>
+<div class="cell-output cell-output-display">
+<div>
+<div id="ojs-cell-6-3" data-nodetype="declaration">
+
+</div>
+</div>
+</div>
+<div class="cell-output cell-output-display">
+<div>
+<div id="ojs-cell-6-4" data-nodetype="declaration">
+
+</div>
+</div>
+</div>
+</div>
+<div class="cell">
+<details class="code-fold hidden">
+<summary>Code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code hidden" id="cb7" data-startfrom="793" data-source-offset="-54"><pre class="sourceCode numberSource js number-lines code-with-copy"><code class="sourceCode javascript" style="counter-reset: source-line 792;"><span id="cb7-793"><a></a>origin_ee <span class="op">=</span> [<span class="dv">0</span><span class="op">,</span> <span class="dv">0</span>]</span>
+<span id="cb7-794"><a></a>rX_ee <span class="op">=</span> X_ee<span class="op">.</span><span class="fu">map</span>(([x1<span class="op">,</span> x2]) <span class="kw">=&gt;</span> [r_ee <span class="op">*</span> x1<span class="op">,</span> r_ee <span class="op">*</span> x2])</span>
+<span id="cb7-795"><a></a></span>
+<span id="cb7-796"><a></a>posteriorResult_ee <span class="op">=</span> {</span>
+<span id="cb7-797"><a></a>  <span class="kw">const</span> Krr <span class="op">=</span> <span class="fu">gram_ee</span>(rX_ee<span class="op">,</span> rX_ee)<span class="op">;</span></span>
+<span id="cb7-798"><a></a>  <span class="cf">for</span> (<span class="kw">let</span> i <span class="op">=</span> <span class="dv">0</span><span class="op">;</span> i <span class="op">&lt;</span> n_ee<span class="op">;</span> i<span class="op">++</span>) Krr[i][i] <span class="op">+=</span> lambda_ee<span class="op">;</span></span>
+<span id="cb7-799"><a></a>  <span class="kw">const</span> a <span class="op">=</span> rX_ee<span class="op">.</span><span class="fu">map</span>(xi <span class="kw">=&gt;</span> <span class="fu">k_ee</span>(xi<span class="op">,</span> origin_ee))<span class="op">;</span></span>
+<span id="cb7-800"><a></a>  <span class="kw">const</span> u <span class="op">=</span> <span class="fu">cholSolve_ee</span>(Krr<span class="op">,</span> a)<span class="op">;</span></span>
+<span id="cb7-801"><a></a>  <span class="kw">const</span> g <span class="op">=</span> a<span class="op">.</span><span class="fu">reduce</span>((acc<span class="op">,</span> ai<span class="op">,</span> i) <span class="kw">=&gt;</span> acc <span class="op">+</span> ai <span class="op">*</span> u[i]<span class="op">,</span> <span class="dv">0</span>)<span class="op">;</span></span>
+<span id="cb7-802"><a></a>  <span class="cf">return</span> {g<span class="op">,</span> <span class="dt">sigma2</span><span class="op">:</span> <span class="fu">k_ee</span>(origin_ee<span class="op">,</span> origin_ee) <span class="op">-</span> g}<span class="op">;</span></span>
+<span id="cb7-803"><a></a>}</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</details>
+<div class="cell-output cell-output-display">
+<div>
+<div id="ojs-cell-7-1" data-nodetype="declaration">
+
+</div>
+</div>
+</div>
+<div class="cell-output cell-output-display">
+<div>
+<div id="ojs-cell-7-2" data-nodetype="declaration">
+
+</div>
+</div>
+</div>
+<div class="cell-output cell-output-display">
+<div>
+<div id="ojs-cell-7-3" data-nodetype="declaration">
+
+</div>
+</div>
+</div>
+</div>
+<div class="cell">
+<details class="code-fold hidden">
+<summary>Code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code hidden" id="cb8" data-startfrom="809" data-source-offset="-47"><pre class="sourceCode numberSource js number-lines code-with-copy"><code class="sourceCode javascript" style="counter-reset: source-line 808;"><span id="cb8-809"><a></a>axisLim_ee <span class="op">=</span> <span class="dv">36</span></span>
+<span id="cb8-810"><a></a>darkStyle_ee <span class="op">=</span> <span class="st">"background:transparent; color:rgba(255,255,255,0.82); font-size:13px;"</span></span>
+<span id="cb8-811"><a></a></span>
+<span id="cb8-812"><a></a>curve_ee <span class="op">=</span> {</span>
+<span id="cb8-813"><a></a>  <span class="kw">function</span> <span class="fu">sigma2At</span>(rv) {</span>
+<span id="cb8-814"><a></a>    <span class="kw">const</span> sX <span class="op">=</span> X_ee<span class="op">.</span><span class="fu">map</span>(([x1<span class="op">,</span> x2]) <span class="kw">=&gt;</span> [rv <span class="op">*</span> x1<span class="op">,</span> rv <span class="op">*</span> x2])<span class="op">;</span></span>
+<span id="cb8-815"><a></a>    <span class="kw">const</span> A <span class="op">=</span> <span class="fu">gram_ee</span>(sX<span class="op">,</span> sX)<span class="op">;</span></span>
+<span id="cb8-816"><a></a>    <span class="cf">for</span> (<span class="kw">let</span> i <span class="op">=</span> <span class="dv">0</span><span class="op">;</span> i <span class="op">&lt;</span> n_ee<span class="op">;</span> i<span class="op">++</span>) A[i][i] <span class="op">+=</span> lambda_ee<span class="op">;</span></span>
+<span id="cb8-817"><a></a>    <span class="kw">const</span> av <span class="op">=</span> sX<span class="op">.</span><span class="fu">map</span>(xi <span class="kw">=&gt;</span> <span class="fu">k_ee</span>(xi<span class="op">,</span> origin_ee))<span class="op">;</span></span>
+<span id="cb8-818"><a></a>    <span class="kw">const</span> uv <span class="op">=</span> <span class="fu">cholSolve_ee</span>(A<span class="op">,</span> av)<span class="op">;</span></span>
+<span id="cb8-819"><a></a>    <span class="kw">const</span> gv <span class="op">=</span> av<span class="op">.</span><span class="fu">reduce</span>((acc<span class="op">,</span> ai<span class="op">,</span> i) <span class="kw">=&gt;</span> acc <span class="op">+</span> ai <span class="op">*</span> uv[i]<span class="op">,</span> <span class="dv">0</span>)<span class="op">;</span></span>
+<span id="cb8-820"><a></a>    <span class="cf">return</span> <span class="fu">k_ee</span>(origin_ee<span class="op">,</span> origin_ee) <span class="op">-</span> gv<span class="op">;</span></span>
+<span id="cb8-821"><a></a>  }</span>
+<span id="cb8-822"><a></a>  <span class="cf">return</span> <span class="bu">Array</span><span class="op">.</span><span class="fu">from</span>({<span class="dt">length</span><span class="op">:</span> <span class="dv">201</span>}<span class="op">,</span> (_<span class="op">,</span> i) <span class="kw">=&gt;</span> {</span>
+<span id="cb8-823"><a></a>    <span class="kw">const</span> rv <span class="op">=</span> i <span class="op">*</span> (<span class="dv">32</span> <span class="op">/</span> <span class="dv">200</span>)<span class="op">;</span></span>
+<span id="cb8-824"><a></a>    <span class="cf">return</span> {<span class="dt">r</span><span class="op">:</span> rv<span class="op">,</span> <span class="dt">sigma2</span><span class="op">:</span> <span class="fu">sigma2At</span>(rv)}<span class="op">;</span></span>
+<span id="cb8-825"><a></a>  })<span class="op">;</span></span>
+<span id="cb8-826"><a></a>}</span>
+<span id="cb8-827"><a></a></span>
+<span id="cb8-828"><a></a>leftPlot_ee <span class="op">=</span> Plot<span class="op">.</span><span class="fu">plot</span>({</span>
+<span id="cb8-829"><a></a>  <span class="dt">width</span><span class="op">:</span> <span class="dv">380</span><span class="op">,</span></span>
+<span id="cb8-830"><a></a>  <span class="dt">height</span><span class="op">:</span> <span class="dv">340</span><span class="op">,</span></span>
+<span id="cb8-831"><a></a>  <span class="dt">style</span><span class="op">:</span> darkStyle_ee<span class="op">,</span></span>
+<span id="cb8-832"><a></a>  <span class="dt">x</span><span class="op">:</span> {<span class="dt">label</span><span class="op">:</span> <span class="st">"x₁"</span><span class="op">,</span> <span class="dt">domain</span><span class="op">:</span> [<span class="op">-</span>axisLim_ee<span class="op">,</span> axisLim_ee]}<span class="op">,</span></span>
+<span id="cb8-833"><a></a>  <span class="dt">y</span><span class="op">:</span> {<span class="dt">label</span><span class="op">:</span> <span class="st">"x₂"</span><span class="op">,</span> <span class="dt">domain</span><span class="op">:</span> [<span class="op">-</span>axisLim_ee<span class="op">,</span> axisLim_ee]}<span class="op">,</span></span>
+<span id="cb8-834"><a></a>  <span class="dt">marks</span><span class="op">:</span> [</span>
+<span id="cb8-835"><a></a>    Plot<span class="op">.</span><span class="fu">dot</span>(rX_ee<span class="op">,</span> {</span>
+<span id="cb8-836"><a></a>      <span class="dt">x</span><span class="op">:</span> d <span class="kw">=&gt;</span> d[<span class="dv">0</span>]<span class="op">,</span> <span class="dt">y</span><span class="op">:</span> d <span class="kw">=&gt;</span> d[<span class="dv">1</span>]<span class="op">,</span></span>
+<span id="cb8-837"><a></a>      <span class="dt">fill</span><span class="op">:</span> <span class="st">"#93c5fd"</span><span class="op">,</span> <span class="dt">r</span><span class="op">:</span> <span class="dv">4</span><span class="op">,</span> <span class="dt">opacity</span><span class="op">:</span> <span class="fl">0.9</span></span>
+<span id="cb8-838"><a></a>    })<span class="op">,</span></span>
+<span id="cb8-839"><a></a>    Plot<span class="op">.</span><span class="fu">dot</span>([[<span class="dv">0</span><span class="op">,</span> <span class="dv">0</span>]]<span class="op">,</span> {</span>
+<span id="cb8-840"><a></a>      <span class="dt">x</span><span class="op">:</span> d <span class="kw">=&gt;</span> d[<span class="dv">0</span>]<span class="op">,</span> <span class="dt">y</span><span class="op">:</span> d <span class="kw">=&gt;</span> d[<span class="dv">1</span>]<span class="op">,</span></span>
+<span id="cb8-841"><a></a>      <span class="dt">stroke</span><span class="op">:</span> <span class="st">"#ee4558"</span><span class="op">,</span> <span class="dt">fill</span><span class="op">:</span> <span class="st">"none"</span><span class="op">,</span></span>
+<span id="cb8-842"><a></a>      <span class="dt">strokeWidth</span><span class="op">:</span> <span class="fl">2.5</span><span class="op">,</span> <span class="dt">r</span><span class="op">:</span> <span class="dv">7</span><span class="op">,</span> <span class="dt">symbol</span><span class="op">:</span> <span class="st">"cross"</span></span>
+<span id="cb8-843"><a></a>    })</span>
+<span id="cb8-844"><a></a>  ]</span>
+<span id="cb8-845"><a></a>})</span>
+<span id="cb8-846"><a></a></span>
+<span id="cb8-847"><a></a>rightPlot_ee <span class="op">=</span> Plot<span class="op">.</span><span class="fu">plot</span>({</span>
+<span id="cb8-848"><a></a>  <span class="dt">width</span><span class="op">:</span> <span class="dv">380</span><span class="op">,</span></span>
+<span id="cb8-849"><a></a>  <span class="dt">height</span><span class="op">:</span> <span class="dv">340</span><span class="op">,</span></span>
+<span id="cb8-850"><a></a>  <span class="dt">style</span><span class="op">:</span> darkStyle_ee<span class="op">,</span></span>
+<span id="cb8-851"><a></a>  <span class="dt">x</span><span class="op">:</span> {<span class="dt">label</span><span class="op">:</span> <span class="st">"scale r"</span><span class="op">,</span> <span class="dt">domain</span><span class="op">:</span> [<span class="dv">0</span><span class="op">,</span> <span class="dv">32</span>]}<span class="op">,</span></span>
+<span id="cb8-852"><a></a>  <span class="dt">y</span><span class="op">:</span> {<span class="dt">label</span><span class="op">:</span> <span class="st">"σ²(0; rX)"</span><span class="op">,</span> <span class="dt">domain</span><span class="op">:</span> [<span class="dv">0</span><span class="op">,</span> <span class="fl">1.05</span>]}<span class="op">,</span></span>
+<span id="cb8-853"><a></a>  <span class="dt">marks</span><span class="op">:</span> [</span>
+<span id="cb8-854"><a></a>    Plot<span class="op">.</span><span class="fu">ruleY</span>([<span class="dv">0</span>]<span class="op">,</span> {<span class="dt">stroke</span><span class="op">:</span> <span class="st">"rgba(255,255,255,0.15)"</span>})<span class="op">,</span></span>
+<span id="cb8-855"><a></a>    Plot<span class="op">.</span><span class="fu">line</span>(curve_ee<span class="op">,</span> {<span class="dt">x</span><span class="op">:</span> <span class="st">"r"</span><span class="op">,</span> <span class="dt">y</span><span class="op">:</span> <span class="st">"sigma2"</span><span class="op">,</span> <span class="dt">stroke</span><span class="op">:</span> <span class="st">"#93c5fd"</span><span class="op">,</span> <span class="dt">strokeWidth</span><span class="op">:</span> <span class="dv">2</span>})<span class="op">,</span></span>
+<span id="cb8-856"><a></a>    Plot<span class="op">.</span><span class="fu">dot</span>([{<span class="dt">r</span><span class="op">:</span> <span class="op">+</span>r_ee<span class="op">,</span> <span class="dt">sigma2</span><span class="op">:</span> posteriorResult_ee<span class="op">.</span><span class="at">sigma2</span>}]<span class="op">,</span> {</span>
+<span id="cb8-857"><a></a>      <span class="dt">x</span><span class="op">:</span> <span class="st">"r"</span><span class="op">,</span> <span class="dt">y</span><span class="op">:</span> <span class="st">"sigma2"</span><span class="op">,</span> <span class="dt">r</span><span class="op">:</span> <span class="dv">6</span><span class="op">,</span> <span class="dt">fill</span><span class="op">:</span> <span class="st">"#ee4558"</span></span>
+<span id="cb8-858"><a></a>    })</span>
+<span id="cb8-859"><a></a>  ]</span>
+<span id="cb8-860"><a></a>})</span>
+<span id="cb8-861"><a></a></span>
+<span id="cb8-862"><a></a><span class="fu">html</span><span class="vs">`&lt;div style="display:flex; gap:24px; align-items:flex-start; flex-wrap:wrap; justify-content:center;"&gt;</span></span>
+<span id="cb8-863"><a></a><span class="vs">  &lt;div style="text-align:center;"&gt;</span></span>
+<span id="cb8-864"><a></a><span class="vs">    &lt;div style="font-weight:600; margin-bottom:6px; color:rgba(255,255,255,0.85);"&gt;</span></span>
+<span id="cb8-865"><a></a><span class="vs">      Scaled locations &lt;i&gt;r&lt;/i&gt;&lt;b&gt;X&lt;/b&gt; in ℝ²</span></span>
+<span id="cb8-866"><a></a><span class="vs">    &lt;/div&gt;</span></span>
+<span id="cb8-867"><a></a><span class="vs">    </span><span class="sc">${</span>leftPlot_ee<span class="sc">}</span></span>
+<span id="cb8-868"><a></a><span class="vs">  &lt;/div&gt;</span></span>
+<span id="cb8-869"><a></a><span class="vs">  &lt;div style="text-align:center;"&gt;</span></span>
+<span id="cb8-870"><a></a><span class="vs">    &lt;div style="font-weight:600; margin-bottom:6px; color:rgba(255,255,255,0.85);"&gt;</span></span>
+<span id="cb8-871"><a></a><span class="vs">      Posterior variance at the origin</span></span>
+<span id="cb8-872"><a></a><span class="vs">    &lt;/div&gt;</span></span>
+<span id="cb8-873"><a></a><span class="vs">    </span><span class="sc">${</span>rightPlot_ee<span class="sc">}</span></span>
+<span id="cb8-874"><a></a><span class="vs">  &lt;/div&gt;</span></span>
+<span id="cb8-875"><a></a><span class="vs">&lt;/div&gt;`</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</details>
+<div class="cell-output cell-output-display">
+<div>
+<div id="ojs-cell-8-1" data-nodetype="declaration">
+
+</div>
+</div>
+</div>
+<div class="cell-output cell-output-display">
+<div>
+<div id="ojs-cell-8-2" data-nodetype="declaration">
+
+</div>
+</div>
+</div>
+<div class="cell-output cell-output-display">
+<div>
+<div id="ojs-cell-8-3" data-nodetype="declaration">
+
+</div>
+</div>
+</div>
+<div class="cell-output cell-output-display">
+<div>
+<div id="ojs-cell-8-4" data-nodetype="declaration">
+
+</div>
+</div>
+</div>
+<div class="cell-output cell-output-display">
+<div>
+<div id="ojs-cell-8-5" data-nodetype="declaration">
+
+</div>
+</div>
+</div>
+<div class="cell-output cell-output-display">
+<div>
+<div id="ojs-cell-8-6" data-nodetype="expression">
+
+</div>
+</div>
+</div>
+</div>
+
+
+</section></section>
+    </div>
+  <div class="quarto-auto-generated-content" style="display: none;">
+<div class="footer footer-default">
+
+</div>
+</div></div>
+
+  <script>window.backupDefine = window.define; window.define = undefined;</script>
+  <script src="../site_libs/revealjs/dist/reveal.js"></script>
+  <!-- reveal.js plugins -->
+  <script src="../site_libs/revealjs/plugin/quarto-line-highlight/line-highlight.js"></script>
+  <script src="../site_libs/revealjs/plugin/pdf-export/pdfexport.js"></script>
+  <script src="../site_libs/revealjs/plugin/reveal-menu/menu.js"></script>
+  <script src="../site_libs/revealjs/plugin/reveal-menu/quarto-menu.js"></script>
+  <script src="../site_libs/revealjs/plugin/quarto-support/support.js"></script>
+  
+
+  <script src="../site_libs/revealjs/plugin/notes/notes.js"></script>
+  <script src="../site_libs/revealjs/plugin/search/search.js"></script>
+  <script src="../site_libs/revealjs/plugin/zoom/zoom.js"></script>
+  <script>window.define = window.backupDefine; window.backupDefine = undefined;</script>
+
+  <script>
+
+      // Full list of configuration options available at:
+      // https://revealjs.com/config/
+      Reveal.initialize({
+'controlsAuto': true,
+'previewLinksAuto': false,
+'pdfSeparateFragments': false,
+'autoAnimateEasing': "ease",
+'autoAnimateDuration': 1,
+'autoAnimateUnmatched': true,
+'jumpToSlide': true,
+'menu': {"side":"left","useTextContentForMissingTitles":true,"markers":false,"loadIcons":false,"custom":[{"title":"Tools","icon":"<i class=\"fas fa-gear\"></i>","content":"<ul class=\"slide-menu-items\">\n<li class=\"slide-tool-item active\" data-item=\"0\"><a href=\"#\" onclick=\"RevealMenuToolHandlers.fullscreen(event)\"><kbd>f</kbd> Fullscreen</a></li>\n<li class=\"slide-tool-item\" data-item=\"1\"><a href=\"#\" onclick=\"RevealMenuToolHandlers.speakerMode(event)\"><kbd>s</kbd> Speaker View</a></li>\n<li class=\"slide-tool-item\" data-item=\"2\"><a href=\"#\" onclick=\"RevealMenuToolHandlers.overview(event)\"><kbd>o</kbd> Slide Overview</a></li>\n<li class=\"slide-tool-item\" data-item=\"3\"><a href=\"#\" onclick=\"RevealMenuToolHandlers.togglePdfExport(event)\"><kbd>e</kbd> PDF Export Mode</a></li>\n<li class=\"slide-tool-item\" data-item=\"4\"><a href=\"#\" onclick=\"RevealMenuToolHandlers.toggleScrollView(event)\"><kbd>r</kbd> Scroll View Mode</a></li>\n<li class=\"slide-tool-item\" data-item=\"5\"><a href=\"#\" onclick=\"RevealMenuToolHandlers.keyboardHelp(event)\"><kbd>?</kbd> Keyboard Help</a></li>\n</ul>"}],"openButton":true},
+'smaller': false,
+ 
+        // Display controls in the bottom right corner
+        controls: false,
+
+        // Help the user learn the controls by providing hints, for example by
+        // bouncing the down arrow when they first encounter a vertical slide
+        controlsTutorial: true,
+
+        // Determines where controls appear, "edges" or "bottom-right"
+        controlsLayout: 'edges',
+
+        // Visibility rule for backwards navigation arrows; "faded", "hidden"
+        // or "visible"
+        controlsBackArrows: 'faded',
+
+        // Display a presentation progress bar
+        progress: true,
+
+        // Display the page number of the current slide
+        slideNumber: 'h.v',
+
+        // 'all', 'print', or 'speaker'
+        showSlideNumber: 'all',
+
+        // Add the current slide number to the URL hash so that reloading the
+        // page/copying the URL will return you to the same slide
+        hash: true,
+
+        // Start with 1 for the hash rather than 0
+        hashOneBasedIndex: false,
+
+        // Flags if we should monitor the hash and change slides accordingly
+        respondToHashChanges: true,
+
+        // Push each slide change to the browser history
+        history: true,
+
+        // Enable keyboard shortcuts for navigation
+        keyboard: true,
+
+        // Enable the slide overview mode
+        overview: true,
+
+        // Disables the default reveal.js slide layout (scaling and centering)
+        // so that you can use custom CSS layout
+        disableLayout: false,
+
+        // Vertical centering of slides
+        center: false,
+
+        // Enables touch navigation on devices with touch input
+        touch: true,
+
+        // Loop the presentation
+        loop: false,
+
+        // Change the presentation direction to be RTL
+        rtl: false,
+
+        // see https://revealjs.com/vertical-slides/#navigation-mode
+        navigationMode: 'default',
+
+        // Randomizes the order of slides each time the presentation loads
+        shuffle: false,
+
+        // Turns fragments on and off globally
+        fragments: true,
+
+        // Flags whether to include the current fragment in the URL,
+        // so that reloading brings you to the same fragment position
+        fragmentInURL: false,
+
+        // Flags if the presentation is running in an embedded mode,
+        // i.e. contained within a limited portion of the screen
+        embedded: false,
+
+        // Flags if we should show a help overlay when the questionmark
+        // key is pressed
+        help: true,
+
+        // Flags if it should be possible to pause the presentation (blackout)
+        pause: true,
+
+        // Flags if speaker notes should be visible to all viewers
+        showNotes: false,
+
+        // Global override for autoplaying embedded media (null/true/false)
+        autoPlayMedia: null,
+
+        // Global override for preloading lazy-loaded iframes (null/true/false)
+        preloadIframes: null,
+
+        // Number of milliseconds between automatically proceeding to the
+        // next slide, disabled when set to 0, this value can be overwritten
+        // by using a data-autoslide attribute on your slides
+        autoSlide: 0,
+
+        // Stop auto-sliding after user input
+        autoSlideStoppable: true,
+
+        // Use this method for navigation when auto-sliding
+        autoSlideMethod: null,
+
+        // Specify the average time in seconds that you think you will spend
+        // presenting each slide. This is used to show a pacing timer in the
+        // speaker view
+        defaultTiming: null,
+
+        // Enable slide navigation via mouse wheel
+        mouseWheel: false,
+
+        // The display mode that will be used to show slides
+        display: 'block',
+
+        // Hide cursor if inactive
+        hideInactiveCursor: true,
+
+        // Time before the cursor is hidden (in ms)
+        hideCursorTime: 5000,
+
+        // Opens links in an iframe preview overlay
+        previewLinks: false,
+
+        // Transition style (none/fade/slide/convex/concave/zoom)
+        transition: 'fade',
+
+        // Transition speed (default/fast/slow)
+        transitionSpeed: 'default',
+
+        // Transition style for full page slide backgrounds
+        // (none/fade/slide/convex/concave/zoom)
+        backgroundTransition: 'none',
+
+        // Number of slides away from the current that are visible
+        viewDistance: 3,
+
+        // Number of slides away from the current that are visible on mobile
+        // devices. It is advisable to set this to a lower number than
+        // viewDistance in order to save resources.
+        mobileViewDistance: 2,
+
+        // The "normal" size of the presentation, aspect ratio will be preserved
+        // when the presentation is scaled to fit different resolutions. Can be
+        // specified using percentage units.
+        width: 1050,
+
+        height: 700,
+
+        // Factor of the display size that should remain empty around the content
+        margin: 0.2,
+
+        // reveal.js plugins
+        plugins: [QuartoLineHighlight, PdfExport, RevealMenu, QuartoSupport,
+
+          RevealNotes,
+          RevealSearch,
+          RevealZoom
+        ]
+      });
+    </script>
+    <script type="ojs-module-contents">
+    eyJjb250ZW50cyI6W3sibWV0aG9kTmFtZSI6ImludGVycHJldCIsImNlbGxOYW1lIjoib2pzLWNlbGwtMSIsImlubGluZSI6ZmFsc2UsInNvdXJjZSI6Ii8vIC0tLSBCbG9jayAxOiBDb250cm9scyArIGRhdGEgLS0tXG5cbm4gPSAyMFxuXG5YID0ge1xuICBmdW5jdGlvbiBtdWxiZXJyeTMyKGEpIHtcbiAgICByZXR1cm4gZnVuY3Rpb24oKSB7XG4gICAgICBhIHw9IDA7IGEgPSBhICsgMHg2RDJCNzlGNSB8IDA7XG4gICAgICB2YXIgdCA9IE1hdGguaW11bChhIF4gYSA+Pj4gMTUsIDEgfCBhKTtcbiAgICAgIHQgPSB0ICsgTWF0aC5pbXVsKHQgXiB0ID4+PiA3LCA2MSB8IHQpIF4gdDtcbiAgICAgIHJldHVybiAoKHQgXiB0ID4+PiAxNCkgPj4+IDApIC8gNDI5NDk2NzI5NjtcbiAgICB9XG4gIH1cbiAgY29uc3Qgcm5nID0gbXVsYmVycnkzMig0Mik7XG4gIHJldHVybiBBcnJheS5mcm9tKHtsZW5ndGg6IG59LCAoXywgaSkgPT4ge1xuICAgIGNvbnN0IHQgPSAoMiAqIE1hdGguUEkgKiBpKSAvIG47XG4gICAgcmV0dXJuIFsxLjIgKiBNYXRoLmNvcyh0KSArIDAuMjUgKiAocm5nKCkgLSAwLjUpLFxuICAgICAgICAgICAgMS4yICogTWF0aC5zaW4odCkgKyAwLjI1ICogKHJuZygpIC0gMC41KV07XG4gIH0pO1xufVxuXG5lbGwgPSAwLjdcbnNpZ21hRjIgPSAxLjBcbmxhbWJkYSA9IDFlLTNcblxuLy8gSW5qZWN0IHN0eWxlcyB0byBmaXggc2xpZGVyIGFjY2VudCBhbmQgcGxvdCB0ZXh0IG9uIGRhcmsgUmV2ZWFsIGJhY2tncm91bmRcbnRoZW1lU3R5bGUgPSBodG1sYDxzdHlsZT5cbiAgLm9qcy1jZWxsIGlucHV0W3R5cGU9XCJyYW5nZVwiXSxcbiAgLnJldmVhbCBpbnB1dFt0eXBlPVwicmFuZ2VcIl0ge1xuICAgIGFjY2VudC1jb2xvcjogdmFyKC0tYWNjZW50LCAjZWU0NTU4KTtcbiAgfVxuICAub2pzLWNlbGwgaW5wdXRbdHlwZT1cIm51bWJlclwiXSxcbiAgLnJldmVhbCBpbnB1dFt0eXBlPVwibnVtYmVyXCJdIHtcbiAgICBiYWNrZ3JvdW5kOiByZ2JhKDI1NSwyNTUsMjU1LDAuMDgpO1xuICAgIGNvbG9yOiByZ2JhKDI1NSwyNTUsMjU1LDAuOSk7XG4gICAgYm9yZGVyOiAxcHggc29saWQgcmdiYSgyNTUsMjU1LDI1NSwwLjIpO1xuICAgIGJvcmRlci1yYWRpdXM6IDRweDtcbiAgfVxuICAub2pzLWNlbGwgbGFiZWwsIC5vanMtY2VsbCBvdXRwdXQsXG4gIC5yZXZlYWwgZm9ybSBsYWJlbCwgLnJldmVhbCBmb3JtIG91dHB1dCB7XG4gICAgY29sb3I6IHJnYmEoMjU1LDI1NSwyNTUsMC44NSkgIWltcG9ydGFudDtcbiAgfVxuICAucmV2ZWFsIC5vanMtY2VsbCB7XG4gICAgZGlzcGxheTogZmxleDtcbiAgICBmbGV4LWRpcmVjdGlvbjogY29sdW1uO1xuICAgIGFsaWduLWl0ZW1zOiBjZW50ZXI7XG4gIH1cbjwvc3R5bGU+YFxuXG52aWV3b2YgciA9IElucHV0cy5yYW5nZShbMCwgMl0sIHtzdGVwOiAwLjAxLCB2YWx1ZTogMS4wLCBsYWJlbDogXCJzY2FsZSByXCJ9KVxuIn0seyJtZXRob2ROYW1lIjoiaW50ZXJwcmV0IiwiY2VsbE5hbWUiOiJvanMtY2VsbC0yIiwiaW5saW5lIjpmYWxzZSwic291cmNlIjoiLy8gLS0tIEJsb2NrIDI6IEtlcm5lbCArIGxpbmVhciBhbGdlYnJhIC0tLVxuXG5mdW5jdGlvbiBrKHgsIHkpIHtcbiAgY29uc3QgZHggPSB4WzBdIC0geVswXSwgZHkgPSB4WzFdIC0geVsxXTtcbiAgcmV0dXJuIHNpZ21hRjIgKiBNYXRoLmV4cCgtKGR4KmR4ICsgZHkqZHkpIC8gKDIgKiBlbGwgKiBlbGwpKTtcbn1cblxuZnVuY3Rpb24gZ3JhbShYQSwgWEIpIHtcbiAgY29uc3QgbkEgPSBYQS5sZW5ndGgsIG5CID0gWEIubGVuZ3RoO1xuICBjb25zdCBLID0gQXJyYXkuZnJvbSh7bGVuZ3RoOiBuQX0sICgpID0+IEFycmF5KG5CKS5maWxsKDApKTtcbiAgZm9yIChsZXQgaSA9IDA7IGkgPCBuQTsgaSsrKVxuICAgIGZvciAobGV0IGogPSAwOyBqIDwgbkI7IGorKylcbiAgICAgIEtbaV1bal0gPSBrKFhBW2ldLCBYQltqXSk7XG4gIHJldHVybiBLO1xufVxuXG5mdW5jdGlvbiBjaG9sZXNreShBKSB7XG4gIGNvbnN0IG0gPSBBLmxlbmd0aDtcbiAgY29uc3QgTCA9IEFycmF5LmZyb20oe2xlbmd0aDogbX0sICgpID0+IEFycmF5KG0pLmZpbGwoMCkpO1xuICBmb3IgKGxldCBpID0gMDsgaSA8IG07IGkrKykge1xuICAgIGZvciAobGV0IGogPSAwOyBqIDw9IGk7IGorKykge1xuICAgICAgbGV0IHMgPSBBW2ldW2pdO1xuICAgICAgZm9yIChsZXQgcCA9IDA7IHAgPCBqOyBwKyspIHMgLT0gTFtpXVtwXSAqIExbal1bcF07XG4gICAgICBMW2ldW2pdID0gKGkgPT09IGopID8gTWF0aC5zcXJ0KE1hdGgubWF4KHMsIDFlLTE0KSkgOiBzIC8gTFtqXVtqXTtcbiAgICB9XG4gIH1cbiAgcmV0dXJuIEw7XG59XG5cbmZ1bmN0aW9uIGNob2xTb2x2ZShBLCBiKSB7XG4gIGNvbnN0IEwgPSBjaG9sZXNreShBKSwgbSA9IEEubGVuZ3RoO1xuICBjb25zdCB6ID0gQXJyYXkobSkuZmlsbCgwKTtcbiAgZm9yIChsZXQgaSA9IDA7IGkgPCBtOyBpKyspIHtcbiAgICBsZXQgcyA9IGJbaV07XG4gICAgZm9yIChsZXQgcCA9IDA7IHAgPCBpOyBwKyspIHMgLT0gTFtpXVtwXSAqIHpbcF07XG4gICAgeltpXSA9IHMgLyBMW2ldW2ldO1xuICB9XG4gIGNvbnN0IHggPSBBcnJheShtKS5maWxsKDApO1xuICBmb3IgKGxldCBpID0gbSAtIDE7IGkgPj0gMDsgaS0tKSB7XG4gICAgbGV0IHMgPSB6W2ldO1xuICAgIGZvciAobGV0IHAgPSBpICsgMTsgcCA8IG07IHArKykgcyAtPSBMW3BdW2ldICogeFtwXTtcbiAgICB4W2ldID0gcyAvIExbaV1baV07XG4gIH1cbiAgcmV0dXJuIHg7XG59XG4ifSx7Im1ldGhvZE5hbWUiOiJpbnRlcnByZXQiLCJjZWxsTmFtZSI6Im9qcy1jZWxsLTMiLCJpbmxpbmUiOmZhbHNlLCJzb3VyY2UiOiIvLyAtLS0gQmxvY2sgMzogUG9zdGVyaW9yIHZhcmlhbmNlIGNvbXB1dGF0aW9uIC0tLVxuXG5vcmlnaW4gPSBbMCwgMF1cbnJYID0gWC5tYXAoKFt4MSwgeDJdKSA9PiBbciAqIHgxLCByICogeDJdKVxuXG5wb3N0ZXJpb3JSZXN1bHQgPSB7XG4gIGNvbnN0IEtyciA9IGdyYW0oclgsIHJYKTtcbiAgZm9yIChsZXQgaSA9IDA7IGkgPCBuOyBpKyspIEtycltpXVtpXSArPSBsYW1iZGE7XG4gIGNvbnN0IGEgPSByWC5tYXAoeGkgPT4gayh4aSwgb3JpZ2luKSk7XG4gIGNvbnN0IHUgPSBjaG9sU29sdmUoS3JyLCBhKTtcbiAgY29uc3QgZyA9IGEucmVkdWNlKChhY2MsIGFpLCBpKSA9PiBhY2MgKyBhaSAqIHVbaV0sIDApO1xuICByZXR1cm4ge2csIHNpZ21hMjogayhvcmlnaW4sIG9yaWdpbikgLSBnfTtcbn1cbiJ9LHsibWV0aG9kTmFtZSI6ImludGVycHJldCIsImNlbGxOYW1lIjoib2pzLWNlbGwtNCIsImlubGluZSI6ZmFsc2UsInNvdXJjZSI6Ii8vIC0tLSBCbG9jayA0OiBUd28tcGFuZWwgdmlzdWFsaXNhdGlvbiAoZGFyay10aGVtZSBhd2FyZSwgZml4ZWQgYXhlcykgLS0tXG5cbi8vIEZpeGVkIGF4aXMgZXh0ZW50OiBtYXggfGNvb3JkfCBhdCByPTIgaXMg4omIIDIgw5cgMS4zNSDiiYggMi43IOKGkiB1c2UgM1xuYXhpc0xpbSA9IDNcblxuLy8gRGFyay10aGVtZS1mcmllbmRseSBwbG90IHN0eWxlIHN0cmluZ1xuZGFya1N0eWxlID0gXCJiYWNrZ3JvdW5kOnRyYW5zcGFyZW50OyBjb2xvcjpyZ2JhKDI1NSwyNTUsMjU1LDAuODIpOyBmb250LXNpemU6MTNweDtcIlxuXG5jdXJ2ZSA9IHtcbiAgZnVuY3Rpb24gc2lnbWEyQXQocnYpIHtcbiAgICBjb25zdCBzWCA9IFgubWFwKChbeDEsIHgyXSkgPT4gW3J2ICogeDEsIHJ2ICogeDJdKTtcbiAgICBjb25zdCBBID0gZ3JhbShzWCwgc1gpO1xuICAgIGZvciAobGV0IGkgPSAwOyBpIDwgbjsgaSsrKSBBW2ldW2ldICs9IGxhbWJkYTtcbiAgICBjb25zdCBhdiA9IHNYLm1hcCh4aSA9PiBrKHhpLCBvcmlnaW4pKTtcbiAgICBjb25zdCB1diA9IGNob2xTb2x2ZShBLCBhdik7XG4gICAgY29uc3QgZ3YgPSBhdi5yZWR1Y2UoKGFjYywgYWksIGkpID0+IGFjYyArIGFpICogdXZbaV0sIDApO1xuICAgIHJldHVybiBrKG9yaWdpbiwgb3JpZ2luKSAtIGd2O1xuICB9XG4gIHJldHVybiBBcnJheS5mcm9tKHtsZW5ndGg6IDIwMX0sIChfLCBpKSA9PiB7XG4gICAgY29uc3QgcnYgPSBpICogKDIgLyAyMDApO1xuICAgIHJldHVybiB7cjogcnYsIHNpZ21hMjogc2lnbWEyQXQocnYpfTtcbiAgfSk7XG59XG5cbmxlZnRQbG90ID0gUGxvdC5wbG90KHtcbiAgd2lkdGg6IDM4MCxcbiAgaGVpZ2h0OiAzNDAsXG4gIHN0eWxlOiBkYXJrU3R5bGUsXG4gIHg6IHtsYWJlbDogXCJ44oKBXCIsIGRvbWFpbjogWy1heGlzTGltLCBheGlzTGltXX0sXG4gIHk6IHtsYWJlbDogXCJ44oKCXCIsIGRvbWFpbjogWy1heGlzTGltLCBheGlzTGltXX0sXG4gIG1hcmtzOiBbXG4gICAgUGxvdC5kb3QoclgsIHtcbiAgICAgIHg6IGQgPT4gZFswXSwgeTogZCA9PiBkWzFdLFxuICAgICAgZmlsbDogXCIjOTNjNWZkXCIsIHI6IDQsIG9wYWNpdHk6IDAuOVxuICAgIH0pLFxuICAgIFBsb3QuZG90KFtbMCwgMF1dLCB7XG4gICAgICB4OiBkID0+IGRbMF0sIHk6IGQgPT4gZFsxXSxcbiAgICAgIHN0cm9rZTogXCIjZWU0NTU4XCIsIGZpbGw6IFwibm9uZVwiLFxuICAgICAgc3Ryb2tlV2lkdGg6IDIuNSwgcjogNywgc3ltYm9sOiBcImNyb3NzXCJcbiAgICB9KVxuICBdXG59KVxuXG5yaWdodFBsb3QgPSBQbG90LnBsb3Qoe1xuICB3aWR0aDogMzgwLFxuICBoZWlnaHQ6IDM0MCxcbiAgc3R5bGU6IGRhcmtTdHlsZSxcbiAgeDoge2xhYmVsOiBcInNjYWxlIHJcIiwgZG9tYWluOiBbMCwgMl19LFxuICB5OiB7bGFiZWw6IFwiz4PCsigwOyByWClcIiwgZG9tYWluOiBbMCwgc2lnbWFGMiAqIDEuMDVdfSxcbiAgbWFya3M6IFtcbiAgICBQbG90LnJ1bGVZKFswXSwge3N0cm9rZTogXCJyZ2JhKDI1NSwyNTUsMjU1LDAuMTUpXCJ9KSxcbiAgICBQbG90LmxpbmUoY3VydmUsIHt4OiBcInJcIiwgeTogXCJzaWdtYTJcIiwgc3Ryb2tlOiBcIiM5M2M1ZmRcIiwgc3Ryb2tlV2lkdGg6IDJ9KSxcbiAgICBQbG90LmRvdChbe3I6ICtyLCBzaWdtYTI6IHBvc3RlcmlvclJlc3VsdC5zaWdtYTJ9XSwge1xuICAgICAgeDogXCJyXCIsIHk6IFwic2lnbWEyXCIsIHI6IDYsIGZpbGw6IFwiI2VlNDU1OFwiXG4gICAgfSlcbiAgXVxufSlcblxuaHRtbGA8ZGl2IHN0eWxlPVwiZGlzcGxheTpmbGV4OyBnYXA6MjRweDsgYWxpZ24taXRlbXM6ZmxleC1zdGFydDsgZmxleC13cmFwOndyYXA7IGp1c3RpZnktY29udGVudDpjZW50ZXI7XCI+XG4gIDxkaXYgc3R5bGU9XCJ0ZXh0LWFsaWduOmNlbnRlcjtcIj5cbiAgICA8ZGl2IHN0eWxlPVwiZm9udC13ZWlnaHQ6NjAwOyBtYXJnaW4tYm90dG9tOjZweDsgY29sb3I6cmdiYSgyNTUsMjU1LDI1NSwwLjg1KTtcIj5cbiAgICAgIFNjYWxlZCBsb2NhdGlvbnMgPGk+cjwvaT48Yj5YPC9iPiBpbiDihJ3CslxuICAgIDwvZGl2PlxuICAgICR7bGVmdFBsb3R9XG4gIDwvZGl2PlxuICA8ZGl2IHN0eWxlPVwidGV4dC1hbGlnbjpjZW50ZXI7XCI+XG4gICAgPGRpdiBzdHlsZT1cImZvbnQtd2VpZ2h0OjYwMDsgbWFyZ2luLWJvdHRvbTo2cHg7IGNvbG9yOnJnYmEoMjU1LDI1NSwyNTUsMC44NSk7XCI+XG4gICAgICBQb3N0ZXJpb3IgdmFyaWFuY2UgYXQgdGhlIG9yaWdpblxuICAgIDwvZGl2PlxuICAgICR7cmlnaHRQbG90fVxuICA8L2Rpdj5cbjwvZGl2PmBcbiJ9LHsibWV0aG9kTmFtZSI6ImludGVycHJldCIsImNlbGxOYW1lIjoib2pzLWNlbGwtNSIsImlubGluZSI6ZmFsc2UsInNvdXJjZSI6Ii8vIC0tLSBCbG9jayAxZWU6IENvbnRyb2xzICsgZGF0YSAtLS1cblxubl9lZSA9IDhcblxuWF9lZSA9IHtcbiAgZnVuY3Rpb24gbXVsYmVycnkzMihhKSB7XG4gICAgcmV0dXJuIGZ1bmN0aW9uKCkge1xuICAgICAgYSB8PSAwOyBhID0gYSArIDB4NkQyQjc5RjUgfCAwO1xuICAgICAgdmFyIHQgPSBNYXRoLmltdWwoYSBeIGEgPj4+IDE1LCAxIHwgYSk7XG4gICAgICB0ID0gdCArIE1hdGguaW11bCh0IF4gdCA+Pj4gNywgNjEgfCB0KSBeIHQ7XG4gICAgICByZXR1cm4gKCh0IF4gdCA+Pj4gMTQpID4+PiAwKSAvIDQyOTQ5NjcyOTY7XG4gICAgfVxuICB9XG4gIGNvbnN0IHJuZyA9IG11bGJlcnJ5MzIoNDIpO1xuICByZXR1cm4gQXJyYXkuZnJvbSh7bGVuZ3RoOiBuX2VlfSwgKF8sIGkpID0+IHtcbiAgICBjb25zdCB0ID0gKDIgKiBNYXRoLlBJICogaSkgLyBuX2VlO1xuICAgIHJldHVybiBbMS4yICogTWF0aC5jb3ModCkgKyAwLjI1ICogKHJuZygpIC0gMC41KSxcbiAgICAgICAgICAgIDEuMiAqIE1hdGguc2luKHQpICsgMC4yNSAqIChybmcoKSAtIDAuNSldO1xuICB9KTtcbn1cblxubGFtYmRhX2VlID0gMWUtM1xuXG50aGVtZVN0eWxlX2VlID0gaHRtbGA8c3R5bGU+XG4gIC5vanMtY2VsbCBpbnB1dFt0eXBlPVwicmFuZ2VcIl0sXG4gIC5yZXZlYWwgaW5wdXRbdHlwZT1cInJhbmdlXCJdIHtcbiAgICBhY2NlbnQtY29sb3I6IHZhcigtLWFjY2VudCwgI2VlNDU1OCk7XG4gIH1cbiAgLm9qcy1jZWxsIGlucHV0W3R5cGU9XCJudW1iZXJcIl0sXG4gIC5yZXZlYWwgaW5wdXRbdHlwZT1cIm51bWJlclwiXSB7XG4gICAgYmFja2dyb3VuZDogcmdiYSgyNTUsMjU1LDI1NSwwLjA4KTtcbiAgICBjb2xvcjogcmdiYSgyNTUsMjU1LDI1NSwwLjkpO1xuICAgIGJvcmRlcjogMXB4IHNvbGlkIHJnYmEoMjU1LDI1NSwyNTUsMC4yKTtcbiAgICBib3JkZXItcmFkaXVzOiA0cHg7XG4gIH1cbiAgLm9qcy1jZWxsIGxhYmVsLCAub2pzLWNlbGwgb3V0cHV0LFxuICAucmV2ZWFsIGZvcm0gbGFiZWwsIC5yZXZlYWwgZm9ybSBvdXRwdXQge1xuICAgIGNvbG9yOiByZ2JhKDI1NSwyNTUsMjU1LDAuODUpICFpbXBvcnRhbnQ7XG4gIH1cbiAgLnJldmVhbCAub2pzLWNlbGwge1xuICAgIGRpc3BsYXk6IGZsZXg7XG4gICAgZmxleC1kaXJlY3Rpb246IGNvbHVtbjtcbiAgICBhbGlnbi1pdGVtczogY2VudGVyO1xuICB9XG48L3N0eWxlPmBcblxudmlld29mIHJfZWUgPSBJbnB1dHMucmFuZ2UoWzAsIDMyXSwge3N0ZXA6IDAuMDEsIHZhbHVlOiAxLjAsIGxhYmVsOiBcInNjYWxlIHJcIn0pXG4ifSx7Im1ldGhvZE5hbWUiOiJpbnRlcnByZXQiLCJjZWxsTmFtZSI6Im9qcy1jZWxsLTYiLCJpbmxpbmUiOmZhbHNlLCJzb3VyY2UiOiJcbi8vIC0tLSBCbG9jayAyZWU6IEV4cC1FeHAga2VybmVsICsgbGluZWFyIGFsZ2VicmEgLS0tXG5cbi8vIGsoeCx5KSA9IGV4cCgtKDEgLSBleHAoLXx8eC15fHzCsikpKVxuZnVuY3Rpb24ga19lZSh4LCB5KSB7XG4gIGNvbnN0IGR4ID0geFswXSAtIHlbMF0sIGR5ID0geFsxXSAtIHlbMV07XG4gIGNvbnN0IGRpc3QyID0gZHgqZHggKyBkeSpkeTtcbiAgcmV0dXJuIE1hdGguZXhwKC0oMSAtIE1hdGguZXhwKC1kaXN0MikpKTtcbn1cblxuZnVuY3Rpb24gZ3JhbV9lZShYQSwgWEIpIHtcbiAgY29uc3QgbkEgPSBYQS5sZW5ndGgsIG5CID0gWEIubGVuZ3RoO1xuICBjb25zdCBLID0gQXJyYXkuZnJvbSh7bGVuZ3RoOiBuQX0sICgpID0+IEFycmF5KG5CKS5maWxsKDApKTtcbiAgZm9yIChsZXQgaSA9IDA7IGkgPCBuQTsgaSsrKVxuICAgIGZvciAobGV0IGogPSAwOyBqIDwgbkI7IGorKylcbiAgICAgIEtbaV1bal0gPSBrX2VlKFhBW2ldLCBYQltqXSk7XG4gIHJldHVybiBLO1xufVxuXG5mdW5jdGlvbiBjaG9sZXNreV9lZShBKSB7XG4gIGNvbnN0IG0gPSBBLmxlbmd0aDtcbiAgY29uc3QgTCA9IEFycmF5LmZyb20oe2xlbmd0aDogbX0sICgpID0+IEFycmF5KG0pLmZpbGwoMCkpO1xuICBmb3IgKGxldCBpID0gMDsgaSA8IG07IGkrKykge1xuICAgIGZvciAobGV0IGogPSAwOyBqIDw9IGk7IGorKykge1xuICAgICAgbGV0IHMgPSBBW2ldW2pdO1xuICAgICAgZm9yIChsZXQgcCA9IDA7IHAgPCBqOyBwKyspIHMgLT0gTFtpXVtwXSAqIExbal1bcF07XG4gICAgICBMW2ldW2pdID0gKGkgPT09IGopID8gTWF0aC5zcXJ0KE1hdGgubWF4KHMsIDFlLTE0KSkgOiBzIC8gTFtqXVtqXTtcbiAgICB9XG4gIH1cbiAgcmV0dXJuIEw7XG59XG5cbmZ1bmN0aW9uIGNob2xTb2x2ZV9lZShBLCBiKSB7XG4gIGNvbnN0IEwgPSBjaG9sZXNreV9lZShBKSwgbSA9IEEubGVuZ3RoO1xuICBjb25zdCB6ID0gQXJyYXkobSkuZmlsbCgwKTtcbiAgZm9yIChsZXQgaSA9IDA7IGkgPCBtOyBpKyspIHtcbiAgICBsZXQgcyA9IGJbaV07XG4gICAgZm9yIChsZXQgcCA9IDA7IHAgPCBpOyBwKyspIHMgLT0gTFtpXVtwXSAqIHpbcF07XG4gICAgeltpXSA9IHMgLyBMW2ldW2ldO1xuICB9XG4gIGNvbnN0IHggPSBBcnJheShtKS5maWxsKDApO1xuICBmb3IgKGxldCBpID0gbSAtIDE7IGkgPj0gMDsgaS0tKSB7XG4gICAgbGV0IHMgPSB6W2ldO1xuICAgIGZvciAobGV0IHAgPSBpICsgMTsgcCA8IG07IHArKykgcyAtPSBMW3BdW2ldICogeFtwXTtcbiAgICB4W2ldID0gcyAvIExbaV1baV07XG4gIH1cbiAgcmV0dXJuIHg7XG59XG4ifSx7Im1ldGhvZE5hbWUiOiJpbnRlcnByZXQiLCJjZWxsTmFtZSI6Im9qcy1jZWxsLTciLCJpbmxpbmUiOmZhbHNlLCJzb3VyY2UiOiIvLyAtLS0gQmxvY2sgM2VlOiBQb3N0ZXJpb3IgdmFyaWFuY2UgY29tcHV0YXRpb24gLS0tXG5cbm9yaWdpbl9lZSA9IFswLCAwXVxuclhfZWUgPSBYX2VlLm1hcCgoW3gxLCB4Ml0pID0+IFtyX2VlICogeDEsIHJfZWUgKiB4Ml0pXG5cbnBvc3RlcmlvclJlc3VsdF9lZSA9IHtcbiAgY29uc3QgS3JyID0gZ3JhbV9lZShyWF9lZSwgclhfZWUpO1xuICBmb3IgKGxldCBpID0gMDsgaSA8IG5fZWU7IGkrKykgS3JyW2ldW2ldICs9IGxhbWJkYV9lZTtcbiAgY29uc3QgYSA9IHJYX2VlLm1hcCh4aSA9PiBrX2VlKHhpLCBvcmlnaW5fZWUpKTtcbiAgY29uc3QgdSA9IGNob2xTb2x2ZV9lZShLcnIsIGEpO1xuICBjb25zdCBnID0gYS5yZWR1Y2UoKGFjYywgYWksIGkpID0+IGFjYyArIGFpICogdVtpXSwgMCk7XG4gIHJldHVybiB7Zywgc2lnbWEyOiBrX2VlKG9yaWdpbl9lZSwgb3JpZ2luX2VlKSAtIGd9O1xufVxuIn0seyJtZXRob2ROYW1lIjoiaW50ZXJwcmV0IiwiY2VsbE5hbWUiOiJvanMtY2VsbC04IiwiaW5saW5lIjpmYWxzZSwic291cmNlIjoiLy8gLS0tIEJsb2NrIDRlZTogVHdvLXBhbmVsIHZpc3VhbGlzYXRpb24gLS0tXG5cbmF4aXNMaW1fZWUgPSAzNlxuZGFya1N0eWxlX2VlID0gXCJiYWNrZ3JvdW5kOnRyYW5zcGFyZW50OyBjb2xvcjpyZ2JhKDI1NSwyNTUsMjU1LDAuODIpOyBmb250LXNpemU6MTNweDtcIlxuXG5jdXJ2ZV9lZSA9IHtcbiAgZnVuY3Rpb24gc2lnbWEyQXQocnYpIHtcbiAgICBjb25zdCBzWCA9IFhfZWUubWFwKChbeDEsIHgyXSkgPT4gW3J2ICogeDEsIHJ2ICogeDJdKTtcbiAgICBjb25zdCBBID0gZ3JhbV9lZShzWCwgc1gpO1xuICAgIGZvciAobGV0IGkgPSAwOyBpIDwgbl9lZTsgaSsrKSBBW2ldW2ldICs9IGxhbWJkYV9lZTtcbiAgICBjb25zdCBhdiA9IHNYLm1hcCh4aSA9PiBrX2VlKHhpLCBvcmlnaW5fZWUpKTtcbiAgICBjb25zdCB1diA9IGNob2xTb2x2ZV9lZShBLCBhdik7XG4gICAgY29uc3QgZ3YgPSBhdi5yZWR1Y2UoKGFjYywgYWksIGkpID0+IGFjYyArIGFpICogdXZbaV0sIDApO1xuICAgIHJldHVybiBrX2VlKG9yaWdpbl9lZSwgb3JpZ2luX2VlKSAtIGd2O1xuICB9XG4gIHJldHVybiBBcnJheS5mcm9tKHtsZW5ndGg6IDIwMX0sIChfLCBpKSA9PiB7XG4gICAgY29uc3QgcnYgPSBpICogKDMyIC8gMjAwKTtcbiAgICByZXR1cm4ge3I6IHJ2LCBzaWdtYTI6IHNpZ21hMkF0KHJ2KX07XG4gIH0pO1xufVxuXG5sZWZ0UGxvdF9lZSA9IFBsb3QucGxvdCh7XG4gIHdpZHRoOiAzODAsXG4gIGhlaWdodDogMzQwLFxuICBzdHlsZTogZGFya1N0eWxlX2VlLFxuICB4OiB7bGFiZWw6IFwieOKCgVwiLCBkb21haW46IFstYXhpc0xpbV9lZSwgYXhpc0xpbV9lZV19LFxuICB5OiB7bGFiZWw6IFwieOKCglwiLCBkb21haW46IFstYXhpc0xpbV9lZSwgYXhpc0xpbV9lZV19LFxuICBtYXJrczogW1xuICAgIFBsb3QuZG90KHJYX2VlLCB7XG4gICAgICB4OiBkID0+IGRbMF0sIHk6IGQgPT4gZFsxXSxcbiAgICAgIGZpbGw6IFwiIzkzYzVmZFwiLCByOiA0LCBvcGFjaXR5OiAwLjlcbiAgICB9KSxcbiAgICBQbG90LmRvdChbWzAsIDBdXSwge1xuICAgICAgeDogZCA9PiBkWzBdLCB5OiBkID0+IGRbMV0sXG4gICAgICBzdHJva2U6IFwiI2VlNDU1OFwiLCBmaWxsOiBcIm5vbmVcIixcbiAgICAgIHN0cm9rZVdpZHRoOiAyLjUsIHI6IDcsIHN5bWJvbDogXCJjcm9zc1wiXG4gICAgfSlcbiAgXVxufSlcblxucmlnaHRQbG90X2VlID0gUGxvdC5wbG90KHtcbiAgd2lkdGg6IDM4MCxcbiAgaGVpZ2h0OiAzNDAsXG4gIHN0eWxlOiBkYXJrU3R5bGVfZWUsXG4gIHg6IHtsYWJlbDogXCJzY2FsZSByXCIsIGRvbWFpbjogWzAsIDMyXX0sXG4gIHk6IHtsYWJlbDogXCLPg8KyKDA7IHJYKVwiLCBkb21haW46IFswLCAxLjA1XX0sXG4gIG1hcmtzOiBbXG4gICAgUGxvdC5ydWxlWShbMF0sIHtzdHJva2U6IFwicmdiYSgyNTUsMjU1LDI1NSwwLjE1KVwifSksXG4gICAgUGxvdC5saW5lKGN1cnZlX2VlLCB7eDogXCJyXCIsIHk6IFwic2lnbWEyXCIsIHN0cm9rZTogXCIjOTNjNWZkXCIsIHN0cm9rZVdpZHRoOiAyfSksXG4gICAgUGxvdC5kb3QoW3tyOiArcl9lZSwgc2lnbWEyOiBwb3N0ZXJpb3JSZXN1bHRfZWUuc2lnbWEyfV0sIHtcbiAgICAgIHg6IFwiclwiLCB5OiBcInNpZ21hMlwiLCByOiA2LCBmaWxsOiBcIiNlZTQ1NThcIlxuICAgIH0pXG4gIF1cbn0pXG5cbmh0bWxgPGRpdiBzdHlsZT1cImRpc3BsYXk6ZmxleDsgZ2FwOjI0cHg7IGFsaWduLWl0ZW1zOmZsZXgtc3RhcnQ7IGZsZXgtd3JhcDp3cmFwOyBqdXN0aWZ5LWNvbnRlbnQ6Y2VudGVyO1wiPlxuICA8ZGl2IHN0eWxlPVwidGV4dC1hbGlnbjpjZW50ZXI7XCI+XG4gICAgPGRpdiBzdHlsZT1cImZvbnQtd2VpZ2h0OjYwMDsgbWFyZ2luLWJvdHRvbTo2cHg7IGNvbG9yOnJnYmEoMjU1LDI1NSwyNTUsMC44NSk7XCI+XG4gICAgICBTY2FsZWQgbG9jYXRpb25zIDxpPnI8L2k+PGI+WDwvYj4gaW4g4oSdwrJcbiAgICA8L2Rpdj5cbiAgICAke2xlZnRQbG90X2VlfVxuICA8L2Rpdj5cbiAgPGRpdiBzdHlsZT1cInRleHQtYWxpZ246Y2VudGVyO1wiPlxuICAgIDxkaXYgc3R5bGU9XCJmb250LXdlaWdodDo2MDA7IG1hcmdpbi1ib3R0b206NnB4OyBjb2xvcjpyZ2JhKDI1NSwyNTUsMjU1LDAuODUpO1wiPlxuICAgICAgUG9zdGVyaW9yIHZhcmlhbmNlIGF0IHRoZSBvcmlnaW5cbiAgICA8L2Rpdj5cbiAgICAke3JpZ2h0UGxvdF9lZX1cbiAgPC9kaXY+XG48L2Rpdj5gXG4ifSx7Im1ldGhvZE5hbWUiOiJpbnRlcnByZXRRdWlldCIsInNvdXJjZSI6InNoaW55SW5wdXQoJ3InKSJ9LHsibWV0aG9kTmFtZSI6ImludGVycHJldFF1aWV0Iiwic291cmNlIjoic2hpbnlJbnB1dCgncl9lZScpIn1dfQ==
+    </script>
+    <script type="module">
+    if (window.location.protocol === "file:") { alert("The OJS runtime does not work with file:// URLs. Please use a web server to view this document."); }
+    window._ojs.paths.runtimeToDoc = "../../monoPostTalk";
+    window._ojs.paths.runtimeToRoot = "../..";
+    window._ojs.paths.docToRoot = "..";
+    window._ojs.selfContained = false;
+    window._ojs.runtime.interpretFromScriptTags();
+    </script>
+    <script id="quarto-html-after-body" type="application/javascript">
+      window.document.addEventListener("DOMContentLoaded", function (event) {
+        const tabsets =  window.document.querySelectorAll(".panel-tabset-tabby")
+        tabsets.forEach(function(tabset) {
+          const tabby = new Tabby('#' + tabset.id);
+        });
+        const isCodeAnnotation = (el) => {
+          for (const clz of el.classList) {
+            if (clz.startsWith('code-annotation-')) {                     
+              return true;
+            }
+          }
+          return false;
+        }
+        const onCopySuccess = function(e) {
+          // button target
+          const button = e.trigger;
+          // don't keep focus
+          button.blur();
+          // flash "checked"
+          button.classList.add('code-copy-button-checked');
+          var currentTitle = button.getAttribute("title");
+          button.setAttribute("title", "Copied!");
+          let tooltip;
+          if (window.bootstrap) {
+            button.setAttribute("data-bs-toggle", "tooltip");
+            button.setAttribute("data-bs-placement", "left");
+            button.setAttribute("data-bs-title", "Copied!");
+            tooltip = new bootstrap.Tooltip(button, 
+              { trigger: "manual", 
+                customClass: "code-copy-button-tooltip",
+                offset: [0, -8]});
+            tooltip.show();    
+          }
+          setTimeout(function() {
+            if (tooltip) {
+              tooltip.hide();
+              button.removeAttribute("data-bs-title");
+              button.removeAttribute("data-bs-toggle");
+              button.removeAttribute("data-bs-placement");
+            }
+            button.setAttribute("title", currentTitle);
+            button.classList.remove('code-copy-button-checked');
+          }, 1000);
+          // clear code selection
+          e.clearSelection();
+        }
+        const getTextToCopy = function(trigger) {
+          const outerScaffold = trigger.parentElement.cloneNode(true);
+          const codeEl = outerScaffold.querySelector('code');
+          for (const childEl of codeEl.children) {
+            if (isCodeAnnotation(childEl)) {
+              childEl.remove();
+            }
+          }
+          return codeEl.innerText;
+        }
+        const clipboard = new window.ClipboardJS('.code-copy-button:not([data-in-quarto-modal])', {
+          text: getTextToCopy
+        });
+        clipboard.on('success', onCopySuccess);
+        if (window.document.getElementById('quarto-embedded-source-code-modal')) {
+          const clipboardModal = new window.ClipboardJS('.code-copy-button[data-in-quarto-modal]', {
+            text: getTextToCopy,
+            container: window.document.getElementById('quarto-embedded-source-code-modal')
+          });
+          clipboardModal.on('success', onCopySuccess);
+        }
+          var localhostRegex = new RegExp(/^(?:http|https):\/\/localhost\:?[0-9]*\//);
+          var mailtoRegex = new RegExp(/^mailto:/);
+            var filterRegex = new RegExp('/' + window.location.host + '/');
+          var isInternal = (href) => {
+              return filterRegex.test(href) || localhostRegex.test(href) || mailtoRegex.test(href);
+          }
+          // Inspect non-navigation links and adorn them if external
+         var links = window.document.querySelectorAll('a[href]:not(.nav-link):not(.navbar-brand):not(.toc-action):not(.sidebar-link):not(.sidebar-item-toggle):not(.pagination-link):not(.no-external):not([aria-hidden]):not(.dropdown-item):not(.quarto-navigation-tool):not(.about-link)');
+          for (var i=0; i<links.length; i++) {
+            const link = links[i];
+            if (!isInternal(link.href)) {
+              // undo the damage that might have been done by quarto-nav.js in the case of
+              // links that we want to consider external
+              if (link.dataset.originalHref !== undefined) {
+                link.href = link.dataset.originalHref;
+              }
+            }
+          }
+        function tippyHover(el, contentFn, onTriggerFn, onUntriggerFn) {
+          const config = {
+            allowHTML: true,
+            maxWidth: 500,
+            delay: 100,
+            arrow: false,
+            appendTo: function(el) {
+                return el.closest('section.slide') || el.parentElement;
+            },
+            interactive: true,
+            interactiveBorder: 10,
+            theme: 'light-border',
+            placement: 'bottom-start',
+          };
+          if (contentFn) {
+            config.content = contentFn;
+          }
+          if (onTriggerFn) {
+            config.onTrigger = onTriggerFn;
+          }
+          if (onUntriggerFn) {
+            config.onUntrigger = onUntriggerFn;
+          }
+            config['offset'] = [0,0];
+            config['maxWidth'] = 700;
+          window.tippy(el, config); 
+        }
+        const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+        for (var i=0; i<noterefs.length; i++) {
+          const ref = noterefs[i];
+          tippyHover(ref, function() {
+            // use id or data attribute instead here
+            let href = ref.getAttribute('data-footnote-href') || ref.getAttribute('href');
+            try { href = new URL(href).hash; } catch {}
+            const id = href.replace(/^#\/?/, "");
+            const note = window.document.getElementById(id);
+            if (note) {
+              return note.innerHTML;
+            } else {
+              return "";
+            }
+          });
+        }
+        const findCites = (el) => {
+          const parentEl = el.parentElement;
+          if (parentEl) {
+            const cites = parentEl.dataset.cites;
+            if (cites) {
+              return {
+                el,
+                cites: cites.split(' ')
+              };
+            } else {
+              return findCites(el.parentElement)
+            }
+          } else {
+            return undefined;
+          }
+        };
+        var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+        for (var i=0; i<bibliorefs.length; i++) {
+          const ref = bibliorefs[i];
+          const citeInfo = findCites(ref);
+          if (citeInfo) {
+            tippyHover(citeInfo.el, function() {
+              var popup = window.document.createElement('div');
+              citeInfo.cites.forEach(function(cite) {
+                var citeDiv = window.document.createElement('div');
+                citeDiv.classList.add('hanging-indent');
+                citeDiv.classList.add('csl-entry');
+                var biblioDiv = window.document.getElementById('ref-' + cite);
+                if (biblioDiv) {
+                  citeDiv.innerHTML = biblioDiv.innerHTML;
+                }
+                popup.appendChild(citeDiv);
+              });
+              return popup.innerHTML;
+            });
+          }
+        }
+      });
+      </script>
+    
+
+</body></html>

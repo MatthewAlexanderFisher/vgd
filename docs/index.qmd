@@ -1,0 +1,5 @@
+---
+title: "VGD"
+---
+
+Welcome to the VGD documentation. See the [Tutorials](examples/index.qmd) to get started.

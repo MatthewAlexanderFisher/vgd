@@ -142,3 +142,5 @@ class IMQKernel(Kernel):
         u = g**2 + (r / ell) ** 2
         # φ(r) = A u^{-b}; dφ/dr = A(-b) u^{-b-1} * (2r/ell^2)  ⇒  (φ′/r) = A(-b)*2/ell^2 * u^{-b-1}
         return -2.0 * b * A * (1.0 / ell**2) * u ** (-(b + 1.0))
+
+

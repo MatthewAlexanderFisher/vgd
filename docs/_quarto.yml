@@ -10,6 +10,8 @@ website:
         href: examples/index.qmd
       - text: API
         href: api/index.html
+      - text: Monotonic Posterior Talk
+        href: monoPostTalk/index.qmd
     right:
       - icon: github
         href: https://github.com/matthewalexanderfisher/vgd
