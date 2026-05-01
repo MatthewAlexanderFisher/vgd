@@ -1,0 +1,697 @@
+/* Make the slide itself the scroll container and keep the bar on the RIGHT */
+.reveal .slides section.scrollable,
+.reveal .slides section.present.scrollable {
+  overflow-y: auto !important;
+  overflow-x: hidden;
+  height: 100%;
+  scrollbar-gutter: stable; /* avoid layout shift when scrollbar appears */
+}
+
+/* Make only slides with class "scroll" vertically scrollable */
+.reveal .slides section.scroll {
+  height: 100%;
+  overflow-y: auto !important;
+}
+
+/* Center typical Quarto figure outputs (Moon sets slides left-aligned) */
+.reveal .slides .cell-output-display figure,
+.reveal .slides .quarto-figure,
+.reveal .slides figure {
+  text-align: center !important;
+}
+.reveal .slides .cell-output-display figure > p {
+  text-align: center !important;
+  margin: 0;
+}
+.reveal .slides .cell-output-display img,
+.reveal .slides .quarto-figure img,
+.reveal .slides figure img {
+  display: block !important;
+  margin: 0 auto !important;
+  max-width: 100%;
+  height: auto;
+}
+
+/* ---------- Scrollbar theming ---------- */
+/* Firefox */
+/* .reveal .slides section.scrollable {
+  scrollbar-width: thin;
+  scrollbar-color: var(--r-link-color) #212946;
+}
+
+/* WebKit (Chrome/Edge/Safari) */
+.reveal .slides section.scrollable::-webkit-scrollbar {
+  width: 10px;
+}
+.reveal .slides section.scrollable::-webkit-scrollbar-track {
+  background: #212946;
+  border-radius: 8px;
+}
+.reveal .slides section.scrollable::-webkit-scrollbar-thumb {
+  background: #212946;      /* uses Reveal theme accent */
+  border-radius: 8px;
+}
+.reveal .slides section.scrollable::-webkit-scrollbar-thumb:hover {
+  background: var(--r-link-color-hover);
+} */
+
+/* Make scrollbars subtle and only “pop” on hover */
+.reveal .slides section.scrollable {
+  /* keeps layout from jumping when bar appears */
+  scrollbar-gutter: stable;
+  /* Firefox */
+  scrollbar-width: thin;
+  scrollbar-color: transparent transparent;
+}
+.reveal .slides section.scrollable:hover {
+  scrollbar-color: var(--r-link-color) transparent;
+}
+/* WebKit (Chrome/Edge/Safari) */
+.reveal .slides section.scrollable::-webkit-scrollbar {
+  width: 8px;
+}
+.reveal .slides section.scrollable::-webkit-scrollbar-track {
+  background: transparent;
+}
+.reveal .slides section.scrollable::-webkit-scrollbar-thumb {
+  background: transparent;
+  border-radius: 8px;
+}
+.reveal .slides section.scrollable:hover::-webkit-scrollbar-thumb {
+  background: var(--r-link-color);              /* uses Moon’s accent */
+}
+
+
+
+/* Extra space after any code/output block */
+.reveal .slides .cell > .cell-output:last-child,
+.reveal .slides .cell > .cell-output-display:last-child,
+.reveal .slides .cell > .cell-output-stdout:last-child {
+  margin-bottom: 1.25rem;  /* tweak to taste */
+}
+
+/* If a heading immediately follows an output, push it down a bit more */
+.reveal .slides .cell-output + h1,
+.reveal .slides .cell-output + h2,
+.reveal .slides .cell-output + h3,
+.reveal .slides .cell-output + h4,
+.reveal .slides .cell-output + h5,
+.reveal .slides .cell-output + h6 {
+  margin-top: 0.75rem;     /* tweak to taste */
+}
+
+/* (Some outputs wrap images in <figure><p><img>...) */
+.reveal .slides .cell-output figure { margin-bottom: 1.25rem; }
+
+
+
+:root { --accent: #ee4558; }              /* your pink */
+.reveal strong { color: var(--accent) !important; }  /* affects **bold** */
+
+
+.reveal .slide-logo {
+  width: 100px;         /* adjust */
+  height: auto;
+  top: 14px;            /* move it where you like */
+  right: 14px;
+  opacity: 0.95;
+}
+
+
+/* title logos row */
+/* tweak these in one place */
+:root {
+  --logo-max-h: clamp(200px, 7vh, 400px);     /* max logo height */
+  --logo-basis: clamp(200px, 22vw, 400px);  /* preferred width per logo */
+  --logo-pad: clamp(4px, 1vw, 12px);        /* inner padding */
+  --logo-gap: clamp(12px, 2vw, 32px);       /* space between logos */
+}
+
+/* container: one row, evenly spaced */
+.title-logos {
+  display: flex;
+  flex-wrap: nowrap;               /* don’t stack */
+  justify-content: space-evenly;
+  align-items: center;
+  gap: var(--logo-gap);
+  margin: 0.6rem auto 1.2rem;
+  max-width: 90vw;                 /* keep inside slide edges */
+}
+
+/* each logo cell */
+.title-logo-wrap {
+  flex: 0 1 var(--logo-basis);     /* width control */
+  padding: var(--logo-pad);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+/* the images themselves */
+.title-logo {
+  max-height: var(--logo-max-h);
+  max-width: 100%;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+}
+
+/* Works if the class is on the LIST itself */
+.reveal ul.unmarked,
+.reveal ol.unmarked {
+  list-style: none !important;
+  padding-left: 0 !important;
+  margin-left: 0 !important;
+}
+
+/* Works if the class is on a PARENT (slide, div, etc.) */
+/* .reveal .unmarked ul,
+.reveal .unmarked ol {
+  list-style: none !important;
+  padding-left: 0 !important;
+  margin-left: 0 !important;
+} */
+
+/* Remove markers in all cases */
+/* .reveal ul.unmarked li::marker,
+.reveal ol.unmarked li::marker,
+.reveal .unmarked li::marker {
+  content: "" !important;
+} */
+
+/* Safety: some themes fake bullets with ::before — nuke those too */
+/* .reveal ul.unmarked li::before,
+.reveal ol.unmarked li::before,
+.reveal .unmarked li::before {
+  content: none !important;
+} */
+
+/* Optional: keep a gentle indent so lines wrap nicely */
+.reveal ul.unmarked > li,
+.reveal ol.unmarked > li,
+.reveal .unmarked li {
+  padding-left: 0.9em;
+  text-indent: -0.9em;
+  display: list-item;   /* keep fragment/incremental behaviour */
+}
+
+/* class directly on the list */
+.reveal ul.unmarked, .reveal ol.unmarked { list-style: none !important; padding-left: 0 !important; margin-left: 0 !important; }
+/* class on a parent */
+.reveal .unmarked ul, .reveal .unmarked ol { list-style: none !important; padding-left: 0 !important; margin-left: 0 !important; }
+/* remove markers in all cases */
+.reveal ul.unmarked li::marker, .reveal ol.unmarked li::marker, .reveal .unmarked li::marker { content: "" !important; }
+/* optional tidy indent */
+.reveal ul.unmarked > li, .reveal ol.unmarked > li, .reveal .unmarked li { padding-left: 0.9em; text-indent: -0.9em; display: list-item; }
+
+/* allow wrapping only on very narrow screens */
+/* @media (max-width: 520px) {
+  .title-logos { flex-wrap: wrap; }
+} */
+
+
+:root { --accent-blue: #4333da; }
+
+/* Right-aligned, blue aside */
+.reveal .aside-right {
+  color: var(--accent-blue);
+  width: 100%;
+  margin: 0.25rem 0;
+  /* If you want the block itself to hug the right side visually: */
+  /* max-width: 70%; margin-left: auto; */
+}
+
+/* Force alignment on common children (wins over theme defaults) */
+.reveal .aside-right,
+.reveal .aside-right p,
+.reveal .aside-right ul,
+.reveal .aside-right ol,
+.reveal .aside-right li {
+  text-align: right !important;
+}
+
+/* Optional: markerless variant when you add .unmarked */
+.reveal .aside-right.unmarked ul,
+.reveal .aside-right.unmarked ol,
+.reveal .aside-right.unmarked ul li,
+.reveal .aside-right.unmarked ol li {
+  list-style: none !important;
+  padding-left: 0 !important;
+  margin-left: 0 !important;
+}
+.reveal .aside-right.unmarked li::marker,
+.reveal .aside-right.unmarked li::before { content: "" !important; }
+
+/* Keep nice wrapping even without markers */
+.reveal .aside-right.unmarked li {
+  padding-right: 0.9em;   /* indent on the right */
+  text-indent: 0;         /* no negative indent tricks needed */
+  display: list-item;
+}
+
+
+
+/* Right-aligned, blue aside */
+.reveal .aside-right {
+  color: var(--accent-blue);
+  width: 100%;
+  margin: 0.25rem 0;
+  /* If you want the block itself to hug the right side visually: */
+  /* max-width: 70%; margin-left: auto; */
+}
+
+/* Force alignment on common children (wins over theme defaults) */
+.reveal .aside-left,
+.reveal .aside-left p,
+.reveal .aside-left ul,
+.reveal .aside-left ol,
+.reveal .aside-left li {
+  text-align: left !important;
+}
+
+/* Optional: markerless variant when you add .unmarked */
+.reveal .aside-left.unmarked ul,
+.reveal .aside-left.unmarked ol,
+.reveal .aside-left.unmarked ul li,
+.reveal .aside-left.unmarked ol li {
+  list-style: none !important;
+  padding-left: 0 !important;
+  margin-right: 0 !important;
+}
+.reveal .aside-left.unmarked li::marker,
+.reveal .aside-left.unmarked li::before { content: "" !important; }
+
+/* Keep nice wrapping even without markers */
+.reveal .aside-left.unmarked li {
+  padding-left: 0.9em;   /* indent on the right */
+  text-indent: 0;         /* no negative indent tricks needed */
+  display: list-item;
+}
+
+/* Right-aligned, blue aside */
+.reveal .aside-left {
+  color: var(--accent-blue);
+  width: 100%;
+  margin: 0.25rem 0;
+  /* If you want the block itself to hug the right side visually: */
+  /* max-width: 70%; margin-left: auto; */
+}
+
+.large-slide {
+  font-size: 1.25em;
+}
+
+.prompt-box {
+  border: 2px solid #7aa2f7;
+  border-radius: 14px;
+  padding: 0.8em 1em;
+  margin-bottom: 0.8em;
+  background: rgba(122, 162, 247, 0.08);
+  font-size: 1.05em;
+}
+
+.answer-card {
+  border: 1px solid rgba(255,255,255,0.25);
+  border-radius: 16px;
+  padding: 0.8em;
+  min-height: 360px;
+  background: rgba(255,255,255,0.06);
+  font-size: 0.8em;
+  line-height: 1.25;
+}
+
+.answer-card strong {
+  font-size: 1em;
+}
+
+.key-point {
+  margin-top: 0.8em;
+  padding: 0.75em 1em;
+  border-left: 5px solid #9ece6a;
+  background: rgba(158, 206, 106, 0.1);
+  font-size: 0.9em;
+}
+
+.llm-slide,
+.llm-training-slide {
+  font-size: 1.1em;
+}
+
+.definition-box {
+  border-left: 5px solid #7aa2f7;
+  background: rgba(122, 162, 247, 0.10);
+  padding: 0.7em 1em;
+  margin-bottom: 0.8em;
+  border-radius: 12px;
+}
+
+.example-box {
+  color: #fff;
+  border: 1px solid rgba(255,255,255,0.25);
+  background: rgba(255,255,255,0.06);
+  padding: 0.7em 1em;
+  border-radius: 12px;
+  margin-top: 0.8em;
+}
+
+.reveal blockquote,
+.reveal blockquote p {
+  color: #ffffff !important;
+  opacity: 1 !important;
+}
+
+.key-point {
+  margin-top: 0.9em;
+  padding: 0.75em 1em;
+  border-left: 5px solid #9ece6a;
+  background: rgba(158, 206, 106, 0.1);
+  border-radius: 12px;
+}
+
+.warning-box {
+  margin-top: 0.9em;
+  padding: 0.75em 1em;
+  border-left: 5px solid #f7768e;
+  background: rgba(247, 118, 142, 0.1);
+  border-radius: 12px;
+}
+
+.pipeline {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.6em;
+  margin: 1em 0 1.2em 0;
+}
+
+.pipeline-step {
+  border: 1px solid rgba(255,255,255,0.25);
+  background: rgba(255,255,255,0.07);
+  border-radius: 16px;
+  padding: 0.8em 1.1em;
+  text-align: center;
+  min-width: 170px;
+  font-weight: 600;
+}
+
+.pipeline-arrow {
+  font-size: 1.5em;
+  opacity: 0.8;
+}
+
+.mismatch-slide {
+  font-size: 1.08em;
+}
+
+.objective-card {
+  border: 1px solid rgba(255,255,255,0.25);
+  border-radius: 18px;
+  padding: 0.9em 1em;
+  min-height: 390px;
+  background: rgba(255,255,255,0.06);
+}
+
+.objective-card h3 {
+  margin-top: 0;
+  margin-bottom: 0.6em;
+}
+
+.pretrain-card {
+  border-left: 5px solid #7aa2f7;
+}
+
+.assistant-card {
+  border-left: 5px solid #9ece6a;
+}
+
+.mismatch-box {
+  margin-top: 0.9em;
+  padding: 0.75em 1em;
+  border-left: 5px solid #f7768e;
+  background: rgba(247, 118, 142, 0.11);
+  border-radius: 14px;
+  text-align: center;
+  font-size: 1.05em;
+}
+
+.mismatch-box p {
+  margin-bottom: 0.4em;
+}
+
+.objective-card .math.display {
+  font-size: 0.78em;
+}
+
+.rlhf-pipeline-slide,
+.sft-slide,
+.reward-model-slide,
+.bt-slide,
+.rl-optimisation-slide {
+  font-size: 1.08em;
+}
+
+.pipeline-vertical {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75em;
+  margin-top: 0.7em;
+}
+
+.pipeline-row {
+  display: flex;
+  align-items: stretch;
+  gap: 0.7em;
+}
+
+.pipeline-number {
+  width: 2.2em;
+  min-width: 2.2em;
+  height: 2.2em;
+  border-radius: 50%;
+  background: rgba(122, 162, 247, 0.22);
+  border: 2px solid #7aa2f7;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+}
+
+.pipeline-content {
+  flex: 1;
+  border: 1px solid rgba(255,255,255,0.25);
+  background: rgba(255,255,255,0.06);
+  border-radius: 16px;
+  padding: 0.65em 0.9em;
+}
+
+.example-card {
+  border: 1px solid rgba(255,255,255,0.25);
+  background: rgba(255,255,255,0.06);
+  border-radius: 18px;
+  padding: 0.85em 1em;
+  min-height: 330px;
+}
+
+.example-card h3 {
+  margin-top: 0;
+}
+
+.comparison-box {
+  border: 1px solid rgba(255,255,255,0.25);
+  background: rgba(255,255,255,0.06);
+  border-radius: 18px;
+  padding: 0.75em 1em;
+  text-align: center;
+  margin: 0.8em 0;
+}
+
+.sports-analogy {
+  border-left: 5px solid #e0af68;
+  background: rgba(224, 175, 104, 0.12);
+  border-radius: 14px;
+  padding: 0.7em 1em;
+  margin-top: 0.8em;
+}
+
+.sports-analogy blockquote,
+.sports-analogy blockquote p {
+  color: #ffffff !important;
+  opacity: 1 !important;
+}
+
+.key-point {
+  margin-top: 0.8em;
+  padding: 0.7em 1em;
+  border-left: 5px solid #9ece6a;
+  background: rgba(158, 206, 106, 0.1);
+  border-radius: 14px;
+}
+
+.rlhf-pipeline-slide .key-point,
+.rl-optimisation-slide .key-point {
+  font-size: 0.95em;
+}
+
+.bt-slide .math.display,
+.rl-optimisation-slide .math.display,
+.sft-slide .math.display {
+  font-size: 0.86em;
+}
+
+.sft-slide .column {
+  border: 1px solid rgba(255,255,255,0.25);
+  background: rgba(255,255,255,0.06);
+  border-radius: 18px;
+  padding: 0.85em 1em;
+  min-height: 330px;
+}
+
+.card-heading {
+  display: block;
+  font-size: 1.3em;
+  font-weight: 600;
+  margin-bottom: 0.6em;
+}
+
+.scoring-perspective-slide,
+.pairwise-slide,
+.latent-score-slide,
+.noisy-preference-slide,
+.goodhart-slide {
+  font-size: 1.08em;
+}
+
+.big-claim {
+  border-left: 6px solid #7aa2f7;
+  background: rgba(122, 162, 247, 0.11);
+  border-radius: 16px;
+  padding: 0.9em 1.1em;
+  font-size: 1.25em;
+  line-height: 1.35;
+  margin-top: 0.7em;
+}
+
+.pipeline-mini {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.6em;
+  margin-top: 1em;
+}
+
+.pipeline-step {
+  border: 1px solid rgba(255,255,255,0.25);
+  background: rgba(255,255,255,0.07);
+  border-radius: 16px;
+  padding: 0.75em 1em;
+  text-align: center;
+  min-width: 160px;
+  font-weight: 600;
+}
+
+.pipeline-arrow {
+  font-size: 1.5em;
+  opacity: 0.8;
+}
+
+.comparison-card,
+.model-box,
+.context-box,
+.sports-analogy {
+  border: 1px solid rgba(255,255,255,0.25);
+  background: rgba(255,255,255,0.06);
+  border-radius: 18px;
+  padding: 0.85em 1em;
+}
+
+.comparison-card {
+  min-height: 300px;
+}
+
+.card-heading {
+  display: block;
+  font-size: 1.15em;
+  font-weight: 700;
+  margin-bottom: 0.6em;
+  color: #ffffff;
+}
+
+.context-box {
+  margin-top: 0.9em;
+  border-left: 5px solid #7aa2f7;
+  background: rgba(122, 162, 247, 0.10);
+}
+
+.model-box {
+  margin-top: 0.9em;
+  border-left: 5px solid #bb9af7;
+  background: rgba(187, 154, 247, 0.10);
+}
+
+.sports-analogy {
+  margin-top: 0.9em;
+  border-left: 5px solid #e0af68;
+  background: rgba(224, 175, 104, 0.12);
+}
+
+.goodhart-box {
+  margin-top: 0.9em;
+  border-left: 5px solid #f7768e;
+  background: rgba(247, 118, 142, 0.11);
+  border-radius: 16px;
+  padding: 0.8em 1em;
+}
+
+.goodhart-box blockquote,
+.goodhart-box blockquote p {
+  color: #ffffff !important;
+  opacity: 1 !important;
+}
+
+.warning-box {
+  margin-top: 0.9em;
+  padding: 0.75em 1em;
+  border-left: 5px solid #f7768e;
+  background: rgba(247, 118, 142, 0.1);
+  border-radius: 14px;
+}
+
+.key-point {
+  margin-top: 0.8em;
+  padding: 0.7em 1em;
+  border-left: 5px solid #9ece6a;
+  background: rgba(158, 206, 106, 0.1);
+  border-radius: 14px;
+}
+
+.pairwise-slide .math.display,
+.latent-score-slide .math.display,
+.noisy-preference-slide .math.display,
+.goodhart-slide .math.display {
+  font-size: 0.9em;
+}
+
+.policy-slide .math.display {
+  font-size: 0.84em;
+}
+
+.rl-mapping-slide,
+.rl-objective-slide,
+.approx-objective-slide,
+.policy-gradient-slide,
+.ppo-slide {
+  font-size: 1.04em;
+}
+
+.rl-mapping-slide .math.display,
+.rl-objective-slide .math.display,
+.approx-objective-slide .math.display,
+.policy-gradient-slide .math.display,
+.ppo-slide .math.display {
+  font-size: 0.82em;
+}
+
+.rl-mapping-slide .objective-card,
+.approx-objective-slide .objective-card {
+  min-height: 390px;
+}

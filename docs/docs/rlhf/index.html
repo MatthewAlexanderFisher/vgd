@@ -1,0 +1,2461 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+<script src="../site_libs/clipboard/clipboard.min.js"></script>
+<script src="../site_libs/quarto-html/tabby.min.js"></script>
+<script src="../site_libs/quarto-html/popper.min.js"></script>
+<script src="../site_libs/quarto-html/tippy.umd.min.js"></script>
+<link href="../site_libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="../site_libs/quarto-html/light-border.css" rel="stylesheet">
+<link href="../site_libs/quarto-html/quarto-syntax-highlighting-dark-12b3df05fff64bd15c9bad32e15a2ea0.css" rel="stylesheet" id="quarto-text-highlighting-styles"><meta charset="utf-8">
+  <meta name="generator" content="quarto-1.8.24">
+
+  <meta name="author" content="Matthew Fisher">
+  <title>VGD Docs – An Introduction to Scoring Models in RLHF</title>
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, minimal-ui">
+  <link rel="stylesheet" href="../site_libs/revealjs/dist/reset.css">
+  <link rel="stylesheet" href="../site_libs/revealjs/dist/reveal.css">
+  <style>
+    code{white-space: pre-wrap;}
+    span.smallcaps{font-variant: small-caps;}
+    div.columns{display: flex; gap: min(4vw, 1.5em);}
+    div.column{flex: auto; overflow-x: auto;}
+    div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+    ul.task-list{list-style: none;}
+    ul.task-list li input[type="checkbox"] {
+      width: 0.8em;
+      margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
+      vertical-align: middle;
+    }
+  </style>
+  <link rel="stylesheet" href="../site_libs/revealjs/dist/theme/quarto-2e671d2c1a3dfe97c4ce540671841f14.css">
+  <link rel="stylesheet" href="custom.css">
+  <script>window.backupDefine = window.define; window.define = undefined;</script><script src="https://cdn.jsdelivr.net/npm/katex@latest/dist/katex.min.js"></script>
+  <script>document.addEventListener("DOMContentLoaded", function () {
+ var mathElements = document.getElementsByClassName("math");
+ var macros = [];
+ for (var i = 0; i < mathElements.length; i++) {
+  var texText = mathElements[i].firstChild;
+  if (mathElements[i].tagName == "SPAN") {
+   katex.render(texText.data, mathElements[i], {
+    displayMode: mathElements[i].classList.contains('display'),
+    throwOnError: false,
+    macros: macros,
+    fleqn: false
+   });
+}}});
+  </script>
+  <script>window.define = window.backupDefine; window.backupDefine = undefined;</script><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@latest/dist/katex.min.css">
+  <link href="../site_libs/revealjs/plugin/quarto-line-highlight/line-highlight.css" rel="stylesheet">
+  <link href="../site_libs/revealjs/plugin/reveal-menu/menu.css" rel="stylesheet">
+  <link href="../site_libs/revealjs/plugin/reveal-menu/quarto-menu.css" rel="stylesheet">
+  <link href="../site_libs/revealjs/plugin/quarto-support/footer.css" rel="stylesheet">
+  <style type="text/css">
+    .reveal div.sourceCode {
+      margin: 0;
+      overflow: auto;
+    }
+    .reveal div.hanging-indent {
+      margin-left: 1em;
+      text-indent: -1em;
+    }
+    .reveal .slide:not(.center) {
+      height: 100%;
+    }
+    .reveal .slide.scrollable {
+      overflow-y: auto;
+    }
+    .reveal .footnotes {
+      height: 100%;
+      overflow-y: auto;
+    }
+    .reveal .slide .absolute {
+      position: absolute;
+      display: block;
+    }
+    .reveal .footnotes ol {
+      counter-reset: ol;
+      list-style-type: none; 
+      margin-left: 0;
+    }
+    .reveal .footnotes ol li:before {
+      counter-increment: ol;
+      content: counter(ol) ". "; 
+    }
+    .reveal .footnotes ol li > p:first-child {
+      display: inline-block;
+    }
+    .reveal .slide ul,
+    .reveal .slide ol {
+      margin-bottom: 0.5em;
+    }
+    .reveal .slide ul li,
+    .reveal .slide ol li {
+      margin-top: 0.4em;
+      margin-bottom: 0.2em;
+    }
+    .reveal .slide ul[role="tablist"] li {
+      margin-bottom: 0;
+    }
+    .reveal .slide ul li > *:first-child,
+    .reveal .slide ol li > *:first-child {
+      margin-block-start: 0;
+    }
+    .reveal .slide ul li > *:last-child,
+    .reveal .slide ol li > *:last-child {
+      margin-block-end: 0;
+    }
+    .reveal .slide .columns:nth-child(3) {
+      margin-block-start: 0.8em;
+    }
+    .reveal blockquote {
+      box-shadow: none;
+    }
+    .reveal .tippy-content>* {
+      margin-top: 0.2em;
+      margin-bottom: 0.7em;
+    }
+    .reveal .tippy-content>*:last-child {
+      margin-bottom: 0.2em;
+    }
+    .reveal .slide > img.stretch.quarto-figure-center,
+    .reveal .slide > img.r-stretch.quarto-figure-center {
+      display: block;
+      margin-left: auto;
+      margin-right: auto; 
+    }
+    .reveal .slide > img.stretch.quarto-figure-left,
+    .reveal .slide > img.r-stretch.quarto-figure-left  {
+      display: block;
+      margin-left: 0;
+      margin-right: auto; 
+    }
+    .reveal .slide > img.stretch.quarto-figure-right,
+    .reveal .slide > img.r-stretch.quarto-figure-right  {
+      display: block;
+      margin-left: auto;
+      margin-right: 0; 
+    }
+  </style>
+</head>
+<body class="quarto-dark">
+  <div class="reveal">
+    <div class="slides">
+
+<section id="title-slide" class="quarto-title-block center">
+  <h1 class="title">An Introduction to Scoring Models in RLHF</h1>
+  
+  <!-- Logos row (add your images in the same folder as the HTML/QMD) -->
+<div class="title-logos">
+  <div class="title-logo-wrap">
+    <!-- <img src="newcastlelogo.jpg" alt="Newcastle University" class="title-logo"> -->
+  </div>
+  <div class="title-logo-wrap">
+    <!-- <img src="EPSRC.png" alt="EPSRC" class="title-logo"> -->
+  </div>
+</div>
+
+  <div class="quarto-title-authors">
+      <div class="quarto-title-author">
+      <div class="quarto-title-author-name">
+        Matthew Fisher
+        
+      </div>
+                </div>
+    </div>
+
+  </section>
+<section>
+<section id="introduction" class="title-slide slide level1 center">
+<h1>Introduction</h1>
+
+</section>
+<section id="which-answer-is-better" class="slide level2">
+<h2>Which answer is better?</h2>
+<div class="prompt-box">
+<p><strong>Prompt:</strong><br>
+<em>“In at most two sentences, explain the offside rule to a 10-year-old.”</em></p>
+</div>
+<div class="columns">
+<div class="column" style="width:33%;">
+<div class="answer-card">
+<p><strong>Answer A</strong></p>
+<p>In football, you’re offside if your teammate passes the ball to you while you are nearer to the other team’s goal than both the ball and the second-last defender. But it only matters if you are involved in the play, like trying to get the ball or blocking an opponent.</p>
+</div>
+</div><div class="column" style="width:33%;">
+<div class="answer-card">
+<p><strong>Answer B</strong></p>
+<p>To stay “onside,” you must have at least two opponents (usually the goalie and one defender) between you and the goal line at the moment the ball is kicked to you. Basically, you can’t “cherry-pick” by hanging out behind the last defender to wait for an easy pass!</p>
+</div>
+</div><div class="column" style="width:33%;">
+<div class="answer-card">
+<p><strong>Answer C</strong></p>
+<p>The offside rule means you can’t hang out too close to the other team’s goal waiting for the ball—you need to have at least two players from the other team (usually the goalkeeper and one defender) between you and their goal line when the ball is passed to you. It’s there to keep the game fair and make sure players have to work together to move the ball forward instead of just camping by the goal!</p>
+</div>
+</div></div>
+<div class="fragment">
+<p><strong>Question:</strong> Which answer would you prefer: A, B, or C?</p>
+</div>
+<div class="fragment key-point">
+<p>RLHF starts from data like this:<br>
+humans compare model outputs, and we fit a <strong>scoring model</strong> that predicts which response people prefer.</p>
+</div>
+</section>
+<section id="what-is-an-llm" class="slide level2 llm-slide">
+<h2>What is an LLM?</h2>
+<div class="definition-box">
+<p>A <strong>large language model</strong> is typically a causal decoder-only transformer, trained to predict the next token from the previous tokens.</p>
+</div>
+<p>Given text</p>
+<p><span class="math display">
+x_1, x_2, \dots, x_t,
+</span></p>
+<p>the model estimates</p>
+<p><span class="math display">
+p_\theta(x_{t+1} \mid x_1,\dots,x_t).
+</span></p>
+<div class="fragment example-box">
+<p>For example, after</p>
+<blockquote>
+<p><em>The striker was clearly in an offside…</em></p>
+</blockquote>
+<p>the model assigns probabilities to possible next tokens:</p>
+<p><span class="math display">
+\text{position},\quad \text{trap},\quad \text{decision},\quad \ldots
+</span></p>
+</div>
+<div class="fragment key-point">
+<p>Pretraining teaches the model to be a <strong>text continuation engine</strong>.</p>
+</div>
+</section>
+<section id="how-is-it-trained" class="slide level2 llm-training-slide">
+<h2>How is it trained?</h2>
+<div class="pipeline">
+<div class="pipeline-step">
+<p><strong>Text data</strong></p>
+</div>
+<div class="pipeline-arrow">
+→
+</div>
+<div class="pipeline-step">
+<p><strong>Next-token prediction</strong></p>
+</div>
+<div class="pipeline-arrow">
+→
+</div>
+<div class="pipeline-step">
+<p><strong>Base LLM</strong></p>
+</div>
+</div>
+<p>The pretraining loss is the negative log-likelihood:</p>
+<p><span class="math display">
+\mathcal{L}(\theta) = -\sum_t \log p_\theta(x_{t+1} \mid x_1,\dots,x_t).
+</span></p>
+<div class="fragment warning-box">
+<p>This objective is <strong>not</strong></p>
+<ul>
+<li>“be helpful”</li>
+<li>“be truthful”</li>
+<li>“follow instructions”</li>
+<li>“give the answer humans prefer”</li>
+</ul>
+</div>
+<div class="fragment key-point">
+<p>A base LLM is cool, but merely text continuation isn’t enough for many applications: we want to <strong>align</strong> the model with human preferences</p>
+</div>
+</section>
+<section id="why-next-token-prediction-is-not-enough" class="slide level2 mismatch-slide">
+<h2>Why next-token prediction is not enough</h2>
+<div class="columns">
+<div class="column" style="width:48%;">
+<section id="pretraining-objective" class="objective-card pretrain-card">
+<h3>Pretraining objective</h3>
+<p>Predict the next token:</p>
+<p><span class="math display">
+\mathcal{L}(\theta)
+=
+-\sum_t
+\log p_\theta(x_{t+1}\mid x_1,\dots,x_t).
+</span></p>
+<div class="fragment">
+<p>This rewards outputs that are <strong>likely under the training data</strong>.</p>
+</div>
+</section>
+</div><div class="column" style="width:48%;">
+<section id="assistant-objective" class="objective-card assistant-card">
+<h3>Assistant objective</h3>
+<p>Produce responses humans judge as:</p>
+<ul>
+<li>helpful and clear</li>
+<li>truthful</li>
+<li>safe</li>
+<li>appropriate to the user’s intent</li>
+</ul>
+<div class="fragment">
+<p>This rewards outputs that are <strong>preferred by people</strong>.</p>
+</div>
+</section>
+</div></div>
+<div class="fragment mismatch-box">
+<p>The core mismatch:</p>
+<p><span class="math display">
+\text{likely text} \neq \text{desirable answer}.
+</span></p>
+</div>
+</section></section>
+<section>
+<section id="reinforcement-learning-with-human-feedback-rlhf" class="title-slide slide level1 center">
+<h1>Reinforcement Learning with Human Feedback (RLHF)</h1>
+
+</section>
+<section id="the-rlhf-pipeline" class="slide level2 rlhf-pipeline-slide">
+<h2>The RLHF pipeline</h2>
+<div class="pipeline-vertical">
+<div class="pipeline-row">
+<div class="pipeline-number">
+<p>1</p>
+</div>
+<div class="pipeline-content">
+<p><strong>Supervised fine-tuning</strong></p>
+<p>Prompt <span class="math inline">\to</span> human-written good answer</p>
+<p>Gives an <strong>SFT model</strong>.</p>
+</div>
+</div>
+<div class="pipeline-row">
+<div class="pipeline-number">
+<p>2</p>
+</div>
+<div class="pipeline-content">
+<p><strong>Train a reward/scoring model</strong></p>
+<p>Humans compare model outputs.</p>
+<p>Gives a learned score <span class="math inline">r_\phi(x,y)</span>.</p>
+</div>
+</div>
+<div class="pipeline-row">
+<div class="pipeline-number">
+<p>3</p>
+</div>
+<div class="pipeline-content">
+<p><strong>Optimise the LLM against the learned score</strong></p>
+<p>The language model is fine-tuned to produce high-scoring answers.</p>
+</div>
+</div>
+</div>
+<div class="fragment key-point">
+<p>RLHF turns human preference judgements into a training signal for the language model.</p>
+</div>
+</section>
+<section id="stage-1-supervised-fine-tuning" class="slide level2 mismatch-slide">
+<h2>Stage 1: Supervised fine-tuning</h2>
+<div class="columns">
+<div class="column" style="width:48%;">
+<div class="objective-card pretrain-card">
+<p><span class="card-heading">Training data</span></p>
+<p>Human-written demonstrations:</p>
+<p><span class="math display">
+(x_i, y_i^{\mathrm{demo}})
+</span></p>
+<p>where</p>
+<ul>
+<li><span class="math inline">x_i</span> is a prompt</li>
+<li><span class="math inline">y_i^{\mathrm{demo}}</span> is a good assistant answer</li>
+</ul>
+</div>
+</div><div class="column" style="width:48%;">
+<div class="objective-card assistant-card">
+<p><span class="card-heading">Objective</span></p>
+<p>Fine-tune the model to imitate good answers:</p>
+<p><span class="math display">
+\max_\theta
+\sum_i
+\log \pi_\theta
+\left(
+y_i^{\mathrm{demo}} \mid x_i
+\right).
+</span></p>
+<p>This gives the <strong>SFT model</strong>.</p>
+</div>
+</div></div>
+<div class="fragment key-point">
+<p>SFT teaches the model the <em>format</em> of helpful assistant behaviour.</p>
+</div>
+</section>
+<section id="what-is-pi_thetay-mid-x" class="slide level2 policy-slide">
+<h2>What is <span class="math inline">\pi_\theta(y \mid x)</span>?</h2>
+<div class="columns">
+<div class="column" style="width:48%;">
+<div class="objective-card pretrain-card">
+<p><span class="card-heading">Transformer model</span></p>
+<p>The transformer takes a sequence of tokens and outputs next-token probabilities:</p>
+<p><span class="math display">
+p_\theta(x_{t+1} \mid x_{\leq t}).
+</span></p>
+<p>The parameters <span class="math inline">\theta</span> are the neural-network weights:</p>
+<ul>
+<li>attention weights</li>
+<li>feedforward weights</li>
+<li>embedding matrices</li>
+<li>output projection</li>
+</ul>
+</div>
+</div><div class="column" style="width:48%;">
+<div class="objective-card assistant-card">
+<p><span class="card-heading">Policy notation</span></p>
+<p>For a prompt <span class="math inline">x</span>, the model generates an answer <span class="math inline">y</span> token by token:</p>
+<p><span class="math display">
+y = (y_1,\dots,y_T).
+</span></p>
+<p>So we can write the probability of the whole answer as</p>
+<p><span class="math display">
+\pi_\theta(y \mid x)
+=
+\prod_{t=1}^{T}
+p_\theta(y_t \mid x, y_{&lt;t}).
+</span></p>
+</div>
+</div></div>
+<div class="fragment key-point">
+<p><span class="math inline">\pi_\theta</span> is not a separate model.<br>
+It is the same transformer, viewed as a probability distribution over generated answers.</p>
+</div>
+<aside class="notes">
+<p>This is an important notational point.</p>
+<p>In language modelling, we usually write the model as next-token probabilities.</p>
+<p>In reinforcement learning, we often call the model a policy because it chooses actions. Here, the “actions” are tokens, or equivalently the generated answer.</p>
+<p>So: - the transformer is the architecture; - <span class="math inline">\theta</span> are the weights; - <span class="math inline">p_\theta</span> is the next-token distribution; - <span class="math inline">\pi_\theta(y \mid x)</span> is the induced distribution over full answers.</p>
+<p>This lets us use reinforcement-learning language later, where the language model is the policy and the generated response is the action or trajectory.</p>
+<style type="text/css">
+        span.MJX_Assistive_MathML {
+          position:absolute!important;
+          clip: rect(1px, 1px, 1px, 1px);
+          padding: 1px 0 0 0!important;
+          border: 0!important;
+          height: 1px!important;
+          width: 1px!important;
+          overflow: hidden!important;
+          display:block!important;
+      }</style></aside>
+</section>
+<section id="sft-as-next-token-training" class="slide level2 sft-precise-slide">
+<h2>SFT as next-token training</h2>
+<p>A human demonstration is a prompt-answer pair:</p>
+<p><span class="math display">
+(x_i, y_i^{\mathrm{demo}}).
+</span></p>
+<p>If</p>
+<p><span class="math display">
+y_i^{\mathrm{demo}}
+=
+(y_{i1},\dots,y_{iT_i}),
+</span></p>
+<p>then the model assigns probability</p>
+<p><span class="math display">
+\pi_\theta(y_i^{\mathrm{demo}} \mid x_i)
+=
+\prod_{t=1}^{T_i}
+p_\theta(y_{it} \mid x_i, y_{i,&lt;t}).
+</span></p>
+<p>Therefore SFT maximises</p>
+<p><span class="math display">
+\sum_i \log \pi_\theta(y_i^{\mathrm{demo}} \mid x_i)
+=
+\sum_i \sum_{t=1}^{T_i}
+\log p_\theta(y_{it} \mid x_i, y_{i,&lt;t}).
+</span></p>
+<div class="fragment key-point">
+<p>SFT is ordinary next-token training, but on curated prompt-answer examples.</p>
+</div>
+<aside class="notes">
+<p>This slide clarifies that SFT is not a fundamentally different training method from pretraining.</p>
+<p>It is still next-token prediction.</p>
+<p>The difference is the dataset: - pretraining uses broad internet-scale text; - SFT uses curated demonstrations of good assistant behaviour.</p>
+<p>So SFT shifts the model from “continue arbitrary text” towards “respond to instructions in an assistant-like way”.</p>
+<style type="text/css">
+        span.MJX_Assistive_MathML {
+          position:absolute!important;
+          clip: rect(1px, 1px, 1px, 1px);
+          padding: 1px 0 0 0!important;
+          border: 0!important;
+          height: 1px!important;
+          width: 1px!important;
+          overflow: hidden!important;
+          display:block!important;
+      }</style></aside>
+</section>
+<section id="stage-2-train-a-scoring-model" class="slide level2 reward-model-slide">
+<h2>Stage 2: Train a scoring model</h2>
+<p>For a prompt <span class="math inline">x</span>, sample two candidate answers:</p>
+<p><span class="math display">
+y_A, \; y_B \sim \pi_{\mathrm{SFT}}(\cdot \mid x).
+</span></p>
+<p>A human is asked:</p>
+<div class="comparison-box">
+<p>Which answer is better?</p>
+<p><span class="math display">
+y_A \succ y_B
+\qquad \text{or} \qquad
+y_B \succ y_A
+</span></p>
+</div>
+<p>The reward model is a scoring function:</p>
+<p><span class="math display">
+r_\phi(x,y) \in \mathbb{R}.
+</span></p>
+<div class="fragment key-point">
+<p>The statistical problem is to infer latent answer quality from noisy pairwise comparisons.</p>
+</div>
+<aside class="notes">
+<p>This is the point that connects most directly to the sports research group.</p>
+<p>The reward model does not observe true answer quality. It only observes comparative human judgements.</p>
+<p>So this is a paired-comparison problem: answer A beats answer B, or answer B beats answer A.</p>
+<p>The word “reward model” is common in RLHF, but for this talk it is useful to call it a scoring model.</p>
+<style type="text/css">
+        span.MJX_Assistive_MathML {
+          position:absolute!important;
+          clip: rect(1px, 1px, 1px, 1px);
+          padding: 1px 0 0 0!important;
+          border: 0!important;
+          height: 1px!important;
+          width: 1px!important;
+          overflow: hidden!important;
+          display:block!important;
+      }</style></aside>
+</section>
+<section id="the-preference-model" class="slide level2 bt-slide">
+<h2>The preference model</h2>
+<p>A standard model is logistic:</p>
+<p><span class="math display">
+\Pr(y_A \succ y_B \mid x)
+=
+\sigma
+\left(
+r_\phi(x,y_A) - r_\phi(x,y_B)
+\right),
+</span></p>
+<p>where</p>
+<p><span class="math display">
+\sigma(z)=\frac{1}{1+\exp(-z)}.
+</span></p>
+<div class="fragment sports-analogy">
+<p>This is like saying:</p>
+<blockquote>
+<p>Answer A “beats” answer B with probability determined by the difference in their latent scores.</p>
+</blockquote>
+</div>
+<div class="fragment key-point">
+<p>This is essentially the <strong>Bradley-Terry model</strong> from paired-comparison statistics.</p>
+</div>
+<aside class="notes">
+<p>This is the main scoring-model slide.</p>
+<p>Make the sports analogy explicit: in sport, we often infer latent team or player quality from match outcomes. In RLHF, we infer latent answer quality from human preference outcomes.</p>
+<p>The model says that only the difference in scores matters: if answer A has a much higher score than answer B, humans are very likely to prefer A. If their scores are close, the preference is uncertain.</p>
+<style type="text/css">
+        span.MJX_Assistive_MathML {
+          position:absolute!important;
+          clip: rect(1px, 1px, 1px, 1px);
+          padding: 1px 0 0 0!important;
+          border: 0!important;
+          height: 1px!important;
+          width: 1px!important;
+          overflow: hidden!important;
+          display:block!important;
+      }</style></aside>
+</section>
+<section id="how-is-the-scoring-model-trained" class="slide level2 reward-training-slide">
+<h2>How is the scoring model trained?</h2>
+<div class="columns">
+<div class="column" style="width:48%;">
+<div class="objective-card pretrain-card">
+<p><span class="card-heading">Typical architecture</span></p>
+<p>Given a prompt-answer pair <span class="math inline">(x,y)</span>, concatenate the tokens and feed them through a transformer:</p>
+<p><span class="math display">
+[x \, ; \, y]
+\;\longrightarrow\;
+h_1,\dots,h_T
+</span></p>
+<p>Use the final hidden representation (or EOS-token representation) and attach a scalar head:</p>
+<p><span class="math display">
+r_\phi(x,y) = w^\top h_T + b.
+</span></p>
+<p>So the reward model is typically:</p>
+<ul>
+<li>a transformer backbone</li>
+<li>plus a 1-dimensional linear “score head”</li>
+<li>outputting a single real number</li>
+</ul>
+</div>
+</div><div class="column" style="width:48%;">
+<div class="objective-card assistant-card">
+<p><span class="card-heading">Training from preferences</span></p>
+<p>Training data consist of triples</p>
+<p><span class="math display">
+(x_i, y_i^+, y_i^-),
+</span></p>
+<p>where <span class="math inline">y_i^+</span> is the human-preferred answer and <span class="math inline">y_i^-</span> is the rejected one.</p>
+<p>The same scorer is applied to both answers, and we minimise</p>
+<p><span class="math display">
+\mathcal{L}(\phi)
+=
+-
+\sum_i
+\log
+\sigma\!\left(
+r_\phi(x_i,y_i^+) - r_\phi(x_i,y_i^-)
+\right).
+</span></p>
+<p>This pushes the preferred answer to have the higher score.</p>
+</div>
+</div></div>
+<div class="fragment key-point">
+<p>Architecturally, the scoring model is usually just another language model with a scalar scoring head.</p>
+</div>
+<div class="fragment key-point">
+<p>Statistically, this is just a paired-comparison model fit by logistic loss.</p>
+</div>
+<aside class="notes">
+<p>This slide is meant to demystify the reward model.</p>
+<p>The input is not “answer A versus answer B” jointly. Rather, the same scoring model is applied separately to each prompt-answer pair: - score prompt + answer A - score prompt + answer B</p>
+<p>Then the difference of the two scores is passed through a logistic function, giving the model probability that A is preferred to B.</p>
+<p>In practice, the reward model is often initialised from a pretrained or SFT transformer, then fitted with this pairwise preference loss.</p>
+<p>So: - the transformer provides contextual representations; - the scalar head converts the representation into a latent quality score; - the logistic loss learns from human comparisons.</p>
+<style type="text/css">
+        span.MJX_Assistive_MathML {
+          position:absolute!important;
+          clip: rect(1px, 1px, 1px, 1px);
+          padding: 1px 0 0 0!important;
+          border: 0!important;
+          height: 1px!important;
+          width: 1px!important;
+          overflow: hidden!important;
+          display:block!important;
+      }</style></aside>
+</section>
+<section id="scoring-model-as-a-comparison-machine" class="slide level2 reward-diagram-slide">
+<h2>Scoring model as a comparison machine</h2>
+<div class="comparison-flow">
+<div class="flow-box">
+<p>Prompt <span class="math inline">x</span> + Answer <span class="math inline">y_A</span></p>
+</div>
+<div class="pipeline-arrow">
+→
+</div>
+<div class="flow-box">
+<p>Score <span class="math display">
+r_\phi(x,y_A)
+</span></p>
+</div>
+<div class="pipeline-arrow">
+
+</div>
+<div class="flow-box">
+<p>Prompt <span class="math inline">x</span> + Answer <span class="math inline">y_B</span></p>
+</div>
+<div class="pipeline-arrow">
+→
+</div>
+<div class="flow-box">
+<p>Score <span class="math display">
+r_\phi(x,y_B)
+</span></p>
+</div>
+</div>
+<p><span class="math display">
+\Pr(y_A \succ y_B \mid x)
+=
+\sigma\!\left(
+r_\phi(x,y_A)-r_\phi(x,y_B)
+\right).
+</span></p>
+<div class="fragment key-point">
+<p>Score each answer separately, then compare the scores.</p>
+</div>
+</section>
+<section id="stage-3-optimise-the-llm" class="slide level2 rl-optimisation-slide">
+<h2>Stage 3: Optimise the LLM</h2>
+<p>Now treat the language model as a <strong>policy</strong>:</p>
+<p><span class="math display">
+\pi_\theta(y \mid x),
+</span></p>
+<p>where</p>
+<ul>
+<li><span class="math inline">x</span> is the prompt</li>
+<li><span class="math inline">y</span> is the generated answer</li>
+</ul>
+<p>The objective is:</p>
+<p><span class="math display">
+\max_\theta
+\;
+\mathbb{E}_{y \sim \pi_\theta(\cdot \mid x)}
+\left[
+r_\phi(x,y)
+-
+\beta
+\operatorname{KL}
+\left(
+\pi_\theta(\cdot \mid x)
+\Vert
+\pi_{\mathrm{ref}}(\cdot \mid x)
+\right)
+\right].
+</span></p>
+<div class="fragment key-point">
+<p>The reward model is the <strong>judge</strong>.<br>
+The language model is the <strong>competitor</strong>.</p>
+</div>
+<div class="fragment key-point">
+<p>RLHF trains the competitor to get higher marks from the judge, without drifting too far from the original model.</p>
+</div>
+<aside class="notes">
+<p>Historically, this optimisation was often done with PPO.</p>
+<p>The KL penalty is important: without it, the model may exploit weaknesses in the reward model. The reference model is usually the SFT model or another earlier checkpoint.</p>
+<p>The intuition: - the reward term says “produce answers humans would prefer”; - the KL term says “do not move too far from the model we already trust”.</p>
+<p>This is the bridge into policy optimisation.</p>
+<style type="text/css">
+        span.MJX_Assistive_MathML {
+          position:absolute!important;
+          clip: rect(1px, 1px, 1px, 1px);
+          padding: 1px 0 0 0!important;
+          border: 0!important;
+          height: 1px!important;
+          width: 1px!important;
+          overflow: hidden!important;
+          display:block!important;
+      }</style></aside>
+</section>
+<section id="text-generation-as-reinforcement-learning" class="slide level2 rl-mapping-slide">
+<h2>Text generation as reinforcement learning</h2>
+<div class="columns">
+<div class="column" style="width:48%;">
+<div class="objective-card pretrain-card">
+<p><span class="card-heading">Language modelling view</span></p>
+<p>Given a prompt <span class="math inline">x</span>, the model generates an answer token by token:</p>
+<p><span class="math display">
+y = (y_1,\dots,y_T).
+</span></p>
+<p>The transformer defines</p>
+<p><span class="math display">
+\pi_\theta(y_t \mid x, y_{&lt;t}).
+</span></p>
+<p>The probability of the full answer is</p>
+<p><span class="math display">
+\pi_\theta(y \mid x)
+=
+\prod_{t=1}^T
+\pi_\theta(y_t \mid x,y_{&lt;t}).
+</span></p>
+</div>
+</div><div class="column" style="width:48%;">
+<div class="objective-card assistant-card">
+<p><span class="card-heading">Reinforcement learning view</span></p>
+<p>The language model is a <strong>policy</strong>.</p>
+<p>At step <span class="math inline">t</span>:</p>
+<ul>
+<li>state: current text context <span class="math inline">(x,y_{&lt;t})</span></li>
+<li>action: next token <span class="math inline">y_t</span></li>
+<li>trajectory: full answer <span class="math inline">y</span></li>
+<li>reward: score from reward model</li>
+</ul>
+<p><span class="math display">
+R(x,y) = r_\phi(x,y).
+</span></p>
+</div>
+</div></div>
+<div class="fragment key-point">
+<p>In RLHF, generating an answer is treated as a sequential decision problem.</p>
+</div>
+<aside class="notes">
+<p>This slide maps language modelling onto reinforcement learning.</p>
+<p>The policy is not a separate object. It is the same transformer model, but interpreted as a policy over tokens.</p>
+<p>The state is the current text context. The action is the next token. The trajectory is the complete generated response.</p>
+<p>The reward is usually only given after the whole answer has been generated, because the reward model scores the complete prompt-answer pair.</p>
+<p>This is why the setting is naturally an episodic reinforcement-learning problem: one prompt gives one generated answer, and the answer receives a scalar reward.</p>
+<style type="text/css">
+        span.MJX_Assistive_MathML {
+          position:absolute!important;
+          clip: rect(1px, 1px, 1px, 1px);
+          padding: 1px 0 0 0!important;
+          border: 0!important;
+          height: 1px!important;
+          width: 1px!important;
+          overflow: hidden!important;
+          display:block!important;
+      }</style></aside>
+</section>
+<section id="the-rlhf-objective" class="slide level2 rl-objective-slide">
+<h2>The RLHF objective</h2>
+<p>For prompts <span class="math inline">x \sim \mathcal{D}</span>, generate answers</p>
+<p><span class="math display">
+y \sim \pi_\theta(\cdot \mid x).
+</span></p>
+<p>The aim is to maximise expected reward:</p>
+<p><span class="math display">
+\max_\theta
+\;
+\mathbb{E}_{x \sim \mathcal{D}}
+\mathbb{E}_{y \sim \pi_\theta(\cdot \mid x)}
+\left[
+r_\phi(x,y)
+\right].
+</span></p>
+<div class="fragment">
+<p>But if we optimise only this reward, the model may exploit weaknesses in the reward model.</p>
+</div>
+<div class="fragment key-point">
+<p>So we add a penalty for moving too far from a reference model.</p>
+</div>
+<p><span class="math display">
+\max_\theta
+\;
+\mathbb{E}_{x \sim \mathcal{D}}
+\mathbb{E}_{y \sim \pi_\theta(\cdot \mid x)}
+\left[
+r_\phi(x,y)
+-
+\beta
+\operatorname{KL}
+\left(
+\pi_\theta(\cdot \mid x)
+\Vert
+\pi_{\mathrm{ref}}(\cdot \mid x)
+\right)
+\right].
+</span></p>
+<aside class="notes">
+<p>This is the cleaner version of the objective.</p>
+<p>The previous slide only wrote the expectation over <span class="math inline">y</span>, but really there is also an expectation over prompts <span class="math inline">x</span> drawn from some prompt distribution.</p>
+<p>The reference model is usually the supervised fine-tuned model, or a frozen copy of a previous model.</p>
+<p>The KL penalty discourages the model from drifting too far away from the model we already trust. This matters because the reward model is imperfect. If the policy is allowed to optimise the reward model too aggressively, it can discover unnatural answers that get high reward-model scores but are bad for humans.</p>
+<p>This is analogous to regularisation.</p>
+<style type="text/css">
+        span.MJX_Assistive_MathML {
+          position:absolute!important;
+          clip: rect(1px, 1px, 1px, 1px);
+          padding: 1px 0 0 0!important;
+          border: 0!important;
+          height: 1px!important;
+          width: 1px!important;
+          overflow: hidden!important;
+          display:block!important;
+      }</style></aside>
+</section>
+<section id="why-only-approximately" class="slide level2 approx-objective-slide">
+<h2>Why only approximately?</h2>
+<p>The objective is:</p>
+<p><span class="math display">
+\mathbb{E}
+\left[
+r_\phi(x,y)
+-
+\beta
+\operatorname{KL}
+\left(
+\pi_\theta(\cdot \mid x)
+\Vert
+\pi_{\mathrm{ref}}(\cdot \mid x)
+\right)
+\right].
+</span></p>
+<p>In practice, this is optimised approximately using samples.</p>
+<div class="columns">
+<div class="column" style="width:50%;">
+<div class="objective-card pretrain-card">
+<p><span class="card-heading">What we can sample</span></p>
+<p>We sample prompts:</p>
+<p><span class="math display">
+x_i \sim \mathcal{D}.
+</span></p>
+<p>Then sample model answers:</p>
+<p><span class="math display">
+y_i \sim \pi_\theta(\cdot \mid x_i).
+</span></p>
+<p>Then score them:</p>
+<p><span class="math display">
+r_\phi(x_i,y_i).
+</span></p>
+</div>
+</div><div class="column" style="width:50%;">
+<div class="objective-card assistant-card">
+<p><span class="card-heading">What we approximate</span></p>
+<p>The expectation is approximated by minibatches.</p>
+<p>The KL term is usually estimated token by token.</p>
+<p>The policy update is done using a stable policy-gradient method, often PPO.</p>
+</div>
+</div></div>
+<div class="fragment key-point">
+<p>“Approximate” means: sample-based optimisation of a regularised expected reward objective.</p>
+</div>
+<aside class="notes">
+<p>This slide explains the word approximate.</p>
+<p>There are several approximations: 1. We use samples of prompts, not the full prompt distribution. 2. We use sampled model completions, not all possible completions. 3. The KL penalty is estimated using token probabilities from the current model and reference model. 4. The policy-gradient update uses a practical surrogate objective, such as PPO, rather than exactly maximising the displayed expression.</p>
+<p>So the displayed equation is the conceptual objective. PPO is one practical method for taking stable gradient steps towards improving that objective.</p>
+<style type="text/css">
+        span.MJX_Assistive_MathML {
+          position:absolute!important;
+          clip: rect(1px, 1px, 1px, 1px);
+          padding: 1px 0 0 0!important;
+          border: 0!important;
+          height: 1px!important;
+          width: 1px!important;
+          overflow: hidden!important;
+          display:block!important;
+      }</style></aside>
+</section>
+<section id="why-is-there-a-kl-penalty" class="slide level2">
+<h2>Why is there a KL penalty?</h2>
+<p>In principle, we could optimise only the reward model:</p>
+<p><span class="math display">
+\max_\theta
+\mathbb{E}_{y\sim\pi_\theta(\cdot\mid x)}
+[
+r_\phi(x,y)
+].
+</span></p>
+<p>But the reward model is only a learned proxy for human preference.</p>
+<p>So RLHF usually solves a regularised problem:</p>
+<p><span class="math display">
+\max_\theta
+\mathbb{E}_{y\sim\pi_\theta(\cdot\mid x)}
+\left[
+r_\phi(x,y)
+-
+\beta
+\log
+\frac{\pi_\theta(y\mid x)}
+{\pi_{\mathrm{ref}}(y\mid x)}
+\right].
+</span></p>
+<div class="fragment key-point">
+<p>The KL penalty says: improve according to the reward model, but stay close to the reference model.</p>
+</div>
+</section>
+<section id="policy-gradient-intuition" class="slide level2 policy-gradient-slide">
+<h2>Policy-gradient intuition</h2>
+<p>Suppose the model samples an answer</p>
+<p><span class="math display">
+y \sim \pi_\theta(\cdot \mid x).
+</span></p>
+<p>If the answer receives high reward, we want to make it more likely.</p>
+<p>If it receives low reward, we want to make it less likely.</p>
+<p>A basic policy-gradient update has the form</p>
+<p><span class="math display">
+\nabla_\theta J(\theta)
+\approx
+\left(
+R(x,y) - b(x)
+\right)
+\nabla_\theta
+\log \pi_\theta(y \mid x),
+</span></p>
+<p>where</p>
+<p><span class="math display">
+R(x,y)
+=
+r_\phi(x,y)
+-
+\beta
+\operatorname{KL}
+\left(
+\pi_\theta(\cdot \mid x)
+\Vert
+\pi_{\mathrm{ref}}(\cdot \mid x)
+\right).
+</span></p>
+<div class="fragment key-point">
+<p>Reward-weighted maximum likelihood: make high-scoring sampled answers more likely.</p>
+</div>
+<aside class="notes">
+<p>This is not the exact PPO objective, but it gives the core intuition.</p>
+<p>The term <span class="math inline">\nabla_\theta \log \pi_\theta(y \mid x)</span> tells us how to change the model parameters to increase the probability of the sampled answer.</p>
+<p>The scalar reward term tells us whether that sampled answer should be encouraged or discouraged.</p>
+<p>The baseline <span class="math inline">b(x)</span> reduces variance. In actor-critic methods, this baseline is learned by a value function.</p>
+<p>PPO modifies this basic idea by restricting how large the policy update can be. This makes training more stable.</p>
+<style type="text/css">
+        span.MJX_Assistive_MathML {
+          position:absolute!important;
+          clip: rect(1px, 1px, 1px, 1px);
+          padding: 1px 0 0 0!important;
+          border: 0!important;
+          height: 1px!important;
+          width: 1px!important;
+          overflow: hidden!important;
+          display:block!important;
+      }</style></aside>
+</section>
+<section id="why-ppo" class="slide level2 ppo-slide">
+<h2>Why PPO?</h2>
+<p>A naive policy-gradient update can change the model too aggressively.</p>
+<p>PPO uses a clipped objective that discourages overly large policy updates.</p>
+<p>Define the probability ratio</p>
+<p><span class="math display">
+\rho_t(\theta)
+=
+\frac{
+\pi_\theta(y_t \mid x,y_{&lt;t})
+}{
+\pi_{\theta_{\mathrm{old}}}(y_t \mid x,y_{&lt;t})
+}.
+</span></p>
+<p>PPO encourages high-reward tokens while keeping</p>
+<p><span class="math display">
+\rho_t(\theta)
+</span></p>
+<p>close to <span class="math inline">1</span>.</p>
+<div class="fragment key-point">
+<p>PPO is a practical stabilisation method: improve the policy, but do not let it move too far in one update.</p>
+</div>
+<aside class="notes">
+<p>You probably do not need to derive PPO fully.</p>
+<p>The key idea is that PPO compares the new policy to the old policy. If the new policy makes a token much more or less likely than before, the clipped objective limits the update.</p>
+<p>This sits alongside the KL penalty to the reference model: - PPO controls step size relative to the previous model; - the KL penalty controls drift relative to the trusted reference model.</p>
+<p>For this talk, the important point is not PPO itself. The important point is that the LLM is being updated using policy-gradient style reinforcement learning, with the learned reward model providing the reward signal.</p>
+<style type="text/css">
+        span.MJX_Assistive_MathML {
+          position:absolute!important;
+          clip: rect(1px, 1px, 1px, 1px);
+          padding: 1px 0 0 0!important;
+          border: 0!important;
+          height: 1px!important;
+          width: 1px!important;
+          overflow: hidden!important;
+          display:block!important;
+      }</style></aside>
+</section></section>
+<section>
+<section id="the-scoring-model-perspective" class="title-slide slide level1 center">
+<h1>The Scoring Model Perspective</h1>
+
+</section>
+<section id="the-scoring-model-perspective-1" class="slide level2 scoring-perspective-slide">
+<h2>The scoring-model perspective</h2>
+<div class="big-claim">
+<p>From a statistical perspective, the exciting object is not really<br>
+<strong>reinforcement learning</strong>.</p>
+<p>It is the learned <strong>scoring model</strong>.</p>
+</div>
+<div class="fragment key-point">
+<p>RLHF turns qualitative human judgements into a quantitative objective.</p>
+</div>
+<div class="fragment pipeline-mini">
+<div class="pipeline-step">
+<p>Human comparisons</p>
+</div>
+<div class="pipeline-arrow">
+→
+</div>
+<div class="pipeline-step">
+<p>Latent score model</p>
+</div>
+<div class="pipeline-arrow">
+→
+</div>
+<div class="pipeline-step">
+<p>Optimisation target</p>
+</div>
+</div>
+</section>
+<section id="from-elo-style-scores-to-rlhf-scores" class="slide level2 elo-rlhf-slide">
+<h2>From Elo-style scores to RLHF scores</h2>
+<div class="columns">
+<div class="column" style="width:48%;">
+<div class="comparison-card">
+<p><span class="card-heading">Sport / Elo setting</span></p>
+<p>A competitor has a persistent latent score:</p>
+<p><span class="math display">
+s_i \in \mathbb{R}.
+</span></p>
+<p>For two competitors,</p>
+<p><span class="math display">
+\mathbb{P}(i \succ j)
+=
+\sigma(s_i - s_j).
+</span></p>
+<div class="fragment">
+<p>The same competitors appear repeatedly.</p>
+</div>
+</div>
+</div><div class="column" style="width:52%;">
+<div class="comparison-card">
+<p><span class="card-heading">RLHF setting</span></p>
+<p>A prompt–answer pair has a latent score:</p>
+<p><span class="math display">
+r_\phi(x,y) \in \mathbb{R}.
+</span></p>
+<p>For two answers to the same prompt,</p>
+<p><span class="math display">
+\mathbb{P}(y_A \succ y_B \mid x)
+=
+\sigma\{r_\phi(x,y_A)-r_\phi(x,y_B)\}.
+</span></p>
+<div class="fragment">
+<p>The same exact answer to the same exact prompt may never appear again.</p>
+</div>
+</div>
+</div></div>
+<div class="fragment key-point">
+<p>Ranking systems typically score persistent competitors; RLHF scores context-dependent outputs.</p>
+</div>
+<aside class="notes">
+<p>This slide makes the mapping to sports statistics explicit.</p>
+<p>In a simple Elo or Bradley–Terry setting, each team or player has a latent score. The same teams appear repeatedly, so it is plausible to maintain a table of scores and update them over time.</p>
+<p>In RLHF, the object being scored is not just “the model” globally. The reward model scores a particular answer in response to a particular prompt. That is a much higher-dimensional object.</p>
+<p>So the score cannot usually be a simple parameter <span class="math inline">s_i</span> attached to a named competitor. Instead, we need a function approximator <span class="math inline">r_\phi(x,y)</span> which can generalise across prompts and answers.</p>
+<style type="text/css">
+        span.MJX_Assistive_MathML {
+          position:absolute!important;
+          clip: rect(1px, 1px, 1px, 1px);
+          padding: 1px 0 0 0!important;
+          border: 0!important;
+          height: 1px!important;
+          width: 1px!important;
+          overflow: hidden!important;
+          display:block!important;
+      }</style></aside>
+</section>
+<section id="why-use-a-scoring-model-at-all" class="slide level2 why-scoring-model-slide">
+<h2>Why use a scoring model at all?</h2>
+<p>If every prompt–answer pair had its own unrelated score, we would need something like</p>
+<p><span class="math display">
+s_{x,y}.
+</span></p>
+<p>But this is impossible in practice.</p>
+<div class="columns">
+<div class="column" style="width:48%;">
+<div class="comparison-card">
+<p><span class="card-heading">Sports ratings</span></p>
+<p>A small set of recurring objects:</p>
+<p><span class="math display">
+\text{Team A}, \text{Team B}, \text{Team C}, \ldots
+</span></p>
+<div class="fragment">
+<p>Many repeated observations per competitor.</p>
+</div>
+<div class="fragment">
+<p>A table of scores is plausible: <span class="math display">
+s_1,\ldots,s_N.
+</span></p>
+</div>
+</div>
+</div><div class="column" style="width:52%;">
+<div class="comparison-card">
+<p><span class="card-heading">LLM outputs</span></p>
+<p>A huge space of possible objects:</p>
+<p><span class="math display">
+(x,y) \in \mathcal{X} \times \mathcal{Y}.
+</span></p>
+<div class="fragment">
+<p>Most prompt–answer pairs are observed rarely or never.</p>
+</div>
+<div class="fragment">
+<p>We need a learned function: <span class="math display">
+r_\phi : \mathcal{X} \times \mathcal{Y} \to \mathbb{R}.
+</span></p>
+</div>
+</div>
+</div></div>
+<div class="fragment key-point">
+<p>The reward model is a generalising scoring rule, not just a table of ratings.</p>
+</div>
+<aside class="notes">
+<p>This is the key statistical reason for using a neural reward model.</p>
+<p>In Elo, the score belongs to a persistent competitor. A team plays many matches, so we can update its rating.</p>
+<p>In RLHF, each output is more like a one-off performance in a high-dimensional context. The exact prompt and exact answer may never recur. Therefore we cannot assign an independent parameter to every possible pair <span class="math inline">(x,y)</span>.</p>
+<p>Instead, we train a model <span class="math inline">r_\phi(x,y)</span> that learns features of good answers: relevance, clarity, correctness, helpfulness, style, safety, and so on. It must generalise from observed comparisons to new prompts and new answers.</p>
+<style type="text/css">
+        span.MJX_Assistive_MathML {
+          position:absolute!important;
+          clip: rect(1px, 1px, 1px, 1px);
+          padding: 1px 0 0 0!important;
+          border: 0!important;
+          height: 1px!important;
+          width: 1px!important;
+          overflow: hidden!important;
+          display:block!important;
+      }</style></aside>
+</section>
+<section id="the-scoring-model-is-trained-from-comparisons" class="slide level2 rm-loss-intuition-slide">
+<h2>The scoring model is trained from comparisons</h2>
+<p>For a prompt <span class="math inline">x</span>, suppose a human prefers answer <span class="math inline">y_A</span> to answer <span class="math inline">y_B</span>:</p>
+<p><span class="math display">
+y_A \succ y_B.
+</span></p>
+<p>The scoring model should assign the preferred answer a higher score:</p>
+<p><span class="math display">
+r_\phi(x,y_A) &gt; r_\phi(x,y_B).
+</span></p>
+<p>A Bradley–Terry-style likelihood writes this as</p>
+<p><span class="math display">
+\mathbb{P}(y_A \succ y_B \mid x)
+=
+\sigma\{r_\phi(x,y_A)-r_\phi(x,y_B)\}.
+</span></p>
+<div class="fragment key-point">
+<p>The model learns a scoring function by being punished when its score differences disagree with human preferences.</p>
+</div>
+<aside class="notes">
+<p>This slide returns from the sports analogy to the RLHF training objective.</p>
+<p>The key idea is simple: if humans prefer <span class="math inline">y_A</span> to <span class="math inline">y_B</span>, then the reward model should give <span class="math inline">y_A</span> a higher score.</p>
+<p>The Bradley–Terry likelihood turns this into a differentiable loss. Other scoring models would change the likelihood, but the basic idea remains: learn scores whose implied preferences match human judgements.</p>
+<style type="text/css">
+        span.MJX_Assistive_MathML {
+          position:absolute!important;
+          clip: rect(1px, 1px, 1px, 1px);
+          padding: 1px 0 0 0!important;
+          border: 0!important;
+          height: 1px!important;
+          width: 1px!important;
+          overflow: hidden!important;
+          display:block!important;
+      }</style></aside>
+</section>
+<section id="stage-2-observes-judgements-not-scores" class="slide level2 judgement-data-slide">
+<h2>Stage 2 observes judgements, not scores</h2>
+<p>For a prompt <span class="math inline">x</span>, suppose the model produces candidate answers</p>
+<p><span class="math display">
+y_1,\ldots,y_K.
+</span></p>
+<p>A human annotator does not provide the true rewards</p>
+<p><span class="math display">
+r_\phi(x,y_1),\ldots,r_\phi(x,y_K).
+</span></p>
+<p>Instead, they provide an observation:</p>
+<div class="fragment comparison-list">
+<p><span class="math display">
+y_A \succ y_B
+</span></p>
+<p><span class="math display">
+y_A \sim y_B
+</span></p>
+<p><span class="math display">
+y_1 \succ y_3 \succ y_2
+</span></p>
+<p><span class="math display">
+\text{``answer } y_A \text{ is 4/5''}
+</span></p>
+</div>
+<div class="fragment key-point">
+<p>The reward model is trained by choosing a likelihood for the kind of judgement we observe.</p>
+</div>
+<aside class="notes">
+<p>This is the transition from the intuitive point that pairwise comparisons are easier to the statistical point that different data types require different observation models.</p>
+<p>The human does not reveal the reward function. They provide noisy evidence about it.</p>
+<p>So the role of Stage 2 is to infer a scoring function from whatever kind of judgement data we collect: pairwise preferences, ties, rankings, ratings, or something else.</p>
+<style type="text/css">
+        span.MJX_Assistive_MathML {
+          position:absolute!important;
+          clip: rect(1px, 1px, 1px, 1px);
+          padding: 1px 0 0 0!important;
+          border: 0!important;
+          height: 1px!important;
+          width: 1px!important;
+          overflow: hidden!important;
+          display:block!important;
+      }</style></aside>
+</section>
+<section id="same-scoring-function-different-likelihood" class="slide level2 same-score-different-likelihood-slide">
+<h2>Same scoring function, different likelihood</h2>
+<p>The scoring model is still a function</p>
+<p><span class="math display">
+r_\phi : \mathcal{X} \times \mathcal{Y} \to \mathbb{R}.
+</span></p>
+<p>What changes is the probability model for the observed judgement:</p>
+<p><span class="math display">
+\mathcal{L}_{\mathrm{RM}}(\phi)
+=
+-
+\log p_\phi
+\left(
+\text{human judgement}
+\mid
+x,y_1,\ldots,y_K
+\right).
+</span></p>
+<div class="columns">
+<div class="column" style="width:50%;">
+<div class="comparison-card">
+<p><span class="card-heading">Examples of observations</span></p>
+<p>Pairwise preference:</p>
+<p><span class="math display">
+y_A \succ y_B
+</span></p>
+<p>Tie or no preference:</p>
+<p><span class="math display">
+y_A \sim y_B
+</span></p>
+<p>Ranking:</p>
+<p><span class="math display">
+y_1 \succ y_2 \succ y_3
+</span></p>
+</div>
+</div><div class="column" style="width:50%;">
+<div class="comparison-card">
+<p><span class="card-heading">Examples of likelihoods</span></p>
+<p>Bradley–Terry</p>
+<p>Davidson / tie models</p>
+<p>Plackett–Luce</p>
+<p>Ordinal rating models</p>
+</div>
+</div></div>
+<div class="fragment key-point">
+<p>Different judgement data change the Stage 2 loss, not the basic idea of learning a scalar reward.</p>
+</div>
+<aside class="notes">
+<p>This is the main statistical message.</p>
+<p>The scoring model produces a scalar score for each prompt-answer pair. But we never directly observe that scalar score.</p>
+<p>Instead, we specify a likelihood connecting the scores to the human judgement. If the judgement is pairwise, we might use Bradley–Terry. If ties are allowed, we use a tie model. If the annotator ranks several answers, we might use Plackett–Luce.</p>
+<p>The final Stage 3 RLHF step only needs the trained scalar reward model <span class="math inline">r_\phi(x,y)</span>.</p>
+<style type="text/css">
+        span.MJX_Assistive_MathML {
+          position:absolute!important;
+          clip: rect(1px, 1px, 1px, 1px);
+          padding: 1px 0 0 0!important;
+          border: 0!important;
+          height: 1px!important;
+          width: 1px!important;
+          overflow: hidden!important;
+          display:block!important;
+      }</style></aside>
+</section>
+<section id="pairwise-comparison-is-easier-than-absolute-scoring" class="slide level2 pairwise-slide">
+<h2>Pairwise comparison is easier than absolute scoring</h2>
+<div class="columns">
+<div class="column" style="width:48%;">
+<div class="comparison-card">
+<p><span class="card-heading">Absolute scoring</span></p>
+<p>Hard for humans:</p>
+<p><span class="math display">
+\text{This answer is } 7.3/10.
+</span></p>
+<div class="fragment">
+<p>What exactly does <strong>7.3</strong> mean?</p>
+</div>
+</div>
+</div><div class="column" style="width:48%;">
+<div class="comparison-card">
+<p><span class="card-heading">Pairwise comparison</span></p>
+<p>Usually easier:</p>
+<p><span class="math display">
+y_A \succ y_B.
+</span></p>
+<div class="fragment">
+<p>This answer is better than that one.</p>
+</div>
+</div>
+</div></div>
+<div class="fragment key-point">
+<p>This is why paired-comparison models are attractive in sport, rankings, judging, and psychometrics.</p>
+</div>
+<aside class="notes">
+<p>Make the point intuitively.</p>
+<p>Humans are often bad at calibrated absolute scoring, but much better at relative judgements.</p>
+<p>This is one reason RLHF usually uses comparisons rather than asking annotators to give precise numerical scores.</p>
+<style type="text/css">
+        span.MJX_Assistive_MathML {
+          position:absolute!important;
+          clip: rect(1px, 1px, 1px, 1px);
+          padding: 1px 0 0 0!important;
+          border: 0!important;
+          height: 1px!important;
+          width: 1px!important;
+          overflow: hidden!important;
+          display:block!important;
+      }</style></aside>
+</section>
+<section id="bradleyterry-the-simplest-paired-comparison-model" class="slide level2 bt-slide">
+<h2>Bradley–Terry: the simplest paired-comparison model</h2>
+<p>Suppose item <span class="math inline">i</span> has latent score <span class="math inline">s_i</span> and item <span class="math inline">j</span> has latent score <span class="math inline">s_j</span>.</p>
+<p>A Bradley–Terry model says</p>
+<p><span class="math display">
+\mathbb{P}(i \succ j)
+=
+\frac{\exp(s_i)}{\exp(s_i) + \exp(s_j)}
+=
+\sigma(s_i - s_j).
+</span></p>
+<div class="columns">
+<div class="column" style="width:50%;">
+<div class="comparison-card">
+<p><span class="card-heading">Sport</span></p>
+<p><span class="math display">
+\mathbb{P}(\text{Team A beats Team B})
+=
+\sigma(s_A - s_B).
+</span></p>
+</div>
+</div><div class="column" style="width:50%;">
+<div class="comparison-card">
+<p><span class="card-heading">RLHF</span></p>
+<p><span class="math display">
+\mathbb{P}(y_A \succ y_B \mid x)
+=
+\sigma(r_\phi(x,y_A) - r_\phi(x,y_B)).
+</span></p>
+</div>
+</div></div>
+<div class="fragment key-point">
+<p>Only the difference in scores matters.</p>
+</div>
+</section>
+<section id="what-about-draws" class="slide level2 draws-slide">
+<h2>What about draws?</h2>
+<p>Bradley–Terry only allows</p>
+<p><span class="math display">
+i \succ j
+\qquad \text{or} \qquad
+j \succ i.
+</span></p>
+<p>What about draws?</p>
+<div class="columns">
+<div class="column" style="width:48%;">
+<div class="comparison-card">
+<p><span class="card-heading">Sport</span></p>
+<p>Football matches etc. can end in a draw:</p>
+<p><span class="math display">
+i \sim j.
+</span></p>
+</div>
+</div><div class="column" style="width:48%;">
+<div class="comparison-card">
+<p><span class="card-heading">RLHF</span></p>
+<p>Two answers may be equally good, equally bad, or too close to call:</p>
+<p><span class="math display">
+y_A \sim y_B.
+</span></p>
+</div>
+</div></div>
+<div class="fragment">
+<p>One extension is the Davidson model:</p>
+<p><span class="math display">
+\mathbb{P}(i \succ j)
+=
+\frac{\alpha_i}{\alpha_i + \alpha_j + \nu \sqrt{\alpha_i\alpha_j}},
+</span></p>
+<p><span class="math display">
+\mathbb{P}(i \sim j)
+=
+\frac{\nu \sqrt{\alpha_i\alpha_j}}{\alpha_i + \alpha_j + \nu \sqrt{\alpha_i\alpha_j}},
+</span></p>
+<p>where <span class="math inline">\alpha_i = \exp(s_i)</span> and <span class="math inline">\nu \geq 0</span> controls the tendency for draws.</p>
+</div>
+<aside class="notes">
+<p>This is a good example because it connects naturally to sport.</p>
+<p>The ordinary Bradley–Terry model forces every comparison to have a winner. But in football, chess, judged sport, and human preference annotation, sometimes the honest answer is: these are about the same.</p>
+<p>The draw parameter <span class="math inline">\nu</span> controls how much probability is given to ties. If <span class="math inline">\nu=0</span>, we recover the no-draw version.</p>
+<p>For RLHF, this matters because forcing annotators to choose a winner between two nearly identical answers can add noise.</p>
+<style type="text/css">
+        span.MJX_Assistive_MathML {
+          position:absolute!important;
+          clip: rect(1px, 1px, 1px, 1px);
+          padding: 1px 0 0 0!important;
+          border: 0!important;
+          height: 1px!important;
+          width: 1px!important;
+          overflow: hidden!important;
+          display:block!important;
+      }</style></aside>
+</section>
+<section id="what-about-rankings" class="slide level2 rankings-slide">
+<h2>What about rankings?</h2>
+<p>In principle, a human annotator can rank several options:</p>
+<p><span class="math display">
+i_1 \succ i_2 \succ \cdots \succ i_K.
+</span></p>
+<p>A common model is the Plackett–Luce model:</p>
+<p><span class="math display">
+\mathbb{P}(i_1 \succ i_2 \succ \cdots \succ i_K)
+=
+\prod_{m=1}^{K}
+\frac{\exp(s_{i_m})}
+{\sum_{\ell=m}^{K} \exp(s_{i_\ell})}.
+</span></p>
+<div class="columns">
+<div class="column" style="width:50%;">
+<div class="comparison-card">
+<p><span class="card-heading">Sport</span></p>
+<p>Rank players, teams, performances, or candidates:</p>
+<p><span class="math display">
+\text{Gold} \succ \text{Silver} \succ \text{Bronze}.
+</span></p>
+</div>
+</div><div class="column" style="width:50%;">
+<div class="comparison-card">
+<p><span class="card-heading">RLHF</span></p>
+<p>Rank several candidate answers to the same prompt:</p>
+<p><span class="math display">
+y_1 \succ y_3 \succ y_2 \succ y_4.
+</span></p>
+</div>
+</div></div>
+<aside class="notes">
+<p>This slide shows that pairwise comparisons are not the only possible data format.</p>
+<p>Instead of asking a human to compare two answers, we might ask them to rank four answers. This gives richer information, but it may also be harder for the human annotator.</p>
+<p>The Plackett–Luce model says: first choose the best item from the full set, then choose the best item from the remaining set, and so on.</p>
+<p>Again, the same latent-score idea appears.</p>
+<style type="text/css">
+        span.MJX_Assistive_MathML {
+          position:absolute!important;
+          clip: rect(1px, 1px, 1px, 1px);
+          padding: 1px 0 0 0!important;
+          border: 0!important;
+          height: 1px!important;
+          width: 1px!important;
+          overflow: hidden!important;
+          display:block!important;
+      }</style></aside>
+</section>
+<section id="the-rlhf-version-scores-depend-on-context" class="slide level2 context-dependent-score-slide">
+<h2>The RLHF version: scores depend on context</h2>
+<p>In most ranking systems we have a fixed score for each competitor:</p>
+<p><span class="math display">
+s_i.
+</span></p>
+<p>But in RLHF, the score depends on both the prompt and the answer:</p>
+<p><span class="math display">
+r_\phi(x,y).
+</span></p>
+<div class="columns">
+<div class="column" style="width:48%;">
+<div class="comparison-card">
+<p><span class="card-heading">Fixed ability</span></p>
+<p>A team-strength model might say:</p>
+<p><span class="math display">
+s_i = \text{ability of team } i.
+</span></p>
+<p>The score belongs mainly to the team.</p>
+</div>
+</div><div class="column" style="width:48%;">
+<div class="comparison-card">
+<p><span class="card-heading">Context-dependent quality</span></p>
+<p>An answer-quality model says:</p>
+<p><span class="math display">
+r_\phi(x,y) = \text{quality of answer } y \text{ for prompt } x.
+</span></p>
+<p>The score belongs to the pair <span class="math inline">(x,y)</span>.</p>
+</div>
+</div></div>
+<div class="fragment key-point">
+<p>The same answer can be excellent for one prompt and terrible for another.</p>
+</div>
+<aside class="notes">
+<p>This is an important conceptual move.</p>
+<p>In a basic Bradley–Terry model, each object has a fixed latent score. But in RLHF the score is context-dependent. The reward model is not asking whether an answer is globally good. It is asking whether this answer is good for this prompt.</p>
+<p>This is also familiar in sport. A tactical decision may be good in one match state and bad in another. A player action may be good depending on scoreline, opponent, weather, time remaining, formation, and so on.</p>
+<style type="text/css">
+        span.MJX_Assistive_MathML {
+          position:absolute!important;
+          clip: rect(1px, 1px, 1px, 1px);
+          padding: 1px 0 0 0!important;
+          border: 0!important;
+          height: 1px!important;
+          width: 1px!important;
+          overflow: hidden!important;
+          display:block!important;
+      }</style></aside>
+</section>
+<section id="what-changes-if-we-change-the-scoring-model" class="slide level2">
+<h2>What changes if we change the scoring model?</h2>
+<p>The RLHF pipeline stays mostly the same:</p>
+<p><span class="math display">
+\text{human judgements}
+\to
+\text{reward model}
+\to
+\text{policy optimisation}.
+</span></p>
+<p>Changing the scoring model mainly changes the reward-model loss:</p>
+<p><span class="math display">
+\mathcal{L}_{\mathrm{RM}}(\phi)
+=
+-\log p_\phi(\text{judgement} \mid x, y_1,\ldots,y_K).
+</span></p>
+<p>Bradley–Terry, Plackett–Luce, tie models, and ordinal models give different likelihoods.</p>
+<div class="fragment key-point">
+<p>But Stage 3 only sees the resulting scalar reward <span class="math display">
+r_\phi(x,y).
+</span></p>
+</div>
+</section></section>
+<section>
+<section id="a-variant-direct-preference-optimisation-dpo" class="title-slide slide level1 center">
+<h1>A variant: Direct Preference Optimisation (DPO)</h1>
+
+</section>
+<section id="a-variant-direct-preference-optimisation" class="slide level2 dpo-slide">
+<h2>A variant: Direct Preference Optimisation</h2>
+<p>Classical RLHF separates two steps:</p>
+<div class="pipeline-mini">
+<div class="pipeline-step">
+<p>Stage 2: Train reward model</p>
+</div>
+<div class="pipeline-arrow">
+→
+</div>
+<div class="pipeline-step">
+<p>Stage 3: Optimise policy with RL</p>
+</div>
+</div>
+<p><strong>DPO collapses these into one preference-learning objective.</strong></p>
+<p>Given preference data of <strong>pairwise comparisons</strong></p>
+<p><span class="math display">
+(x, y_w, y_l),
+</span></p>
+<p>DPO directly fine-tunes the language model so that the preferred answer becomes more likely than the rejected answer:</p>
+<p><span class="math display">
+\pi_\theta(y_w \mid x)
+\quad \text{increases relative to} \quad
+\pi_\theta(y_l \mid x).
+</span></p>
+<div class="fragment warning-box">
+<p>The reward model <span class="math inline">r_\phi(x,y)</span> has not disappeared completely. Instead, it is <strong>implicit</strong> in the policy update.</p>
+</div>
+<aside class="notes">
+<p>DPO stands for Direct Preference Optimisation.</p>
+<p>It is often described as RLHF without reinforcement learning, because it avoids a separate reward model and PPO-style policy optimisation.</p>
+<p>However, conceptually it is still doing preference-based alignment. It uses the same kind of human comparison data, but turns it directly into a loss for the language model.</p>
+<p>The reference model, usually the SFT model, prevents the new model from moving too far away from the original assistant model.</p>
+<style type="text/css">
+        span.MJX_Assistive_MathML {
+          position:absolute!important;
+          clip: rect(1px, 1px, 1px, 1px);
+          padding: 1px 0 0 0!important;
+          border: 0!important;
+          height: 1px!important;
+          width: 1px!important;
+          overflow: hidden!important;
+          display:block!important;
+      }</style></aside>
+</section>
+<section id="classical-rlhf-has-two-mathematical-steps" class="slide level2 classical-rlhf-maths-slide">
+<h2>Classical RLHF has two mathematical steps</h2>
+<p>Classical RLHF separates the problem into two stages.</p>
+<div class="columns">
+<div class="column" style="width:50%;">
+<div class="comparison-card">
+<p><span class="card-heading">Stage 2: fit a reward model</span></p>
+<p>Given preference data</p>
+<p><span class="math display">
+(x,y_w,y_l),
+</span></p>
+<p>train <span class="math inline">r_\phi(x,y)</span> so that</p>
+<p><span class="math display">
+r_\phi(x,y_w) &gt; r_\phi(x,y_l).
+</span></p>
+<p>For Bradley–Terry:</p>
+<p><span class="math display">
+\mathbb{P}_\phi(y_w \succ y_l \mid x)
+=
+\sigma
+\left(
+r_\phi(x,y_w)-r_\phi(x,y_l)
+\right).
+</span></p>
+</div>
+</div><div class="column" style="width:50%;">
+<div class="comparison-card">
+<p><span class="card-heading">Stage 3: optimise the policy</span></p>
+<p>Then fine-tune the language model</p>
+<p><span class="math display">
+\pi_\theta(y \mid x)
+</span></p>
+<p>to maximise reward while staying close to a reference model:</p>
+<p><span class="math display">
+\pi_{\mathrm{ref}}(y \mid x).
+</span></p>
+</div>
+</div></div>
+<div class="fragment key-point">
+<p>DPO starts by asking whether these two steps can be algebraically collapsed.</p>
+</div>
+<aside class="notes">
+<p>Here <span class="math inline">y_w</span> means the winning or preferred answer, and <span class="math inline">y_l</span> means the losing or rejected answer.</p>
+<p>In the classical pipeline, the reward model is trained first. Then it is frozen and used as the reward signal for policy optimisation.</p>
+<p>DPO asks: if we know the form of the preference likelihood and the form of the policy optimisation problem, can we remove the explicit reward model?</p>
+<style type="text/css">
+        span.MJX_Assistive_MathML {
+          position:absolute!important;
+          clip: rect(1px, 1px, 1px, 1px);
+          padding: 1px 0 0 0!important;
+          border: 0!important;
+          height: 1px!important;
+          width: 1px!important;
+          overflow: hidden!important;
+          display:block!important;
+      }</style></aside>
+</section>
+<section id="stage-3-kl-regularised-reward-maximisation" class="slide level2 kl-regularised-rlhf-slide">
+<h2>Stage 3: KL-regularised reward maximisation</h2>
+<p>For a fixed prompt <span class="math inline">x</span>, classical RLHF approximately solves</p>
+<p><span class="math display">
+\max_{\pi}
+\;
+\mathbb{E}_{y \sim \pi(\cdot \mid x)}
+\left[
+r(x,y)
+\right]
+-
+\beta
+\operatorname{KL}
+\left(
+\pi(\cdot \mid x)
+\Vert
+\pi_{\mathrm{ref}}(\cdot \mid x)
+\right).
+</span></p>
+<p>Equivalently,</p>
+<p><span class="math display">
+\max_{\pi}
+\sum_y \pi(y \mid x) r(x,y)
+-
+\beta
+\sum_y
+\pi(y \mid x)
+\log
+\frac{\pi(y \mid x)}
+{\pi_{\mathrm{ref}}(y \mid x)}.
+</span></p>
+<div class="fragment key-point">
+<p>The reward encourages preferred outputs; the KL penalty stops the model drifting too far from the reference model.</p>
+</div>
+<aside class="notes">
+<p>This is the usual RLHF objective in simplified form.</p>
+<p>The policy <span class="math inline">\pi</span> is the language model being fine-tuned. The reference policy <span class="math inline">\pi_{\mathrm{ref}}</span> is usually the supervised fine-tuned model.</p>
+<p>The constant <span class="math inline">\beta &gt; 0</span> controls the reward–KL trade-off. Smaller <span class="math inline">\beta</span> means the model is allowed to move more aggressively towards high-reward answers. Larger <span class="math inline">\beta</span> keeps it closer to the reference model.</p>
+<style type="text/css">
+        span.MJX_Assistive_MathML {
+          position:absolute!important;
+          clip: rect(1px, 1px, 1px, 1px);
+          padding: 1px 0 0 0!important;
+          border: 0!important;
+          height: 1px!important;
+          width: 1px!important;
+          overflow: hidden!important;
+          display:block!important;
+      }</style></aside>
+</section>
+<section id="the-optimal-policy-has-a-closed-form" class="slide level2 optimal-policy-slide">
+<h2>The optimal policy has a closed form</h2>
+<p>For a fixed reward function <span class="math inline">r(x,y)</span>, the solution has the form</p>
+<p><span class="math display">
+\pi_r(y \mid x)
+=
+\frac{1}{Z_r(x)}
+\pi_{\mathrm{ref}}(y \mid x)
+\exp
+\left(
+\frac{1}{\beta} r(x,y)
+\right),
+</span></p>
+<p>where</p>
+<p><span class="math display">
+Z_r(x)
+=
+\sum_y
+\pi_{\mathrm{ref}}(y \mid x)
+\exp
+\left(
+\frac{1}{\beta} r(x,y)
+\right)
+</span></p>
+<p>is a normalising constant.</p>
+<div class="fragment key-point">
+<p>High-reward outputs become more likely, but only relative to the reference model.</p>
+</div>
+<aside class="notes">
+<p>This is the key mathematical fact behind DPO.</p>
+<p>The optimal policy is a tilted version of the reference policy. Outputs with larger reward receive larger probability under the new policy.</p>
+<p>The normalising constant <span class="math inline">Z_r(x)</span> makes the probabilities sum to one.</p>
+<p>You do not need to derive this fully in the talk, but it follows from optimising the KL-regularised objective over the probability simplex.</p>
+<style type="text/css">
+        span.MJX_Assistive_MathML {
+          position:absolute!important;
+          clip: rect(1px, 1px, 1px, 1px);
+          padding: 1px 0 0 0!important;
+          border: 0!important;
+          height: 1px!important;
+          width: 1px!important;
+          overflow: hidden!important;
+          display:block!important;
+      }</style></aside>
+</section>
+<section id="the-policy-secretly-defines-a-reward-model" class="slide level2 policy-reward-slide">
+<h2>The policy secretly defines a reward model</h2>
+<p>Rearranging the closed-form solution gives</p>
+<p><span class="math display">
+r(x,y)
+=
+\beta
+\log
+\frac{\pi_r(y \mid x)}
+{\pi_{\mathrm{ref}}(y \mid x)}
++
+\beta \log Z_r(x).
+</span></p>
+<p>So, up to a prompt-dependent constant,</p>
+<p><span class="math display">
+r(x,y)
+\equiv
+\beta
+\log
+\frac{\pi_r(y \mid x)}
+{\pi_{\mathrm{ref}}(y \mid x)}.
+</span></p>
+<div class="fragment key-point">
+<p>A policy can be interpreted as an implicit reward model.</p>
+</div>
+<aside class="notes">
+<p>This is the key DPO insight.</p>
+<p>If a policy assigns an answer much higher probability than the reference model does, then that answer has high implicit reward.</p>
+<p>The term <span class="math inline">\beta \log Z_r(x)</span> depends only on the prompt <span class="math inline">x</span>, not on the answer <span class="math inline">y</span>. Therefore it cancels when comparing two answers to the same prompt.</p>
+<p>That cancellation is what lets us substitute this expression directly into the Bradley–Terry preference likelihood.</p>
+<style type="text/css">
+        span.MJX_Assistive_MathML {
+          position:absolute!important;
+          clip: rect(1px, 1px, 1px, 1px);
+          padding: 1px 0 0 0!important;
+          border: 0!important;
+          height: 1px!important;
+          width: 1px!important;
+          overflow: hidden!important;
+          display:block!important;
+      }</style></aside>
+</section>
+<section id="reward-differences-become-log-probability-ratios" class="slide level2 reward-difference-slide">
+<h2>Reward differences become log-probability ratios</h2>
+<p>For two answers <span class="math inline">y_w</span> and <span class="math inline">y_l</span> to the same prompt <span class="math inline">x</span>,</p>
+<p><span class="math display">
+r(x,y_w)-r(x,y_l)
+=
+\beta
+\log
+\frac{\pi_r(y_w \mid x)}
+{\pi_{\mathrm{ref}}(y_w \mid x)}
+-
+\beta
+\log
+\frac{\pi_r(y_l \mid x)}
+{\pi_{\mathrm{ref}}(y_l \mid x)}.
+</span></p>
+<p>Equivalently,</p>
+<p><span class="math display">
+r(x,y_w)-r(x,y_l)
+=
+\beta
+\log
+\frac{
+\pi_r(y_w \mid x)\pi_{\mathrm{ref}}(y_l \mid x)
+}{
+\pi_{\mathrm{ref}}(y_w \mid x)\pi_r(y_l \mid x)
+}.
+</span></p>
+<div class="fragment key-point">
+<p>Preference depends on how much the new policy favours the winner over the loser, relative to the reference model.</p>
+</div>
+<aside class="notes">
+<p>This is the bridge from reward modelling to direct policy optimisation.</p>
+<p>The reward difference is not just about whether <span class="math inline">\pi_r(y_w \mid x)</span> is large. It is about whether the policy increases the probability of the preferred answer relative to the reference model, compared with the rejected answer.</p>
+<p>That relative-to-reference structure is very important. It prevents the model from simply increasing the probability of generic high-probability text.</p>
+<style type="text/css">
+        span.MJX_Assistive_MathML {
+          position:absolute!important;
+          clip: rect(1px, 1px, 1px, 1px);
+          padding: 1px 0 0 0!important;
+          border: 0!important;
+          height: 1px!important;
+          width: 1px!important;
+          overflow: hidden!important;
+          display:block!important;
+      }</style></aside>
+</section>
+<section id="substitute-into-the-bradleyterry-likelihood" class="slide level2 dpo-substitution-slide">
+<h2>Substitute into the Bradley–Terry likelihood</h2>
+<p>The Bradley–Terry preference model says</p>
+<p><span class="math display">
+\mathbb{P}(y_w \succ y_l \mid x)
+=
+\sigma
+\left(
+r(x,y_w)-r(x,y_l)
+\right).
+</span></p>
+<p>Using the implicit reward expression,</p>
+<p><span class="math display">
+\mathbb{P}_\theta(y_w \succ y_l \mid x)
+=
+\sigma
+\left[
+\beta
+\log
+\frac{\pi_\theta(y_w \mid x)}
+{\pi_{\mathrm{ref}}(y_w \mid x)}
+-
+\beta
+\log
+\frac{\pi_\theta(y_l \mid x)}
+{\pi_{\mathrm{ref}}(y_l \mid x)}
+\right].
+</span></p>
+<div class="fragment key-point">
+<p>The likelihood is now written directly in terms of the policy <span class="math inline">\pi_\theta</span>.</p>
+</div>
+<aside class="notes">
+<p>This is the algebraic collapse.</p>
+<p>In classical RLHF, the Bradley–Terry likelihood is used to train <span class="math inline">r_\phi</span>.</p>
+<p>In DPO, the same Bradley–Terry likelihood is used, but the reward difference is replaced by an expression involving the policy and reference model.</p>
+<p>So there is no separate reward-model network. The policy itself defines the implicit reward.</p>
+<style type="text/css">
+        span.MJX_Assistive_MathML {
+          position:absolute!important;
+          clip: rect(1px, 1px, 1px, 1px);
+          padding: 1px 0 0 0!important;
+          border: 0!important;
+          height: 1px!important;
+          width: 1px!important;
+          overflow: hidden!important;
+          display:block!important;
+      }</style></aside>
+</section>
+<section id="the-dpo-loss" class="slide level2 dpo-loss-slide">
+<h2>The DPO loss</h2>
+<p>DPO minimises the negative log-likelihood of the observed preferences:</p>
+<p><span class="math display">
+\mathcal{L}_{\mathrm{DPO}}(\theta)
+=
+-
+\mathbb{E}_{(x,y_w,y_l)}
+\left[
+\log
+\sigma
+\left(
+\beta
+\log
+\frac{\pi_\theta(y_w \mid x)}
+{\pi_{\mathrm{ref}}(y_w \mid x)}
+-
+\beta
+\log
+\frac{\pi_\theta(y_l \mid x)}
+{\pi_{\mathrm{ref}}(y_l \mid x)}
+\right)
+\right].
+</span></p>
+<div class="fragment key-point">
+<p>This is a supervised classification-style loss on preference pairs.</p>
+</div>
+<aside class="notes">
+<p>This is the final DPO objective.</p>
+<p>The model is rewarded when the preferred answer becomes more likely than the rejected answer relative to the reference model.</p>
+<p>Unlike PPO-style RLHF, this does not require sampling new outputs during training, fitting a separate reward model, or running a reinforcement learning algorithm.</p>
+<p>However, it still depends on the RLHF objective mathematically: it comes from the closed-form solution of the KL-regularised reward maximisation problem.</p>
+<style type="text/css">
+        span.MJX_Assistive_MathML {
+          position:absolute!important;
+          clip: rect(1px, 1px, 1px, 1px);
+          padding: 1px 0 0 0!important;
+          border: 0!important;
+          height: 1px!important;
+          width: 1px!important;
+          overflow: hidden!important;
+          display:block!important;
+      }</style></aside>
+</section></section>
+<section>
+<section id="challenges-in-using-rlhf-for-finetuning-llms" class="title-slide slide level1 center">
+<h1>Challenges in using RLHF for finetuning LLMs</h1>
+
+</section>
+<section id="the-score-is-latent-and-context-dependent" class="slide level2 latent-score-slide">
+<h2>The score is latent and context-dependent</h2>
+<p>The reward model assigns a scalar score:</p>
+<p><span class="math display">
+r_\phi(x,y) \in \mathbb{R}.
+</span></p>
+<div class="fragment key-point">
+<p>But the reward is not a physical quantity.<br>
+It is inferred from human preference data.</p>
+</div>
+<div class="fragment context-box">
+<p>The same answer may be good in one context and bad in another:</p>
+<p><span class="math display">
+r_\phi(x,y)
+\quad \text{depends on both } x \text{ and } y.
+</span></p>
+</div>
+<div class="fragment sports-analogy">
+<p><span class="card-heading">Sports analogy</span></p>
+<p>A performance score may depend on:</p>
+<ul>
+<li>opposition strength</li>
+<li>match context</li>
+<li>position or role</li>
+<li>tactics</li>
+<li>weather</li>
+<li>judging criteria</li>
+</ul>
+</div>
+<aside class="notes">
+<p>Emphasise that the scoring model is not estimating an intrinsic property of the answer alone.</p>
+<p>A response can be excellent for one prompt and terrible for another.</p>
+<p>For example, a short answer may be good when the user asks for a quick summary, but bad when they ask for a detailed proof.</p>
+<style type="text/css">
+        span.MJX_Assistive_MathML {
+          position:absolute!important;
+          clip: rect(1px, 1px, 1px, 1px);
+          padding: 1px 0 0 0!important;
+          border: 0!important;
+          height: 1px!important;
+          width: 1px!important;
+          overflow: hidden!important;
+          display:block!important;
+      }</style></aside>
+</section>
+<section id="human-preference-is-noisy" class="slide level2 noisy-preference-slide">
+<h2>Human preference is noisy</h2>
+<p>Different humans may disagree.</p>
+<p>The same human may be inconsistent.</p>
+<p>Some criteria are vague.</p>
+<div class="fragment model-box">
+<p>So the reward model estimates something like</p>
+<p><span class="math display">
+\Pr(y_A \succ y_B \mid x).
+</span></p>
+</div>
+<div class="fragment warning-box">
+<p>This is not the same as estimating</p>
+<p><span class="math display">
+\text{truth}
+\qquad \text{or} \qquad
+\text{objective quality}.
+</span></p>
+</div>
+<div class="fragment key-point">
+<p>The scoring model learns a pattern in human preferences, not a direct measurement of reality.</p>
+</div>
+<aside class="notes">
+<p>This is a useful place to be precise.</p>
+<p>The target is not “truth” in a philosophical or scientific sense. The data are comparative human judgements.</p>
+<p>That can still be very useful, but we should not confuse “preferred by annotators” with “objectively correct”.</p>
+<style type="text/css">
+        span.MJX_Assistive_MathML {
+          position:absolute!important;
+          clip: rect(1px, 1px, 1px, 1px);
+          padding: 1px 0 0 0!important;
+          border: 0!important;
+          height: 1px!important;
+          width: 1px!important;
+          overflow: hidden!important;
+          display:block!important;
+      }</style></aside>
+</section>
+<section id="optimising-a-learned-score-can-break-the-score" class="slide level2 goodhart-slide">
+<h2>Optimising a learned score can break the score</h2>
+<p>Once the model is trained to maximise</p>
+<p><span class="math display">
+r_\phi(x,y),
+</span></p>
+<p>it may find outputs that get high reward-model scores without genuinely being better.</p>
+<div class="fragment goodhart-box">
+<p><strong>Goodhart’s law:</strong></p>
+<blockquote>
+<p>When a measure becomes a target, it can stop being a good measure.</p>
+</blockquote>
+</div>
+<div class="fragment sports-analogy">
+<p><span class="card-heading">Sports analogies</span></p>
+<ul>
+<li><p>Optimise <strong>shots on target</strong><br>
+<span class="math inline">\Rightarrow</span> teams may take many low-quality shots.</p></li>
+<li><p>Optimise <strong>distance covered</strong><br>
+<span class="math inline">\Rightarrow</span> players may run more without playing better.</p></li>
+<li><p>Optimise <strong>a judging rubric</strong><br>
+<span class="math inline">\Rightarrow</span> competitors may learn to game the rubric.</p></li>
+</ul>
+</div>
+<div class="fragment key-point">
+<p>RLHF has the same problem: the model may learn to satisfy the judge rather than genuinely improve.</p>
+</div>
+<aside class="notes">
+<p>This is probably the most important warning in the talk.</p>
+<p>Say: “The reward model is only a proxy. Once we optimise hard against a proxy, we should expect failure modes.”</p>
+<p>In RLHF this is often called reward hacking. The model may discover outputs that exploit weaknesses in the reward model.</p>
+<p>This motivates why RLHF systems need careful evaluation, regularisation, human review, and sometimes additional safety constraints.</p>
+<style type="text/css">
+        span.MJX_Assistive_MathML {
+          position:absolute!important;
+          clip: rect(1px, 1px, 1px, 1px);
+          padding: 1px 0 0 0!important;
+          border: 0!important;
+          height: 1px!important;
+          width: 1px!important;
+          overflow: hidden!important;
+          display:block!important;
+      }</style></aside>
+
+
+</section></section>
+    </div>
+  <div class="quarto-auto-generated-content" style="display: none;">
+<div class="footer footer-default">
+
+</div>
+</div></div>
+
+  <script>window.backupDefine = window.define; window.define = undefined;</script>
+  <script src="../site_libs/revealjs/dist/reveal.js"></script>
+  <!-- reveal.js plugins -->
+  <script src="../site_libs/revealjs/plugin/quarto-line-highlight/line-highlight.js"></script>
+  <script src="../site_libs/revealjs/plugin/pdf-export/pdfexport.js"></script>
+  <script src="../site_libs/revealjs/plugin/reveal-menu/menu.js"></script>
+  <script src="../site_libs/revealjs/plugin/reveal-menu/quarto-menu.js"></script>
+  <script src="../site_libs/revealjs/plugin/quarto-support/support.js"></script>
+  
+
+  <script src="../site_libs/revealjs/plugin/notes/notes.js"></script>
+  <script src="../site_libs/revealjs/plugin/search/search.js"></script>
+  <script src="../site_libs/revealjs/plugin/zoom/zoom.js"></script>
+  <script>window.define = window.backupDefine; window.backupDefine = undefined;</script>
+
+  <script>
+
+      // Full list of configuration options available at:
+      // https://revealjs.com/config/
+      Reveal.initialize({
+'controlsAuto': true,
+'previewLinksAuto': false,
+'pdfSeparateFragments': false,
+'autoAnimateEasing': "ease",
+'autoAnimateDuration': 1,
+'autoAnimateUnmatched': true,
+'jumpToSlide': true,
+'menu': {"side":"left","useTextContentForMissingTitles":true,"markers":false,"loadIcons":false,"custom":[{"title":"Tools","icon":"<i class=\"fas fa-gear\"></i>","content":"<ul class=\"slide-menu-items\">\n<li class=\"slide-tool-item active\" data-item=\"0\"><a href=\"#\" onclick=\"RevealMenuToolHandlers.fullscreen(event)\"><kbd>f</kbd> Fullscreen</a></li>\n<li class=\"slide-tool-item\" data-item=\"1\"><a href=\"#\" onclick=\"RevealMenuToolHandlers.speakerMode(event)\"><kbd>s</kbd> Speaker View</a></li>\n<li class=\"slide-tool-item\" data-item=\"2\"><a href=\"#\" onclick=\"RevealMenuToolHandlers.overview(event)\"><kbd>o</kbd> Slide Overview</a></li>\n<li class=\"slide-tool-item\" data-item=\"3\"><a href=\"#\" onclick=\"RevealMenuToolHandlers.togglePdfExport(event)\"><kbd>e</kbd> PDF Export Mode</a></li>\n<li class=\"slide-tool-item\" data-item=\"4\"><a href=\"#\" onclick=\"RevealMenuToolHandlers.toggleScrollView(event)\"><kbd>r</kbd> Scroll View Mode</a></li>\n<li class=\"slide-tool-item\" data-item=\"5\"><a href=\"#\" onclick=\"RevealMenuToolHandlers.keyboardHelp(event)\"><kbd>?</kbd> Keyboard Help</a></li>\n</ul>"}],"openButton":true},
+'smaller': false,
+ 
+        // Display controls in the bottom right corner
+        controls: false,
+
+        // Help the user learn the controls by providing hints, for example by
+        // bouncing the down arrow when they first encounter a vertical slide
+        controlsTutorial: true,
+
+        // Determines where controls appear, "edges" or "bottom-right"
+        controlsLayout: 'edges',
+
+        // Visibility rule for backwards navigation arrows; "faded", "hidden"
+        // or "visible"
+        controlsBackArrows: 'faded',
+
+        // Display a presentation progress bar
+        progress: true,
+
+        // Display the page number of the current slide
+        slideNumber: 'h.v',
+
+        // 'all', 'print', or 'speaker'
+        showSlideNumber: 'all',
+
+        // Add the current slide number to the URL hash so that reloading the
+        // page/copying the URL will return you to the same slide
+        hash: true,
+
+        // Start with 1 for the hash rather than 0
+        hashOneBasedIndex: false,
+
+        // Flags if we should monitor the hash and change slides accordingly
+        respondToHashChanges: true,
+
+        // Push each slide change to the browser history
+        history: true,
+
+        // Enable keyboard shortcuts for navigation
+        keyboard: true,
+
+        // Enable the slide overview mode
+        overview: true,
+
+        // Disables the default reveal.js slide layout (scaling and centering)
+        // so that you can use custom CSS layout
+        disableLayout: false,
+
+        // Vertical centering of slides
+        center: false,
+
+        // Enables touch navigation on devices with touch input
+        touch: true,
+
+        // Loop the presentation
+        loop: false,
+
+        // Change the presentation direction to be RTL
+        rtl: false,
+
+        // see https://revealjs.com/vertical-slides/#navigation-mode
+        navigationMode: 'default',
+
+        // Randomizes the order of slides each time the presentation loads
+        shuffle: false,
+
+        // Turns fragments on and off globally
+        fragments: true,
+
+        // Flags whether to include the current fragment in the URL,
+        // so that reloading brings you to the same fragment position
+        fragmentInURL: false,
+
+        // Flags if the presentation is running in an embedded mode,
+        // i.e. contained within a limited portion of the screen
+        embedded: false,
+
+        // Flags if we should show a help overlay when the questionmark
+        // key is pressed
+        help: true,
+
+        // Flags if it should be possible to pause the presentation (blackout)
+        pause: true,
+
+        // Flags if speaker notes should be visible to all viewers
+        showNotes: false,
+
+        // Global override for autoplaying embedded media (null/true/false)
+        autoPlayMedia: null,
+
+        // Global override for preloading lazy-loaded iframes (null/true/false)
+        preloadIframes: null,
+
+        // Number of milliseconds between automatically proceeding to the
+        // next slide, disabled when set to 0, this value can be overwritten
+        // by using a data-autoslide attribute on your slides
+        autoSlide: 0,
+
+        // Stop auto-sliding after user input
+        autoSlideStoppable: true,
+
+        // Use this method for navigation when auto-sliding
+        autoSlideMethod: null,
+
+        // Specify the average time in seconds that you think you will spend
+        // presenting each slide. This is used to show a pacing timer in the
+        // speaker view
+        defaultTiming: null,
+
+        // Enable slide navigation via mouse wheel
+        mouseWheel: false,
+
+        // The display mode that will be used to show slides
+        display: 'block',
+
+        // Hide cursor if inactive
+        hideInactiveCursor: true,
+
+        // Time before the cursor is hidden (in ms)
+        hideCursorTime: 5000,
+
+        // Opens links in an iframe preview overlay
+        previewLinks: false,
+
+        // Transition style (none/fade/slide/convex/concave/zoom)
+        transition: 'fade',
+
+        // Transition speed (default/fast/slow)
+        transitionSpeed: 'default',
+
+        // Transition style for full page slide backgrounds
+        // (none/fade/slide/convex/concave/zoom)
+        backgroundTransition: 'none',
+
+        // Number of slides away from the current that are visible
+        viewDistance: 3,
+
+        // Number of slides away from the current that are visible on mobile
+        // devices. It is advisable to set this to a lower number than
+        // viewDistance in order to save resources.
+        mobileViewDistance: 2,
+
+        // The "normal" size of the presentation, aspect ratio will be preserved
+        // when the presentation is scaled to fit different resolutions. Can be
+        // specified using percentage units.
+        width: 1050,
+
+        height: 700,
+
+        // Factor of the display size that should remain empty around the content
+        margin: 0.2,
+
+        // reveal.js plugins
+        plugins: [QuartoLineHighlight, PdfExport, RevealMenu, QuartoSupport,
+
+          RevealNotes,
+          RevealSearch,
+          RevealZoom
+        ]
+      });
+    </script>
+    <script id="quarto-html-after-body" type="application/javascript">
+      window.document.addEventListener("DOMContentLoaded", function (event) {
+        const tabsets =  window.document.querySelectorAll(".panel-tabset-tabby")
+        tabsets.forEach(function(tabset) {
+          const tabby = new Tabby('#' + tabset.id);
+        });
+        const isCodeAnnotation = (el) => {
+          for (const clz of el.classList) {
+            if (clz.startsWith('code-annotation-')) {                     
+              return true;
+            }
+          }
+          return false;
+        }
+        const onCopySuccess = function(e) {
+          // button target
+          const button = e.trigger;
+          // don't keep focus
+          button.blur();
+          // flash "checked"
+          button.classList.add('code-copy-button-checked');
+          var currentTitle = button.getAttribute("title");
+          button.setAttribute("title", "Copied!");
+          let tooltip;
+          if (window.bootstrap) {
+            button.setAttribute("data-bs-toggle", "tooltip");
+            button.setAttribute("data-bs-placement", "left");
+            button.setAttribute("data-bs-title", "Copied!");
+            tooltip = new bootstrap.Tooltip(button, 
+              { trigger: "manual", 
+                customClass: "code-copy-button-tooltip",
+                offset: [0, -8]});
+            tooltip.show();    
+          }
+          setTimeout(function() {
+            if (tooltip) {
+              tooltip.hide();
+              button.removeAttribute("data-bs-title");
+              button.removeAttribute("data-bs-toggle");
+              button.removeAttribute("data-bs-placement");
+            }
+            button.setAttribute("title", currentTitle);
+            button.classList.remove('code-copy-button-checked');
+          }, 1000);
+          // clear code selection
+          e.clearSelection();
+        }
+        const getTextToCopy = function(trigger) {
+          const outerScaffold = trigger.parentElement.cloneNode(true);
+          const codeEl = outerScaffold.querySelector('code');
+          for (const childEl of codeEl.children) {
+            if (isCodeAnnotation(childEl)) {
+              childEl.remove();
+            }
+          }
+          return codeEl.innerText;
+        }
+        const clipboard = new window.ClipboardJS('.code-copy-button:not([data-in-quarto-modal])', {
+          text: getTextToCopy
+        });
+        clipboard.on('success', onCopySuccess);
+        if (window.document.getElementById('quarto-embedded-source-code-modal')) {
+          const clipboardModal = new window.ClipboardJS('.code-copy-button[data-in-quarto-modal]', {
+            text: getTextToCopy,
+            container: window.document.getElementById('quarto-embedded-source-code-modal')
+          });
+          clipboardModal.on('success', onCopySuccess);
+        }
+          var localhostRegex = new RegExp(/^(?:http|https):\/\/localhost\:?[0-9]*\//);
+          var mailtoRegex = new RegExp(/^mailto:/);
+            var filterRegex = new RegExp('/' + window.location.host + '/');
+          var isInternal = (href) => {
+              return filterRegex.test(href) || localhostRegex.test(href) || mailtoRegex.test(href);
+          }
+          // Inspect non-navigation links and adorn them if external
+         var links = window.document.querySelectorAll('a[href]:not(.nav-link):not(.navbar-brand):not(.toc-action):not(.sidebar-link):not(.sidebar-item-toggle):not(.pagination-link):not(.no-external):not([aria-hidden]):not(.dropdown-item):not(.quarto-navigation-tool):not(.about-link)');
+          for (var i=0; i<links.length; i++) {
+            const link = links[i];
+            if (!isInternal(link.href)) {
+              // undo the damage that might have been done by quarto-nav.js in the case of
+              // links that we want to consider external
+              if (link.dataset.originalHref !== undefined) {
+                link.href = link.dataset.originalHref;
+              }
+            }
+          }
+        function tippyHover(el, contentFn, onTriggerFn, onUntriggerFn) {
+          const config = {
+            allowHTML: true,
+            maxWidth: 500,
+            delay: 100,
+            arrow: false,
+            appendTo: function(el) {
+                return el.closest('section.slide') || el.parentElement;
+            },
+            interactive: true,
+            interactiveBorder: 10,
+            theme: 'light-border',
+            placement: 'bottom-start',
+          };
+          if (contentFn) {
+            config.content = contentFn;
+          }
+          if (onTriggerFn) {
+            config.onTrigger = onTriggerFn;
+          }
+          if (onUntriggerFn) {
+            config.onUntrigger = onUntriggerFn;
+          }
+            config['offset'] = [0,0];
+            config['maxWidth'] = 700;
+          window.tippy(el, config); 
+        }
+        const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+        for (var i=0; i<noterefs.length; i++) {
+          const ref = noterefs[i];
+          tippyHover(ref, function() {
+            // use id or data attribute instead here
+            let href = ref.getAttribute('data-footnote-href') || ref.getAttribute('href');
+            try { href = new URL(href).hash; } catch {}
+            const id = href.replace(/^#\/?/, "");
+            const note = window.document.getElementById(id);
+            if (note) {
+              return note.innerHTML;
+            } else {
+              return "";
+            }
+          });
+        }
+        const findCites = (el) => {
+          const parentEl = el.parentElement;
+          if (parentEl) {
+            const cites = parentEl.dataset.cites;
+            if (cites) {
+              return {
+                el,
+                cites: cites.split(' ')
+              };
+            } else {
+              return findCites(el.parentElement)
+            }
+          } else {
+            return undefined;
+          }
+        };
+        var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+        for (var i=0; i<bibliorefs.length; i++) {
+          const ref = bibliorefs[i];
+          const citeInfo = findCites(ref);
+          if (citeInfo) {
+            tippyHover(citeInfo.el, function() {
+              var popup = window.document.createElement('div');
+              citeInfo.cites.forEach(function(cite) {
+                var citeDiv = window.document.createElement('div');
+                citeDiv.classList.add('hanging-indent');
+                citeDiv.classList.add('csl-entry');
+                var biblioDiv = window.document.getElementById('ref-' + cite);
+                if (biblioDiv) {
+                  citeDiv.innerHTML = biblioDiv.innerHTML;
+                }
+                popup.appendChild(citeDiv);
+              });
+              return popup.innerHTML;
+            });
+          }
+        }
+      });
+      </script>
+    
+
+</body></html>

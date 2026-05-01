@@ -1,0 +1,2212 @@
+---
+title: "An Introduction to Scoring Models in RLHF"
+subtitle: ""
+author: "Matthew Fisher"
+
+editor:
+  render-on-save: true
+
+format:
+  revealjs:
+    template-partials:
+      - title-slide.html
+    transition: fade
+    theme: custom.scss
+    css: custom.css
+    fig-align: center
+    margin: 0.2
+    highlight-style: dracula
+    incremental: false
+    navigation-mode: vertical
+    slide-number: h.v
+    controls-tutorial: true
+    code-fold: true
+    code-tools: true
+    html-math-method: katex
+
+execute:
+  echo: false
+  eval: true
+
+jupyter: python3
+---
+
+
+
+# Introduction
+
+```{python}
+#| echo: False
+import jax
+from jax import config
+from jax import Array
+import jax.numpy as jnp
+config.update("jax_enable_x64", True)  # do this at the very top
+
+import matplotlib.pyplot as plt
+import seaborn as sns
+import numpy as np
+
+plt.rcParams["figure.figsize"] = (5, 3)
+plt.rcParams["text.usetex"] = True
+plt.rcParams["font.family"] = "serif"
+plt.rcParams["font.serif"] = ["Computer Modern Roman"]  # matches LaTeX default
+
+import mplcyberpunk
+plt.style.use("cyberpunk")
+
+from vgd.model import FourierPredictor, PAdicFourierPredictor
+from vgd.distribution import FourierParticles, NormalDiag, SignedMixtureLike, PAdicMixtureLike
+from vgd.kernel import RBFKernel, KernelParams
+from vgd.loss import DeterministicRiskLoss, squared_loss_and_grad, logistic_loss_and_grad, ISFDeterministicRiskLoss
+from vgd.methods import vgd, vgd_weight, mfld, vgd_random
+from vgd.util import plot_1d_predictive_output, plot_isf_results, plot_1d_fit, plot_p_adic_tree_with_predictor
+from vgd.methods.isf import isf
+from vgd.methods.ridge import solve_alpha_ridge
+```
+
+## Which answer is better? 
+
+::: {.prompt-box}
+**Prompt:**  
+*"In at most two sentences, explain the offside rule to a 10-year-old."*
+:::
+
+::: {.columns}
+
+::: {.column width="33%"}
+::: {.answer-card}
+**Answer A**
+
+In football, you’re offside if your teammate passes the ball to you while you are nearer to the other team’s goal than both the ball and the second-last defender. But it only matters if you are involved in the play, like trying to get the ball or blocking an opponent.
+:::
+:::
+
+::: {.column width="33%"}
+::: {.answer-card}
+**Answer B**
+
+To stay "onside," you must have at least two opponents (usually the goalie and one defender) between you and the goal line at the moment the ball is kicked to you. Basically, you can't "cherry-pick" by hanging out behind the last defender to wait for an easy pass!
+:::
+:::
+
+::: {.column width="33%"}
+::: {.answer-card}
+**Answer C**
+
+The offside rule means you can't hang out too close to the other team's goal waiting for the ball—you need to have at least two players from the other team (usually the goalkeeper and one defender) between you and their goal line when the ball is passed to you. It's there to keep the game fair and make sure players have to work together to move the ball forward instead of just camping by the goal!
+:::
+:::
+
+:::
+
+::: {.fragment}
+**Question:** Which answer would you prefer: A, B, or C?
+:::
+
+::: {.fragment .key-point}
+RLHF starts from data like this:  
+humans compare model outputs, and we fit a **scoring model** that predicts which response people prefer.
+:::
+
+## What is an LLM? {.llm-slide}
+
+::: {.definition-box}
+A **large language model** is typically a causal decoder-only transformer, trained to predict the next token from the previous tokens.
+:::
+
+Given text
+
+$$
+x_1, x_2, \dots, x_t,
+$$
+
+the model estimates
+
+$$
+p_\theta(x_{t+1} \mid x_1,\dots,x_t).
+$$
+
+::: {.fragment .example-box}
+For example, after
+
+> *The striker was clearly in an offside...*
+
+the model assigns probabilities to possible next tokens:
+
+$$
+\text{position},\quad \text{trap},\quad \text{decision},\quad \ldots
+$$
+:::
+
+::: {.fragment .key-point}
+Pretraining teaches the model to be a **text continuation engine**.
+:::
+
+
+## How is it trained? {.llm-training-slide}
+
+::: {.pipeline}
+::: {.pipeline-step}
+**Text data**
+:::
+
+<div class="pipeline-arrow">→</div>
+
+::: {.pipeline-step}
+**Next-token prediction**
+:::
+
+<div class="pipeline-arrow">→</div>
+
+::: {.pipeline-step}
+**Base LLM**
+:::
+:::
+
+The pretraining loss is the negative log-likelihood:
+
+$$
+\mathcal{L}(\theta) = -\sum_t \log p_\theta(x_{t+1} \mid x_1,\dots,x_t).
+$$
+
+::: {.fragment .warning-box}
+This objective is **not**
+
+- “be helpful”
+- “be truthful”
+- “follow instructions”
+- “give the answer humans prefer”
+:::
+
+::: {.fragment .key-point}
+A base LLM is cool, but merely text continuation isn’t enough for many applications: we want to **align** the model with human preferences
+:::
+
+
+## Why next-token prediction is not enough {.mismatch-slide}
+
+::: {.columns}
+
+::: {.column width="48%"}
+::: {.objective-card .pretrain-card}
+### Pretraining objective
+
+Predict the next token:
+
+$$
+\mathcal{L}(\theta)
+=
+-\sum_t
+\log p_\theta(x_{t+1}\mid x_1,\dots,x_t).
+$$
+
+::: {.fragment}
+This rewards outputs that are **likely under the training data**.
+:::
+:::
+:::
+
+::: {.column width="48%"}
+::: {.objective-card .assistant-card}
+### Assistant objective
+
+Produce responses humans judge as:
+
+- helpful and clear
+- truthful
+- safe
+- appropriate to the user’s intent
+
+::: {.fragment}
+This rewards outputs that are **preferred by people**.
+:::
+:::
+:::
+
+:::
+
+::: {.fragment .mismatch-box}
+The core mismatch:
+
+$$
+\text{likely text} \neq \text{desirable answer}.
+$$
+:::
+
+# Reinforcement Learning with Human Feedback (RLHF) 
+
+
+## The RLHF pipeline {.rlhf-pipeline-slide}
+
+::: {.pipeline-vertical}
+
+::: {.pipeline-row}
+::: {.pipeline-number}
+1
+:::
+::: {.pipeline-content}
+**Supervised fine-tuning**
+
+Prompt $\to$ human-written good answer
+
+Gives an **SFT model**.
+:::
+:::
+
+::: {.pipeline-row}
+::: {.pipeline-number}
+2
+:::
+::: {.pipeline-content}
+**Train a reward/scoring model**
+
+Humans compare model outputs.
+
+Gives a learned score $r_\phi(x,y)$.
+:::
+:::
+
+::: {.pipeline-row}
+::: {.pipeline-number}
+3
+:::
+::: {.pipeline-content}
+**Optimise the LLM against the learned score**
+
+The language model is fine-tuned to produce high-scoring answers.
+:::
+:::
+
+:::
+
+::: {.fragment .key-point}
+RLHF turns human preference judgements into a training signal for the language model.
+:::
+
+
+
+## Stage 1: Supervised fine-tuning {.mismatch-slide}
+
+::: {.columns}
+
+::: {.column width="48%"}
+::: {.objective-card .pretrain-card}
+[Training data]{.card-heading}
+
+
+Human-written demonstrations:
+
+$$
+(x_i, y_i^{\mathrm{demo}})
+$$
+
+where
+
+- $x_i$ is a prompt
+- $y_i^{\mathrm{demo}}$ is a good assistant answer
+:::
+:::
+
+::: {.column width="48%"}
+::: {.objective-card .assistant-card}
+[Objective]{.card-heading}
+
+Fine-tune the model to imitate good answers:
+
+$$
+\max_\theta
+\sum_i
+\log \pi_\theta
+\left(
+y_i^{\mathrm{demo}} \mid x_i
+\right).
+$$
+
+This gives the **SFT model**.
+:::
+:::
+
+:::
+
+::: {.fragment .key-point}
+SFT teaches the model the *format* of helpful assistant behaviour.
+:::
+
+## What is $\pi_\theta(y \mid x)$? {.policy-slide}
+
+::: {.columns}
+
+::: {.column width="48%"}
+::: {.objective-card .pretrain-card}
+[Transformer model]{.card-heading}
+
+The transformer takes a sequence of tokens and outputs next-token probabilities:
+
+$$
+p_\theta(x_{t+1} \mid x_{\leq t}).
+$$
+
+The parameters $\theta$ are the neural-network weights:
+
+- attention weights
+- feedforward weights
+- embedding matrices
+- output projection
+:::
+:::
+
+::: {.column width="48%"}
+::: {.objective-card .assistant-card}
+[Policy notation]{.card-heading}
+
+For a prompt $x$, the model generates an answer $y$ token by token:
+
+$$
+y = (y_1,\dots,y_T).
+$$
+
+So we can write the probability of the whole answer as
+
+$$
+\pi_\theta(y \mid x)
+=
+\prod_{t=1}^{T}
+p_\theta(y_t \mid x, y_{<t}).
+$$
+
+:::
+:::
+
+:::
+
+::: {.fragment .key-point}
+$\pi_\theta$ is not a separate model.  
+It is the same transformer, viewed as a probability distribution over generated answers.
+:::
+
+::: {.notes}
+This is an important notational point.
+
+In language modelling, we usually write the model as next-token probabilities.
+
+In reinforcement learning, we often call the model a policy because it chooses actions. Here, the "actions" are tokens, or equivalently the generated answer.
+
+So:
+- the transformer is the architecture;
+- $\theta$ are the weights;
+- $p_\theta$ is the next-token distribution;
+- $\pi_\theta(y \mid x)$ is the induced distribution over full answers.
+
+This lets us use reinforcement-learning language later, where the language model is the policy and the generated response is the action or trajectory.
+:::
+
+## SFT as next-token training {.sft-precise-slide}
+
+A human demonstration is a prompt-answer pair:
+
+$$
+(x_i, y_i^{\mathrm{demo}}).
+$$
+
+If
+
+$$
+y_i^{\mathrm{demo}}
+=
+(y_{i1},\dots,y_{iT_i}),
+$$
+
+then the model assigns probability
+
+$$
+\pi_\theta(y_i^{\mathrm{demo}} \mid x_i)
+=
+\prod_{t=1}^{T_i}
+p_\theta(y_{it} \mid x_i, y_{i,<t}).
+$$
+
+Therefore SFT maximises
+
+$$
+\sum_i \log \pi_\theta(y_i^{\mathrm{demo}} \mid x_i)
+=
+\sum_i \sum_{t=1}^{T_i}
+\log p_\theta(y_{it} \mid x_i, y_{i,<t}).
+$$
+
+::: {.fragment .key-point}
+SFT is ordinary next-token training, but on curated prompt-answer examples.
+:::
+
+::: {.notes}
+This slide clarifies that SFT is not a fundamentally different training method from pretraining.
+
+It is still next-token prediction.
+
+The difference is the dataset:
+- pretraining uses broad internet-scale text;
+- SFT uses curated demonstrations of good assistant behaviour.
+
+So SFT shifts the model from "continue arbitrary text" towards "respond to instructions in an assistant-like way".
+:::
+
+## Stage 2: Train a scoring model {.reward-model-slide}
+
+For a prompt $x$, sample two candidate answers:
+
+$$
+y_A, \; y_B \sim \pi_{\mathrm{SFT}}(\cdot \mid x).
+$$
+
+A human is asked:
+
+::: {.comparison-box}
+Which answer is better?
+
+$$
+y_A \succ y_B
+\qquad \text{or} \qquad
+y_B \succ y_A
+$$
+:::
+
+The reward model is a scoring function:
+
+$$
+r_\phi(x,y) \in \mathbb{R}.
+$$
+
+::: {.fragment .key-point}
+The statistical problem is to infer latent answer quality from noisy pairwise comparisons.
+:::
+
+::: {.notes}
+This is the point that connects most directly to the sports research group.
+
+The reward model does not observe true answer quality. It only observes comparative human judgements.
+
+So this is a paired-comparison problem:
+answer A beats answer B, or answer B beats answer A.
+
+The word "reward model" is common in RLHF, but for this talk it is useful to call it a scoring model.
+:::
+
+## The preference model {.bt-slide}
+
+A standard model is logistic:
+
+$$
+\Pr(y_A \succ y_B \mid x)
+=
+\sigma
+\left(
+r_\phi(x,y_A) - r_\phi(x,y_B)
+\right),
+$$
+
+where
+
+$$
+\sigma(z)=\frac{1}{1+\exp(-z)}.
+$$
+
+::: {.fragment .sports-analogy}
+This is like saying:
+
+> Answer A “beats” answer B with probability determined by the difference in their latent scores.
+:::
+
+::: {.fragment .key-point}
+This is essentially the **Bradley-Terry model** from paired-comparison statistics.
+:::
+
+::: {.notes}
+This is the main scoring-model slide.
+
+Make the sports analogy explicit:
+in sport, we often infer latent team or player quality from match outcomes.
+In RLHF, we infer latent answer quality from human preference outcomes.
+
+The model says that only the difference in scores matters:
+if answer A has a much higher score than answer B, humans are very likely to prefer A.
+If their scores are close, the preference is uncertain.
+:::
+
+## How is the scoring model trained? {.reward-training-slide}
+
+::: {.columns}
+
+::: {.column width="48%"}
+::: {.objective-card .pretrain-card}
+[Typical architecture]{.card-heading}
+
+Given a prompt-answer pair $(x,y)$, concatenate the tokens and feed them through a transformer:
+
+$$
+[x \, ; \, y]
+\;\longrightarrow\;
+h_1,\dots,h_T
+$$
+
+Use the final hidden representation (or EOS-token representation) and attach a scalar head:
+
+$$
+r_\phi(x,y) = w^\top h_T + b.
+$$
+
+So the reward model is typically:
+
+- a transformer backbone
+- plus a 1-dimensional linear “score head”
+- outputting a single real number
+:::
+:::
+
+::: {.column width="48%"}
+::: {.objective-card .assistant-card}
+[Training from preferences]{.card-heading}
+
+Training data consist of triples
+
+$$
+(x_i, y_i^+, y_i^-),
+$$
+
+where $y_i^+$ is the human-preferred answer and $y_i^-$ is the rejected one.
+
+The same scorer is applied to both answers, and we minimise
+
+$$
+\mathcal{L}(\phi)
+=
+-
+\sum_i
+\log
+\sigma\!\left(
+r_\phi(x_i,y_i^+) - r_\phi(x_i,y_i^-)
+\right).
+$$
+
+This pushes the preferred answer to have the higher score.
+:::
+:::
+
+:::
+
+::: {.fragment .key-point}
+Architecturally, the scoring model is usually just another language model with a scalar scoring head.
+:::
+
+::: {.fragment .key-point}
+Statistically, this is just a paired-comparison model fit by logistic loss.
+:::
+
+::: {.notes}
+This slide is meant to demystify the reward model.
+
+The input is not "answer A versus answer B" jointly. Rather, the same scoring model is applied separately to each prompt-answer pair:
+- score prompt + answer A
+- score prompt + answer B
+
+Then the difference of the two scores is passed through a logistic function, giving the model probability that A is preferred to B.
+
+In practice, the reward model is often initialised from a pretrained or SFT transformer, then fitted with this pairwise preference loss.
+
+So:
+- the transformer provides contextual representations;
+- the scalar head converts the representation into a latent quality score;
+- the logistic loss learns from human comparisons.
+:::
+
+## Scoring model as a comparison machine {.reward-diagram-slide}
+
+::: {.comparison-flow}
+
+::: {.flow-box}
+Prompt $x$ + Answer $y_A$
+:::
+
+<div class="pipeline-arrow">→</div>
+
+::: {.flow-box}
+Score
+$$
+r_\phi(x,y_A)
+$$
+:::
+
+<div class="pipeline-arrow"> </div>
+
+::: {.flow-box}
+Prompt $x$ + Answer $y_B$
+:::
+
+<div class="pipeline-arrow">→</div>
+
+::: {.flow-box}
+Score
+$$
+r_\phi(x,y_B)
+$$
+:::
+
+:::
+
+$$
+\Pr(y_A \succ y_B \mid x)
+=
+\sigma\!\left(
+r_\phi(x,y_A)-r_\phi(x,y_B)
+\right).
+$$
+
+::: {.fragment .key-point}
+Score each answer separately, then compare the scores.
+:::
+
+
+## Stage 3: Optimise the LLM {.rl-optimisation-slide}
+
+Now treat the language model as a **policy**:
+
+$$
+\pi_\theta(y \mid x),
+$$
+
+where
+
+- $x$ is the prompt
+- $y$ is the generated answer
+
+The objective is:
+
+$$
+\max_\theta
+\;
+\mathbb{E}_{y \sim \pi_\theta(\cdot \mid x)}
+\left[
+r_\phi(x,y)
+-
+\beta
+\operatorname{KL}
+\left(
+\pi_\theta(\cdot \mid x)
+\Vert
+\pi_{\mathrm{ref}}(\cdot \mid x)
+\right)
+\right].
+$$
+
+::: {.fragment .key-point}
+The reward model is the **judge**.  
+The language model is the **competitor**.
+:::
+
+::: {.fragment .key-point}
+RLHF trains the competitor to get higher marks from the judge, without drifting too far from the original model.
+:::
+
+::: {.notes}
+Historically, this optimisation was often done with PPO.
+
+The KL penalty is important:
+without it, the model may exploit weaknesses in the reward model.
+The reference model is usually the SFT model or another earlier checkpoint.
+
+The intuition:
+- the reward term says "produce answers humans would prefer";
+- the KL term says "do not move too far from the model we already trust".
+
+This is the bridge into policy optimisation.
+:::
+
+
+## Text generation as reinforcement learning {.rl-mapping-slide}
+
+::: {.columns}
+
+::: {.column width="48%"}
+::: {.objective-card .pretrain-card}
+[Language modelling view]{.card-heading}
+
+Given a prompt $x$, the model generates an answer token by token:
+
+$$
+y = (y_1,\dots,y_T).
+$$
+
+The transformer defines
+
+$$
+\pi_\theta(y_t \mid x, y_{<t}).
+$$
+
+The probability of the full answer is
+
+$$
+\pi_\theta(y \mid x)
+=
+\prod_{t=1}^T
+\pi_\theta(y_t \mid x,y_{<t}).
+$$
+:::
+:::
+
+::: {.column width="48%"}
+::: {.objective-card .assistant-card}
+[Reinforcement learning view]{.card-heading}
+
+The language model is a **policy**.
+
+At step $t$:
+
+- state: current text context $(x,y_{<t})$
+- action: next token $y_t$
+- trajectory: full answer $y$
+- reward: score from reward model
+
+$$
+R(x,y) = r_\phi(x,y).
+$$
+:::
+:::
+
+:::
+
+::: {.fragment .key-point}
+In RLHF, generating an answer is treated as a sequential decision problem.
+:::
+
+::: {.notes}
+This slide maps language modelling onto reinforcement learning.
+
+The policy is not a separate object. It is the same transformer model, but interpreted as a policy over tokens.
+
+The state is the current text context. The action is the next token. The trajectory is the complete generated response.
+
+The reward is usually only given after the whole answer has been generated, because the reward model scores the complete prompt-answer pair.
+
+This is why the setting is naturally an episodic reinforcement-learning problem: one prompt gives one generated answer, and the answer receives a scalar reward.
+:::
+
+## The RLHF objective {.rl-objective-slide}
+
+For prompts $x \sim \mathcal{D}$, generate answers
+
+$$
+y \sim \pi_\theta(\cdot \mid x).
+$$
+
+The aim is to maximise expected reward:
+
+$$
+\max_\theta
+\;
+\mathbb{E}_{x \sim \mathcal{D}}
+\mathbb{E}_{y \sim \pi_\theta(\cdot \mid x)}
+\left[
+r_\phi(x,y)
+\right].
+$$
+
+::: {.fragment}
+But if we optimise only this reward, the model may exploit weaknesses in the reward model.
+:::
+
+::: {.fragment .key-point}
+So we add a penalty for moving too far from a reference model.
+:::
+
+$$
+\max_\theta
+\;
+\mathbb{E}_{x \sim \mathcal{D}}
+\mathbb{E}_{y \sim \pi_\theta(\cdot \mid x)}
+\left[
+r_\phi(x,y)
+-
+\beta
+\operatorname{KL}
+\left(
+\pi_\theta(\cdot \mid x)
+\Vert
+\pi_{\mathrm{ref}}(\cdot \mid x)
+\right)
+\right].
+$$
+
+::: {.notes}
+This is the cleaner version of the objective.
+
+The previous slide only wrote the expectation over $y$, but really there is also an expectation over prompts $x$ drawn from some prompt distribution.
+
+The reference model is usually the supervised fine-tuned model, or a frozen copy of a previous model.
+
+The KL penalty discourages the model from drifting too far away from the model we already trust. This matters because the reward model is imperfect. If the policy is allowed to optimise the reward model too aggressively, it can discover unnatural answers that get high reward-model scores but are bad for humans.
+
+This is analogous to regularisation.
+:::
+
+## Why only approximately? {.approx-objective-slide}
+
+The objective is:
+
+$$
+\mathbb{E}
+\left[
+r_\phi(x,y)
+-
+\beta
+\operatorname{KL}
+\left(
+\pi_\theta(\cdot \mid x)
+\Vert
+\pi_{\mathrm{ref}}(\cdot \mid x)
+\right)
+\right].
+$$
+
+In practice, this is optimised approximately using samples.
+
+::: {.columns}
+
+::: {.column width="50%"}
+::: {.objective-card .pretrain-card}
+[What we can sample]{.card-heading}
+
+We sample prompts:
+
+$$
+x_i \sim \mathcal{D}.
+$$
+
+Then sample model answers:
+
+$$
+y_i \sim \pi_\theta(\cdot \mid x_i).
+$$
+
+Then score them:
+
+$$
+r_\phi(x_i,y_i).
+$$
+:::
+:::
+
+::: {.column width="50%"}
+::: {.objective-card .assistant-card}
+[What we approximate]{.card-heading}
+
+The expectation is approximated by minibatches.
+
+The KL term is usually estimated token by token.
+
+The policy update is done using a stable policy-gradient method, often PPO.
+:::
+:::
+
+:::
+
+::: {.fragment .key-point}
+“Approximate” means: sample-based optimisation of a regularised expected reward objective.
+:::
+
+::: {.notes}
+This slide explains the word approximate.
+
+There are several approximations:
+1. We use samples of prompts, not the full prompt distribution.
+2. We use sampled model completions, not all possible completions.
+3. The KL penalty is estimated using token probabilities from the current model and reference model.
+4. The policy-gradient update uses a practical surrogate objective, such as PPO, rather than exactly maximising the displayed expression.
+
+So the displayed equation is the conceptual objective. PPO is one practical method for taking stable gradient steps towards improving that objective.
+:::
+
+## Why is there a KL penalty?
+
+In principle, we could optimise only the reward model:
+
+$$
+\max_\theta
+\mathbb{E}_{y\sim\pi_\theta(\cdot\mid x)}
+[
+r_\phi(x,y)
+].
+$$
+
+But the reward model is only a learned proxy for human preference.
+
+So RLHF usually solves a regularised problem:
+
+$$
+\max_\theta
+\mathbb{E}_{y\sim\pi_\theta(\cdot\mid x)}
+\left[
+r_\phi(x,y)
+-
+\beta
+\log
+\frac{\pi_\theta(y\mid x)}
+{\pi_{\mathrm{ref}}(y\mid x)}
+\right].
+$$
+
+::: {.fragment .key-point}
+The KL penalty says: improve according to the reward model, but stay close to the reference model.
+:::
+
+## Policy-gradient intuition {.policy-gradient-slide}
+
+Suppose the model samples an answer
+
+$$
+y \sim \pi_\theta(\cdot \mid x).
+$$
+
+If the answer receives high reward, we want to make it more likely.
+
+If it receives low reward, we want to make it less likely.
+
+A basic policy-gradient update has the form
+
+$$
+\nabla_\theta J(\theta)
+\approx
+\left(
+R(x,y) - b(x)
+\right)
+\nabla_\theta
+\log \pi_\theta(y \mid x),
+$$
+
+where
+
+$$
+R(x,y)
+=
+r_\phi(x,y)
+-
+\beta
+\operatorname{KL}
+\left(
+\pi_\theta(\cdot \mid x)
+\Vert
+\pi_{\mathrm{ref}}(\cdot \mid x)
+\right).
+$$
+
+::: {.fragment .key-point}
+Reward-weighted maximum likelihood: make high-scoring sampled answers more likely.
+:::
+
+::: {.notes}
+This is not the exact PPO objective, but it gives the core intuition.
+
+The term $\nabla_\theta \log \pi_\theta(y \mid x)$ tells us how to change the model parameters to increase the probability of the sampled answer.
+
+The scalar reward term tells us whether that sampled answer should be encouraged or discouraged.
+
+The baseline $b(x)$ reduces variance. In actor-critic methods, this baseline is learned by a value function.
+
+PPO modifies this basic idea by restricting how large the policy update can be. This makes training more stable.
+:::
+
+## Why PPO? {.ppo-slide}
+
+A naive policy-gradient update can change the model too aggressively.
+
+PPO uses a clipped objective that discourages overly large policy updates.
+
+Define the probability ratio
+
+$$
+\rho_t(\theta)
+=
+\frac{
+\pi_\theta(y_t \mid x,y_{<t})
+}{
+\pi_{\theta_{\mathrm{old}}}(y_t \mid x,y_{<t})
+}.
+$$
+
+PPO encourages high-reward tokens while keeping
+
+$$
+\rho_t(\theta)
+$$
+
+close to $1$.
+
+::: {.fragment .key-point}
+PPO is a practical stabilisation method: improve the policy, but do not let it move too far in one update.
+:::
+
+::: {.notes}
+You probably do not need to derive PPO fully.
+
+The key idea is that PPO compares the new policy to the old policy. If the new policy makes a token much more or less likely than before, the clipped objective limits the update.
+
+This sits alongside the KL penalty to the reference model:
+- PPO controls step size relative to the previous model;
+- the KL penalty controls drift relative to the trusted reference model.
+
+For this talk, the important point is not PPO itself. The important point is that the LLM is being updated using policy-gradient style reinforcement learning, with the learned reward model providing the reward signal.
+:::
+
+# The Scoring Model Perspective
+
+## The scoring-model perspective {.scoring-perspective-slide}
+
+::: {.big-claim}
+From a statistical perspective, the exciting object is not really  
+**reinforcement learning**.
+
+It is the learned **scoring model**.
+:::
+
+::: {.fragment .key-point}
+RLHF turns qualitative human judgements into a quantitative objective.
+:::
+
+::: {.fragment .pipeline-mini}
+::: {.pipeline-step}
+Human comparisons
+:::
+
+<div class="pipeline-arrow">→</div>
+
+::: {.pipeline-step}
+Latent score model
+:::
+
+<div class="pipeline-arrow">→</div>
+
+::: {.pipeline-step}
+Optimisation target
+:::
+:::
+
+
+## From Elo-style scores to RLHF scores {.elo-rlhf-slide}
+
+::: {.columns}
+
+::: {.column width="48%"}
+::: {.comparison-card}
+[Sport / Elo setting]{.card-heading}
+
+A competitor has a persistent latent score:
+
+$$
+s_i \in \mathbb{R}.
+$$
+
+For two competitors,
+
+$$
+\mathbb{P}(i \succ j)
+=
+\sigma(s_i - s_j).
+$$
+
+::: {.fragment}
+The same competitors appear repeatedly.
+:::
+:::
+:::
+
+::: {.column width="52%"}
+::: {.comparison-card}
+[RLHF setting]{.card-heading}
+
+A prompt--answer pair has a latent score:
+
+$$
+r_\phi(x,y) \in \mathbb{R}.
+$$
+
+For two answers to the same prompt,
+
+$$
+\mathbb{P}(y_A \succ y_B \mid x)
+=
+\sigma\{r_\phi(x,y_A)-r_\phi(x,y_B)\}.
+$$
+
+::: {.fragment}
+The same exact answer to the same exact prompt may never appear again.
+:::
+:::
+:::
+
+:::
+
+::: {.fragment .key-point}
+Ranking systems typically score persistent competitors; RLHF scores context-dependent outputs.
+:::
+
+::: {.notes}
+This slide makes the mapping to sports statistics explicit.
+
+In a simple Elo or Bradley--Terry setting, each team or player has a latent score. The same teams appear repeatedly, so it is plausible to maintain a table of scores and update them over time.
+
+In RLHF, the object being scored is not just "the model" globally. The reward model scores a particular answer in response to a particular prompt. That is a much higher-dimensional object.
+
+So the score cannot usually be a simple parameter $s_i$ attached to a named competitor. Instead, we need a function approximator $r_\phi(x,y)$ which can generalise across prompts and answers.
+:::
+
+## Why use a scoring model at all? {.why-scoring-model-slide}
+
+If every prompt--answer pair had its own unrelated score, we would need something like
+
+$$
+s_{x,y}.
+$$
+
+But this is impossible in practice.
+
+::: {.columns}
+
+::: {.column width="48%"}
+::: {.comparison-card}
+[Sports ratings]{.card-heading}
+
+A small set of recurring objects:
+
+$$
+\text{Team A}, \text{Team B}, \text{Team C}, \ldots
+$$
+
+::: {.fragment}
+Many repeated observations per competitor.
+:::
+
+::: {.fragment}
+A table of scores is plausible:
+$$
+s_1,\ldots,s_N.
+$$
+:::
+:::
+:::
+
+::: {.column width="52%"}
+::: {.comparison-card}
+[LLM outputs]{.card-heading}
+
+A huge space of possible objects:
+
+$$
+(x,y) \in \mathcal{X} \times \mathcal{Y}.
+$$
+
+::: {.fragment}
+Most prompt--answer pairs are observed rarely or never.
+:::
+
+::: {.fragment}
+We need a learned function:
+$$
+r_\phi : \mathcal{X} \times \mathcal{Y} \to \mathbb{R}.
+$$
+:::
+:::
+:::
+
+:::
+
+::: {.fragment .key-point}
+The reward model is a generalising scoring rule, not just a table of ratings.
+:::
+
+::: {.notes}
+This is the key statistical reason for using a neural reward model.
+
+In Elo, the score belongs to a persistent competitor. A team plays many matches, so we can update its rating.
+
+In RLHF, each output is more like a one-off performance in a high-dimensional context. The exact prompt and exact answer may never recur. Therefore we cannot assign an independent parameter to every possible pair $(x,y)$.
+
+Instead, we train a model $r_\phi(x,y)$ that learns features of good answers: relevance, clarity, correctness, helpfulness, style, safety, and so on. It must generalise from observed comparisons to new prompts and new answers.
+:::
+
+
+## The scoring model is trained from comparisons {.rm-loss-intuition-slide}
+
+For a prompt $x$, suppose a human prefers answer $y_A$ to answer $y_B$:
+
+$$
+y_A \succ y_B.
+$$
+
+The scoring model should assign the preferred answer a higher score:
+
+$$
+r_\phi(x,y_A) > r_\phi(x,y_B).
+$$
+
+A Bradley--Terry-style likelihood writes this as
+
+$$
+\mathbb{P}(y_A \succ y_B \mid x)
+=
+\sigma\{r_\phi(x,y_A)-r_\phi(x,y_B)\}.
+$$
+
+::: {.fragment .key-point}
+The model learns a scoring function by being punished when its score differences disagree with human preferences.
+:::
+
+::: {.notes}
+This slide returns from the sports analogy to the RLHF training objective.
+
+The key idea is simple: if humans prefer $y_A$ to $y_B$, then the reward model should give $y_A$ a higher score.
+
+The Bradley--Terry likelihood turns this into a differentiable loss. Other scoring models would change the likelihood, but the basic idea remains: learn scores whose implied preferences match human judgements.
+:::
+
+## Stage 2 observes judgements, not scores {.judgement-data-slide}
+
+For a prompt $x$, suppose the model produces candidate answers
+
+$$
+y_1,\ldots,y_K.
+$$
+
+A human annotator does not provide the true rewards
+
+$$
+r_\phi(x,y_1),\ldots,r_\phi(x,y_K).
+$$
+
+Instead, they provide an observation:
+
+::: {.fragment .comparison-list}
+$$
+y_A \succ y_B
+$$
+
+$$
+y_A \sim y_B
+$$
+
+$$
+y_1 \succ y_3 \succ y_2
+$$
+
+$$
+\text{``answer } y_A \text{ is 4/5''}
+$$
+:::
+
+::: {.fragment .key-point}
+The reward model is trained by choosing a likelihood for the kind of judgement we observe.
+:::
+
+::: {.notes}
+This is the transition from the intuitive point that pairwise comparisons are easier to the statistical point that different data types require different observation models.
+
+The human does not reveal the reward function. They provide noisy evidence about it.
+
+So the role of Stage 2 is to infer a scoring function from whatever kind of judgement data we collect: pairwise preferences, ties, rankings, ratings, or something else.
+:::
+
+## Same scoring function, different likelihood {.same-score-different-likelihood-slide}
+
+The scoring model is still a function
+
+$$
+r_\phi : \mathcal{X} \times \mathcal{Y} \to \mathbb{R}.
+$$
+
+What changes is the probability model for the observed judgement:
+
+$$
+\mathcal{L}_{\mathrm{RM}}(\phi)
+=
+-
+\log p_\phi
+\left(
+\text{human judgement}
+\mid
+x,y_1,\ldots,y_K
+\right).
+$$
+
+::: {.columns}
+
+::: {.column width="50%"}
+::: {.comparison-card}
+[Examples of observations]{.card-heading}
+
+Pairwise preference:
+
+$$
+y_A \succ y_B
+$$
+
+Tie or no preference:
+
+$$
+y_A \sim y_B
+$$
+
+Ranking:
+
+$$
+y_1 \succ y_2 \succ y_3
+$$
+:::
+:::
+
+::: {.column width="50%"}
+::: {.comparison-card}
+[Examples of likelihoods]{.card-heading}
+
+Bradley--Terry
+
+Davidson / tie models
+
+Plackett--Luce
+
+Ordinal rating models
+:::
+:::
+
+:::
+
+::: {.fragment .key-point}
+Different judgement data change the Stage 2 loss, not the basic idea of learning a scalar reward.
+:::
+
+::: {.notes}
+This is the main statistical message.
+
+The scoring model produces a scalar score for each prompt-answer pair. But we never directly observe that scalar score.
+
+Instead, we specify a likelihood connecting the scores to the human judgement. If the judgement is pairwise, we might use Bradley--Terry. If ties are allowed, we use a tie model. If the annotator ranks several answers, we might use Plackett--Luce.
+
+The final Stage 3 RLHF step only needs the trained scalar reward model $r_\phi(x,y)$.
+:::
+
+
+## Pairwise comparison is easier than absolute scoring {.pairwise-slide}
+
+::: {.columns}
+
+::: {.column width="48%"}
+::: {.comparison-card}
+[Absolute scoring]{.card-heading}
+
+Hard for humans:
+
+$$
+\text{This answer is } 7.3/10.
+$$
+
+::: {.fragment}
+What exactly does **7.3** mean?
+:::
+:::
+:::
+
+::: {.column width="48%"}
+::: {.comparison-card}
+[Pairwise comparison]{.card-heading}
+
+Usually easier:
+
+$$
+y_A \succ y_B.
+$$
+
+::: {.fragment}
+This answer is better than that one.
+:::
+:::
+:::
+
+:::
+
+::: {.fragment .key-point}
+This is why paired-comparison models are attractive in sport, rankings, judging, and psychometrics.
+:::
+
+::: {.notes}
+Make the point intuitively.
+
+Humans are often bad at calibrated absolute scoring, but much better at relative judgements.
+
+This is one reason RLHF usually uses comparisons rather than asking annotators to give precise numerical scores.
+:::
+
+
+## Bradley--Terry: the simplest paired-comparison model {.bt-slide}
+
+Suppose item $i$ has latent score $s_i$ and item $j$ has latent score $s_j$.
+
+A Bradley--Terry model says
+
+$$
+\mathbb{P}(i \succ j)
+=
+\frac{\exp(s_i)}{\exp(s_i) + \exp(s_j)}
+=
+\sigma(s_i - s_j).
+$$
+
+::: {.columns}
+
+::: {.column width="50%"}
+::: {.comparison-card}
+[Sport]{.card-heading}
+
+$$
+\mathbb{P}(\text{Team A beats Team B})
+=
+\sigma(s_A - s_B).
+$$
+:::
+:::
+
+::: {.column width="50%"}
+::: {.comparison-card}
+[RLHF]{.card-heading}
+
+$$
+\mathbb{P}(y_A \succ y_B \mid x)
+=
+\sigma(r_\phi(x,y_A) - r_\phi(x,y_B)).
+$$
+:::
+:::
+
+:::
+
+::: {.fragment .key-point}
+Only the difference in scores matters.
+:::
+
+
+
+
+## What about draws? {.draws-slide}
+
+Bradley--Terry only allows
+
+$$
+i \succ j
+\qquad \text{or} \qquad
+j \succ i.
+$$
+
+What about draws?
+
+::: {.columns}
+
+::: {.column width="48%"}
+::: {.comparison-card}
+[Sport]{.card-heading}
+
+Football matches etc. can end in a draw:
+
+$$
+i \sim j.
+$$
+
+:::
+:::
+
+::: {.column width="48%"}
+::: {.comparison-card}
+[RLHF]{.card-heading}
+
+Two answers may be equally good, equally bad, or too close to call:
+
+$$
+y_A \sim y_B.
+$$
+:::
+:::
+
+:::
+
+::: {.fragment}
+One extension is the Davidson model:
+
+$$
+\mathbb{P}(i \succ j)
+=
+\frac{\alpha_i}{\alpha_i + \alpha_j + \nu \sqrt{\alpha_i\alpha_j}},
+$$
+
+$$
+\mathbb{P}(i \sim j)
+=
+\frac{\nu \sqrt{\alpha_i\alpha_j}}{\alpha_i + \alpha_j + \nu \sqrt{\alpha_i\alpha_j}},
+$$
+
+where $\alpha_i = \exp(s_i)$ and $\nu \geq 0$ controls the tendency for draws.
+:::
+
+::: {.notes}
+This is a good example because it connects naturally to sport.
+
+The ordinary Bradley--Terry model forces every comparison to have a winner. But in football, chess, judged sport, and human preference annotation, sometimes the honest answer is: these are about the same.
+
+The draw parameter $\nu$ controls how much probability is given to ties. If $\nu=0$, we recover the no-draw version.
+
+For RLHF, this matters because forcing annotators to choose a winner between two nearly identical answers can add noise.
+:::
+
+## What about rankings? {.rankings-slide}
+
+In principle, a human annotator can rank several options:
+
+$$
+i_1 \succ i_2 \succ \cdots \succ i_K.
+$$
+
+A common model is the Plackett--Luce model:
+
+$$
+\mathbb{P}(i_1 \succ i_2 \succ \cdots \succ i_K)
+=
+\prod_{m=1}^{K}
+\frac{\exp(s_{i_m})}
+{\sum_{\ell=m}^{K} \exp(s_{i_\ell})}.
+$$
+
+
+::: {.columns}
+
+::: {.column width="50%"}
+::: {.comparison-card}
+[Sport]{.card-heading}
+
+Rank players, teams, performances, or candidates:
+
+$$
+\text{Gold} \succ \text{Silver} \succ \text{Bronze}.
+$$
+:::
+:::
+
+::: {.column width="50%"}
+::: {.comparison-card}
+[RLHF]{.card-heading}
+
+Rank several candidate answers to the same prompt:
+
+$$
+y_1 \succ y_3 \succ y_2 \succ y_4.
+$$
+:::
+:::
+
+:::
+
+::: {.notes}
+This slide shows that pairwise comparisons are not the only possible data format.
+
+Instead of asking a human to compare two answers, we might ask them to rank four answers. This gives richer information, but it may also be harder for the human annotator.
+
+The Plackett--Luce model says: first choose the best item from the full set, then choose the best item from the remaining set, and so on.
+
+Again, the same latent-score idea appears.
+:::
+
+## The RLHF version: scores depend on context {.context-dependent-score-slide}
+
+In most ranking systems we have a fixed score for each competitor:
+
+$$
+s_i.
+$$
+
+But in RLHF, the score depends on both the prompt and the answer:
+
+$$
+r_\phi(x,y).
+$$
+
+::: {.columns}
+
+::: {.column width="48%"}
+::: {.comparison-card}
+[Fixed ability]{.card-heading}
+
+A team-strength model might say:
+
+$$
+s_i = \text{ability of team } i.
+$$
+
+The score belongs mainly to the team.
+:::
+:::
+
+::: {.column width="48%"}
+::: {.comparison-card}
+[Context-dependent quality]{.card-heading}
+
+An answer-quality model says:
+
+$$
+r_\phi(x,y) = \text{quality of answer } y \text{ for prompt } x.
+$$
+
+The score belongs to the pair $(x,y)$.
+:::
+:::
+
+:::
+
+::: {.fragment .key-point}
+The same answer can be excellent for one prompt and terrible for another.
+:::
+
+::: {.notes}
+This is an important conceptual move.
+
+In a basic Bradley--Terry model, each object has a fixed latent score. But in RLHF the score is context-dependent. The reward model is not asking whether an answer is globally good. It is asking whether this answer is good for this prompt.
+
+This is also familiar in sport. A tactical decision may be good in one match state and bad in another. A player action may be good depending on scoreline, opponent, weather, time remaining, formation, and so on.
+:::
+
+## What changes if we change the scoring model?
+
+The RLHF pipeline stays mostly the same:
+
+$$
+\text{human judgements}
+\to
+\text{reward model}
+\to
+\text{policy optimisation}.
+$$
+
+Changing the scoring model mainly changes the reward-model loss:
+
+$$
+\mathcal{L}_{\mathrm{RM}}(\phi)
+=
+-\log p_\phi(\text{judgement} \mid x, y_1,\ldots,y_K).
+$$
+
+Bradley--Terry, Plackett--Luce, tie models, and ordinal models give different likelihoods.
+
+::: {.fragment .key-point}
+But Stage 3 only sees the resulting scalar reward
+$$
+r_\phi(x,y).
+$$
+:::
+
+# A variant: Direct Preference Optimisation (DPO)
+
+## A variant: Direct Preference Optimisation {.dpo-slide}
+
+Classical RLHF separates two steps:
+
+::: {.pipeline-mini}
+::: {.pipeline-step}
+Stage 2: Train reward model
+:::
+
+<div class="pipeline-arrow">→</div>
+
+::: {.pipeline-step}
+Stage 3: Optimise policy with RL
+:::
+:::
+
+**DPO collapses these into one preference-learning objective.**
+
+Given preference data of **pairwise comparisons**
+
+$$
+(x, y_w, y_l),
+$$
+
+DPO directly fine-tunes the language model so that the preferred answer becomes more likely than the rejected answer:
+
+$$
+\pi_\theta(y_w \mid x)
+\quad \text{increases relative to} \quad
+\pi_\theta(y_l \mid x).
+$$
+
+::: {.fragment .warning-box}
+The reward model $r_\phi(x,y)$ has not disappeared completely. Instead, it is **implicit** in the policy update.
+:::
+
+::: {.notes}
+DPO stands for Direct Preference Optimisation.
+
+It is often described as RLHF without reinforcement learning, because it avoids a separate reward model and PPO-style policy optimisation.
+
+However, conceptually it is still doing preference-based alignment. It uses the same kind of human comparison data, but turns it directly into a loss for the language model.
+
+The reference model, usually the SFT model, prevents the new model from moving too far away from the original assistant model.
+:::
+
+
+## Classical RLHF has two mathematical steps {.classical-rlhf-maths-slide}
+
+Classical RLHF separates the problem into two stages.
+
+::: {.columns}
+
+::: {.column width="50%"}
+::: {.comparison-card}
+[Stage 2: fit a reward model]{.card-heading}
+
+Given preference data
+
+$$
+(x,y_w,y_l),
+$$
+
+train $r_\phi(x,y)$ so that
+
+$$
+r_\phi(x,y_w) > r_\phi(x,y_l).
+$$
+
+For Bradley--Terry:
+
+$$
+\mathbb{P}_\phi(y_w \succ y_l \mid x)
+=
+\sigma
+\left(
+r_\phi(x,y_w)-r_\phi(x,y_l)
+\right).
+$$
+:::
+:::
+
+::: {.column width="50%"}
+::: {.comparison-card}
+[Stage 3: optimise the policy]{.card-heading}
+
+Then fine-tune the language model
+
+$$
+\pi_\theta(y \mid x)
+$$
+
+to maximise reward while staying close to a reference model:
+
+$$
+\pi_{\mathrm{ref}}(y \mid x).
+$$
+:::
+:::
+
+:::
+
+::: {.fragment .key-point}
+DPO starts by asking whether these two steps can be algebraically collapsed.
+:::
+
+::: {.notes}
+Here $y_w$ means the winning or preferred answer, and $y_l$ means the losing or rejected answer.
+
+In the classical pipeline, the reward model is trained first. Then it is frozen and used as the reward signal for policy optimisation.
+
+DPO asks: if we know the form of the preference likelihood and the form of the policy optimisation problem, can we remove the explicit reward model?
+:::
+
+## Stage 3: KL-regularised reward maximisation {.kl-regularised-rlhf-slide}
+
+For a fixed prompt $x$, classical RLHF approximately solves
+
+$$
+\max_{\pi}
+\;
+\mathbb{E}_{y \sim \pi(\cdot \mid x)}
+\left[
+r(x,y)
+\right]
+-
+\beta
+\operatorname{KL}
+\left(
+\pi(\cdot \mid x)
+\Vert
+\pi_{\mathrm{ref}}(\cdot \mid x)
+\right).
+$$
+
+Equivalently,
+
+$$
+\max_{\pi}
+\sum_y \pi(y \mid x) r(x,y)
+-
+\beta
+\sum_y
+\pi(y \mid x)
+\log
+\frac{\pi(y \mid x)}
+{\pi_{\mathrm{ref}}(y \mid x)}.
+$$
+
+::: {.fragment .key-point}
+The reward encourages preferred outputs; the KL penalty stops the model drifting too far from the reference model.
+:::
+
+::: {.notes}
+This is the usual RLHF objective in simplified form.
+
+The policy $\pi$ is the language model being fine-tuned. The reference policy $\pi_{\mathrm{ref}}$ is usually the supervised fine-tuned model.
+
+The constant $\beta > 0$ controls the reward--KL trade-off. Smaller $\beta$ means the model is allowed to move more aggressively towards high-reward answers. Larger $\beta$ keeps it closer to the reference model.
+:::
+
+## The optimal policy has a closed form {.optimal-policy-slide}
+
+For a fixed reward function $r(x,y)$, the solution has the form
+
+$$
+\pi_r(y \mid x)
+=
+\frac{1}{Z_r(x)}
+\pi_{\mathrm{ref}}(y \mid x)
+\exp
+\left(
+\frac{1}{\beta} r(x,y)
+\right),
+$$
+
+where
+
+$$
+Z_r(x)
+=
+\sum_y
+\pi_{\mathrm{ref}}(y \mid x)
+\exp
+\left(
+\frac{1}{\beta} r(x,y)
+\right)
+$$
+
+is a normalising constant.
+
+::: {.fragment .key-point}
+High-reward outputs become more likely, but only relative to the reference model.
+:::
+
+::: {.notes}
+This is the key mathematical fact behind DPO.
+
+The optimal policy is a tilted version of the reference policy. Outputs with larger reward receive larger probability under the new policy.
+
+The normalising constant $Z_r(x)$ makes the probabilities sum to one.
+
+You do not need to derive this fully in the talk, but it follows from optimising the KL-regularised objective over the probability simplex.
+:::
+
+## The policy secretly defines a reward model {.policy-reward-slide}
+
+Rearranging the closed-form solution gives
+
+$$
+r(x,y)
+=
+\beta
+\log
+\frac{\pi_r(y \mid x)}
+{\pi_{\mathrm{ref}}(y \mid x)}
++
+\beta \log Z_r(x).
+$$
+
+So, up to a prompt-dependent constant,
+
+$$
+r(x,y)
+\equiv
+\beta
+\log
+\frac{\pi_r(y \mid x)}
+{\pi_{\mathrm{ref}}(y \mid x)}.
+$$
+
+::: {.fragment .key-point}
+A policy can be interpreted as an implicit reward model.
+:::
+
+::: {.notes}
+This is the key DPO insight.
+
+If a policy assigns an answer much higher probability than the reference model does, then that answer has high implicit reward.
+
+The term $\beta \log Z_r(x)$ depends only on the prompt $x$, not on the answer $y$. Therefore it cancels when comparing two answers to the same prompt.
+
+That cancellation is what lets us substitute this expression directly into the Bradley--Terry preference likelihood.
+:::
+
+## Reward differences become log-probability ratios {.reward-difference-slide}
+
+For two answers $y_w$ and $y_l$ to the same prompt $x$,
+
+$$
+r(x,y_w)-r(x,y_l)
+=
+\beta
+\log
+\frac{\pi_r(y_w \mid x)}
+{\pi_{\mathrm{ref}}(y_w \mid x)}
+-
+\beta
+\log
+\frac{\pi_r(y_l \mid x)}
+{\pi_{\mathrm{ref}}(y_l \mid x)}.
+$$
+
+Equivalently,
+
+$$
+r(x,y_w)-r(x,y_l)
+=
+\beta
+\log
+\frac{
+\pi_r(y_w \mid x)\pi_{\mathrm{ref}}(y_l \mid x)
+}{
+\pi_{\mathrm{ref}}(y_w \mid x)\pi_r(y_l \mid x)
+}.
+$$
+
+::: {.fragment .key-point}
+Preference depends on how much the new policy favours the winner over the loser, relative to the reference model.
+:::
+
+::: {.notes}
+This is the bridge from reward modelling to direct policy optimisation.
+
+The reward difference is not just about whether $\pi_r(y_w \mid x)$ is large. It is about whether the policy increases the probability of the preferred answer relative to the reference model, compared with the rejected answer.
+
+That relative-to-reference structure is very important. It prevents the model from simply increasing the probability of generic high-probability text.
+:::
+
+## Substitute into the Bradley--Terry likelihood {.dpo-substitution-slide}
+
+The Bradley--Terry preference model says
+
+$$
+\mathbb{P}(y_w \succ y_l \mid x)
+=
+\sigma
+\left(
+r(x,y_w)-r(x,y_l)
+\right).
+$$
+
+Using the implicit reward expression,
+
+$$
+\mathbb{P}_\theta(y_w \succ y_l \mid x)
+=
+\sigma
+\left[
+\beta
+\log
+\frac{\pi_\theta(y_w \mid x)}
+{\pi_{\mathrm{ref}}(y_w \mid x)}
+-
+\beta
+\log
+\frac{\pi_\theta(y_l \mid x)}
+{\pi_{\mathrm{ref}}(y_l \mid x)}
+\right].
+$$
+
+::: {.fragment .key-point}
+The likelihood is now written directly in terms of the policy $\pi_\theta$.
+:::
+
+::: {.notes}
+This is the algebraic collapse.
+
+In classical RLHF, the Bradley--Terry likelihood is used to train $r_\phi$.
+
+In DPO, the same Bradley--Terry likelihood is used, but the reward difference is replaced by an expression involving the policy and reference model.
+
+So there is no separate reward-model network. The policy itself defines the implicit reward.
+:::
+
+## The DPO loss {.dpo-loss-slide}
+
+DPO minimises the negative log-likelihood of the observed preferences:
+
+$$
+\mathcal{L}_{\mathrm{DPO}}(\theta)
+=
+-
+\mathbb{E}_{(x,y_w,y_l)}
+\left[
+\log
+\sigma
+\left(
+\beta
+\log
+\frac{\pi_\theta(y_w \mid x)}
+{\pi_{\mathrm{ref}}(y_w \mid x)}
+-
+\beta
+\log
+\frac{\pi_\theta(y_l \mid x)}
+{\pi_{\mathrm{ref}}(y_l \mid x)}
+\right)
+\right].
+$$
+
+::: {.fragment .key-point}
+This is a supervised classification-style loss on preference pairs.
+:::
+
+::: {.notes}
+This is the final DPO objective.
+
+The model is rewarded when the preferred answer becomes more likely than the rejected answer relative to the reference model.
+
+Unlike PPO-style RLHF, this does not require sampling new outputs during training, fitting a separate reward model, or running a reinforcement learning algorithm.
+
+However, it still depends on the RLHF objective mathematically: it comes from the closed-form solution of the KL-regularised reward maximisation problem.
+:::
+
+# Challenges in using RLHF for finetuning LLMs
+
+## The score is latent and context-dependent {.latent-score-slide}
+
+The reward model assigns a scalar score:
+
+$$
+r_\phi(x,y) \in \mathbb{R}.
+$$
+
+::: {.fragment .key-point}
+But the reward is not a physical quantity.  
+It is inferred from human preference data.
+:::
+
+::: {.fragment .context-box}
+The same answer may be good in one context and bad in another:
+
+$$
+r_\phi(x,y)
+\quad \text{depends on both } x \text{ and } y.
+$$
+:::
+
+::: {.fragment .sports-analogy}
+[Sports analogy]{.card-heading}
+
+A performance score may depend on:
+
+- opposition strength
+- match context
+- position or role
+- tactics
+- weather
+- judging criteria
+:::
+
+::: {.notes}
+Emphasise that the scoring model is not estimating an intrinsic property of the answer alone.
+
+A response can be excellent for one prompt and terrible for another.
+
+For example, a short answer may be good when the user asks for a quick summary, but bad when they ask for a detailed proof.
+:::
+
+## Human preference is noisy {.noisy-preference-slide}
+
+Different humans may disagree.
+
+The same human may be inconsistent.
+
+Some criteria are vague.
+
+::: {.fragment .model-box}
+So the reward model estimates something like
+
+$$
+\Pr(y_A \succ y_B \mid x).
+$$
+:::
+
+::: {.fragment .warning-box}
+This is not the same as estimating
+
+$$
+\text{truth}
+\qquad \text{or} \qquad
+\text{objective quality}.
+$$
+:::
+
+::: {.fragment .key-point}
+The scoring model learns a pattern in human preferences, not a direct measurement of reality.
+:::
+
+::: {.notes}
+This is a useful place to be precise.
+
+The target is not "truth" in a philosophical or scientific sense.
+The data are comparative human judgements.
+
+That can still be very useful, but we should not confuse "preferred by annotators" with "objectively correct".
+:::
+
+## Optimising a learned score can break the score {.goodhart-slide}
+
+Once the model is trained to maximise
+
+$$
+r_\phi(x,y),
+$$
+
+it may find outputs that get high reward-model scores without genuinely being better.
+
+::: {.fragment .goodhart-box}
+**Goodhart’s law:**
+
+> When a measure becomes a target, it can stop being a good measure.
+:::
+
+::: {.fragment .sports-analogy}
+[Sports analogies]{.card-heading}
+
+- Optimise **shots on target**  
+  $\Rightarrow$ teams may take many low-quality shots.
+
+- Optimise **distance covered**  
+  $\Rightarrow$ players may run more without playing better.
+
+- Optimise **a judging rubric**  
+  $\Rightarrow$ competitors may learn to game the rubric.
+:::
+
+::: {.fragment .key-point}
+RLHF has the same problem: the model may learn to satisfy the judge rather than genuinely improve.
+:::
+
+::: {.notes}
+This is probably the most important warning in the talk.
+
+Say:
+"The reward model is only a proxy. Once we optimise hard against a proxy, we should expect failure modes."
+
+In RLHF this is often called reward hacking.
+The model may discover outputs that exploit weaknesses in the reward model.
+
+This motivates why RLHF systems need careful evaluation, regularisation, human review, and sometimes additional safety constraints.
+:::

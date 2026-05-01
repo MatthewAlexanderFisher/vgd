@@ -70,11 +70,417 @@
     "text": "SVGD for general diffusions\nFrom “De-randomizing MCMC dynamics with the diffusion Stein operator”, there is a general correspondence:\n\n\\text{Stein Operators} \\iff \\text{Diffusions} \\iff \\text{Gradient Flows}\n\nDiffusions\nThe general form of an Ito diffusion with stationary distribution \\pi is\n\ndX_t = f() dt + (A + C) dW_t.\n\nThis defines both a generator and a Fokker-Planck equation:\n\\begin{align*}\n\\mathcal{J}f &= ... \\\\\n\\partial_t q &= \\mathcal{J}^* q.\n\\end{align*}\nGradient Flow\nIt was shown that the Fokker-Planck can always be written as a “gradient flow” with respect to the KLD:\n\n\\partial_t q = -\\nabla\\cdot(q (A+C) \\nabla \\frac{\\delta \\mathrm{KLD}(q\\|\\pi)}{\\delta q}).\n\nHere:\n\nA defines a intrinsic metric on \\mathbb{R}^d, which adjusts the Wasserstein metric accordingly \nW_2(P,Q) = \\inf_{\\gamma \\in \\Gamma(P,Q)} \\left(\\int \\|x - y\\|_A^2 \\,\\mathrm{d}\\gamma(x,y) \\right)^{1/2}\n\nC defines a symplectic form (Hamiltonian part) giving the manifold symplectic structure as well. (Flows have rotations around level sets.)\n\nStein Operators\nThe generator defines a Stein operator over test functions:\n\n\\mathbb{E}[\\mathcal{J} f] = 0."
   },
   {
-    "objectID": "index.html",
-    "href": "index.html",
-    "title": "VGD",
-    "section": "",
-    "text": "Welcome to the VGD documentation. See the Tutorials to get started."
+    "objectID": "rlhf/index.html#which-answer-is-better",
+    "href": "rlhf/index.html#which-answer-is-better",
+    "title": "An Introduction to Scoring Models in RLHF",
+    "section": "Which answer is better?",
+    "text": "Which answer is better?\n\nPrompt:\n“In at most two sentences, explain the offside rule to a 10-year-old.”\n\n\n\n\nAnswer A\nIn football, you’re offside if your teammate passes the ball to you while you are nearer to the other team’s goal than both the ball and the second-last defender. But it only matters if you are involved in the play, like trying to get the ball or blocking an opponent.\n\n\n\nAnswer B\nTo stay “onside,” you must have at least two opponents (usually the goalie and one defender) between you and the goal line at the moment the ball is kicked to you. Basically, you can’t “cherry-pick” by hanging out behind the last defender to wait for an easy pass!\n\n\n\nAnswer C\nThe offside rule means you can’t hang out too close to the other team’s goal waiting for the ball—you need to have at least two players from the other team (usually the goalkeeper and one defender) between you and their goal line when the ball is passed to you. It’s there to keep the game fair and make sure players have to work together to move the ball forward instead of just camping by the goal!\n\n\n\nQuestion: Which answer would you prefer: A, B, or C?\n\n\nRLHF starts from data like this:\nhumans compare model outputs, and we fit a scoring model that predicts which response people prefer."
+  },
+  {
+    "objectID": "rlhf/index.html#what-is-an-llm",
+    "href": "rlhf/index.html#what-is-an-llm",
+    "title": "An Introduction to Scoring Models in RLHF",
+    "section": "What is an LLM?",
+    "text": "What is an LLM?\n\nA large language model is typically a causal decoder-only transformer, trained to predict the next token from the previous tokens.\n\nGiven text\n\nx_1, x_2, \\dots, x_t,\n\nthe model estimates\n\np_\\theta(x_{t+1} \\mid x_1,\\dots,x_t).\n\n\nFor example, after\n\nThe striker was clearly in an offside…\n\nthe model assigns probabilities to possible next tokens:\n\n\\text{position},\\quad \\text{trap},\\quad \\text{decision},\\quad \\ldots\n\n\n\nPretraining teaches the model to be a text continuation engine."
+  },
+  {
+    "objectID": "rlhf/index.html#how-is-it-trained",
+    "href": "rlhf/index.html#how-is-it-trained",
+    "title": "An Introduction to Scoring Models in RLHF",
+    "section": "How is it trained?",
+    "text": "How is it trained?\n\n\nText data\n\n\n→\n\n\nNext-token prediction\n\n\n→\n\n\nBase LLM\n\n\nThe pretraining loss is the negative log-likelihood:\n\n\\mathcal{L}(\\theta) = -\\sum_t \\log p_\\theta(x_{t+1} \\mid x_1,\\dots,x_t).\n\n\nThis objective is not\n\n“be helpful”\n“be truthful”\n“follow instructions”\n“give the answer humans prefer”\n\n\n\nA base LLM is cool, but merely text continuation isn’t enough for many applications: we want to align the model with human preferences"
+  },
+  {
+    "objectID": "rlhf/index.html#why-next-token-prediction-is-not-enough",
+    "href": "rlhf/index.html#why-next-token-prediction-is-not-enough",
+    "title": "An Introduction to Scoring Models in RLHF",
+    "section": "Why next-token prediction is not enough",
+    "text": "Why next-token prediction is not enough\n\n\n\nPretraining objective\nPredict the next token:\n\n\\mathcal{L}(\\theta)\n=\n-\\sum_t\n\\log p_\\theta(x_{t+1}\\mid x_1,\\dots,x_t).\n\n\nThis rewards outputs that are likely under the training data.\n\n\n\n\nAssistant objective\nProduce responses humans judge as:\n\nhelpful and clear\ntruthful\nsafe\nappropriate to the user’s intent\n\n\nThis rewards outputs that are preferred by people.\n\n\n\n\nThe core mismatch:\n\n\\text{likely text} \\neq \\text{desirable answer}."
+  },
+  {
+    "objectID": "rlhf/index.html#the-rlhf-pipeline",
+    "href": "rlhf/index.html#the-rlhf-pipeline",
+    "title": "An Introduction to Scoring Models in RLHF",
+    "section": "The RLHF pipeline",
+    "text": "The RLHF pipeline\n\n\n\n1\n\n\nSupervised fine-tuning\nPrompt \\to human-written good answer\nGives an SFT model.\n\n\n\n\n2\n\n\nTrain a reward/scoring model\nHumans compare model outputs.\nGives a learned score r_\\phi(x,y).\n\n\n\n\n3\n\n\nOptimise the LLM against the learned score\nThe language model is fine-tuned to produce high-scoring answers.\n\n\n\n\nRLHF turns human preference judgements into a training signal for the language model."
+  },
+  {
+    "objectID": "rlhf/index.html#stage-1-supervised-fine-tuning",
+    "href": "rlhf/index.html#stage-1-supervised-fine-tuning",
+    "title": "An Introduction to Scoring Models in RLHF",
+    "section": "Stage 1: Supervised fine-tuning",
+    "text": "Stage 1: Supervised fine-tuning\n\n\n\nTraining data\nHuman-written demonstrations:\n\n(x_i, y_i^{\\mathrm{demo}})\n\nwhere\n\nx_i is a prompt\ny_i^{\\mathrm{demo}} is a good assistant answer\n\n\n\n\nObjective\nFine-tune the model to imitate good answers:\n\n\\max_\\theta\n\\sum_i\n\\log \\pi_\\theta\n\\left(\ny_i^{\\mathrm{demo}} \\mid x_i\n\\right).\n\nThis gives the SFT model.\n\n\n\nSFT teaches the model the format of helpful assistant behaviour."
+  },
+  {
+    "objectID": "rlhf/index.html#what-is-pi_thetay-mid-x",
+    "href": "rlhf/index.html#what-is-pi_thetay-mid-x",
+    "title": "An Introduction to Scoring Models in RLHF",
+    "section": "What is \\pi_\\theta(y \\mid x)?",
+    "text": "What is \\pi_\\theta(y \\mid x)?\n\n\n\nTransformer model\nThe transformer takes a sequence of tokens and outputs next-token probabilities:\n\np_\\theta(x_{t+1} \\mid x_{\\leq t}).\n\nThe parameters \\theta are the neural-network weights:\n\nattention weights\nfeedforward weights\nembedding matrices\noutput projection\n\n\n\n\nPolicy notation\nFor a prompt x, the model generates an answer y token by token:\n\ny = (y_1,\\dots,y_T).\n\nSo we can write the probability of the whole answer as\n\n\\pi_\\theta(y \\mid x)\n=\n\\prod_{t=1}^{T}\np_\\theta(y_t \\mid x, y_{&lt;t}).\n\n\n\n\n\\pi_\\theta is not a separate model.\nIt is the same transformer, viewed as a probability distribution over generated answers.\n\n\nThis is an important notational point.\nIn language modelling, we usually write the model as next-token probabilities.\nIn reinforcement learning, we often call the model a policy because it chooses actions. Here, the “actions” are tokens, or equivalently the generated answer.\nSo: - the transformer is the architecture; - \\theta are the weights; - p_\\theta is the next-token distribution; - \\pi_\\theta(y \\mid x) is the induced distribution over full answers.\nThis lets us use reinforcement-learning language later, where the language model is the policy and the generated response is the action or trajectory."
+  },
+  {
+    "objectID": "rlhf/index.html#sft-as-next-token-training",
+    "href": "rlhf/index.html#sft-as-next-token-training",
+    "title": "An Introduction to Scoring Models in RLHF",
+    "section": "SFT as next-token training",
+    "text": "SFT as next-token training\nA human demonstration is a prompt-answer pair:\n\n(x_i, y_i^{\\mathrm{demo}}).\n\nIf\n\ny_i^{\\mathrm{demo}}\n=\n(y_{i1},\\dots,y_{iT_i}),\n\nthen the model assigns probability\n\n\\pi_\\theta(y_i^{\\mathrm{demo}} \\mid x_i)\n=\n\\prod_{t=1}^{T_i}\np_\\theta(y_{it} \\mid x_i, y_{i,&lt;t}).\n\nTherefore SFT maximises\n\n\\sum_i \\log \\pi_\\theta(y_i^{\\mathrm{demo}} \\mid x_i)\n=\n\\sum_i \\sum_{t=1}^{T_i}\n\\log p_\\theta(y_{it} \\mid x_i, y_{i,&lt;t}).\n\n\nSFT is ordinary next-token training, but on curated prompt-answer examples.\n\n\nThis slide clarifies that SFT is not a fundamentally different training method from pretraining.\nIt is still next-token prediction.\nThe difference is the dataset: - pretraining uses broad internet-scale text; - SFT uses curated demonstrations of good assistant behaviour.\nSo SFT shifts the model from “continue arbitrary text” towards “respond to instructions in an assistant-like way”."
+  },
+  {
+    "objectID": "rlhf/index.html#stage-2-train-a-scoring-model",
+    "href": "rlhf/index.html#stage-2-train-a-scoring-model",
+    "title": "An Introduction to Scoring Models in RLHF",
+    "section": "Stage 2: Train a scoring model",
+    "text": "Stage 2: Train a scoring model\nFor a prompt x, sample two candidate answers:\n\ny_A, \\; y_B \\sim \\pi_{\\mathrm{SFT}}(\\cdot \\mid x).\n\nA human is asked:\n\nWhich answer is better?\n\ny_A \\succ y_B\n\\qquad \\text{or} \\qquad\ny_B \\succ y_A\n\n\nThe reward model is a scoring function:\n\nr_\\phi(x,y) \\in \\mathbb{R}.\n\n\nThe statistical problem is to infer latent answer quality from noisy pairwise comparisons.\n\n\nThis is the point that connects most directly to the sports research group.\nThe reward model does not observe true answer quality. It only observes comparative human judgements.\nSo this is a paired-comparison problem: answer A beats answer B, or answer B beats answer A.\nThe word “reward model” is common in RLHF, but for this talk it is useful to call it a scoring model."
+  },
+  {
+    "objectID": "rlhf/index.html#the-preference-model",
+    "href": "rlhf/index.html#the-preference-model",
+    "title": "An Introduction to Scoring Models in RLHF",
+    "section": "The preference model",
+    "text": "The preference model\nA standard model is logistic:\n\n\\Pr(y_A \\succ y_B \\mid x)\n=\n\\sigma\n\\left(\nr_\\phi(x,y_A) - r_\\phi(x,y_B)\n\\right),\n\nwhere\n\n\\sigma(z)=\\frac{1}{1+\\exp(-z)}.\n\n\nThis is like saying:\n\nAnswer A “beats” answer B with probability determined by the difference in their latent scores.\n\n\n\nThis is essentially the Bradley-Terry model from paired-comparison statistics.\n\n\nThis is the main scoring-model slide.\nMake the sports analogy explicit: in sport, we often infer latent team or player quality from match outcomes. In RLHF, we infer latent answer quality from human preference outcomes.\nThe model says that only the difference in scores matters: if answer A has a much higher score than answer B, humans are very likely to prefer A. If their scores are close, the preference is uncertain."
+  },
+  {
+    "objectID": "rlhf/index.html#how-is-the-scoring-model-trained",
+    "href": "rlhf/index.html#how-is-the-scoring-model-trained",
+    "title": "An Introduction to Scoring Models in RLHF",
+    "section": "How is the scoring model trained?",
+    "text": "How is the scoring model trained?\n\n\n\nTypical architecture\nGiven a prompt-answer pair (x,y), concatenate the tokens and feed them through a transformer:\n\n[x \\, ; \\, y]\n\\;\\longrightarrow\\;\nh_1,\\dots,h_T\n\nUse the final hidden representation (or EOS-token representation) and attach a scalar head:\n\nr_\\phi(x,y) = w^\\top h_T + b.\n\nSo the reward model is typically:\n\na transformer backbone\nplus a 1-dimensional linear “score head”\noutputting a single real number\n\n\n\n\nTraining from preferences\nTraining data consist of triples\n\n(x_i, y_i^+, y_i^-),\n\nwhere y_i^+ is the human-preferred answer and y_i^- is the rejected one.\nThe same scorer is applied to both answers, and we minimise\n\n\\mathcal{L}(\\phi)\n=\n-\n\\sum_i\n\\log\n\\sigma\\!\\left(\nr_\\phi(x_i,y_i^+) - r_\\phi(x_i,y_i^-)\n\\right).\n\nThis pushes the preferred answer to have the higher score.\n\n\n\nArchitecturally, the scoring model is usually just another language model with a scalar scoring head.\n\n\nStatistically, this is just a paired-comparison model fit by logistic loss.\n\n\nThis slide is meant to demystify the reward model.\nThe input is not “answer A versus answer B” jointly. Rather, the same scoring model is applied separately to each prompt-answer pair: - score prompt + answer A - score prompt + answer B\nThen the difference of the two scores is passed through a logistic function, giving the model probability that A is preferred to B.\nIn practice, the reward model is often initialised from a pretrained or SFT transformer, then fitted with this pairwise preference loss.\nSo: - the transformer provides contextual representations; - the scalar head converts the representation into a latent quality score; - the logistic loss learns from human comparisons."
+  },
+  {
+    "objectID": "rlhf/index.html#scoring-model-as-a-comparison-machine",
+    "href": "rlhf/index.html#scoring-model-as-a-comparison-machine",
+    "title": "An Introduction to Scoring Models in RLHF",
+    "section": "Scoring model as a comparison machine",
+    "text": "Scoring model as a comparison machine\n\n\nPrompt x + Answer y_A\n\n\n→\n\n\nScore \nr_\\phi(x,y_A)\n\n\n\n\n\n\nPrompt x + Answer y_B\n\n\n→\n\n\nScore \nr_\\phi(x,y_B)\n\n\n\n\n\\Pr(y_A \\succ y_B \\mid x)\n=\n\\sigma\\!\\left(\nr_\\phi(x,y_A)-r_\\phi(x,y_B)\n\\right).\n\n\nScore each answer separately, then compare the scores."
+  },
+  {
+    "objectID": "rlhf/index.html#stage-3-optimise-the-llm",
+    "href": "rlhf/index.html#stage-3-optimise-the-llm",
+    "title": "An Introduction to Scoring Models in RLHF",
+    "section": "Stage 3: Optimise the LLM",
+    "text": "Stage 3: Optimise the LLM\nNow treat the language model as a policy:\n\n\\pi_\\theta(y \\mid x),\n\nwhere\n\nx is the prompt\ny is the generated answer\n\nThe objective is:\n\n\\max_\\theta\n\\;\n\\mathbb{E}_{y \\sim \\pi_\\theta(\\cdot \\mid x)}\n\\left[\nr_\\phi(x,y)\n-\n\\beta\n\\operatorname{KL}\n\\left(\n\\pi_\\theta(\\cdot \\mid x)\n\\Vert\n\\pi_{\\mathrm{ref}}(\\cdot \\mid x)\n\\right)\n\\right].\n\n\nThe reward model is the judge.\nThe language model is the competitor.\n\n\nRLHF trains the competitor to get higher marks from the judge, without drifting too far from the original model.\n\n\nHistorically, this optimisation was often done with PPO.\nThe KL penalty is important: without it, the model may exploit weaknesses in the reward model. The reference model is usually the SFT model or another earlier checkpoint.\nThe intuition: - the reward term says “produce answers humans would prefer”; - the KL term says “do not move too far from the model we already trust”.\nThis is the bridge into policy optimisation."
+  },
+  {
+    "objectID": "rlhf/index.html#text-generation-as-reinforcement-learning",
+    "href": "rlhf/index.html#text-generation-as-reinforcement-learning",
+    "title": "An Introduction to Scoring Models in RLHF",
+    "section": "Text generation as reinforcement learning",
+    "text": "Text generation as reinforcement learning\n\n\n\nLanguage modelling view\nGiven a prompt x, the model generates an answer token by token:\n\ny = (y_1,\\dots,y_T).\n\nThe transformer defines\n\n\\pi_\\theta(y_t \\mid x, y_{&lt;t}).\n\nThe probability of the full answer is\n\n\\pi_\\theta(y \\mid x)\n=\n\\prod_{t=1}^T\n\\pi_\\theta(y_t \\mid x,y_{&lt;t}).\n\n\n\n\nReinforcement learning view\nThe language model is a policy.\nAt step t:\n\nstate: current text context (x,y_{&lt;t})\naction: next token y_t\ntrajectory: full answer y\nreward: score from reward model\n\n\nR(x,y) = r_\\phi(x,y).\n\n\n\n\nIn RLHF, generating an answer is treated as a sequential decision problem.\n\n\nThis slide maps language modelling onto reinforcement learning.\nThe policy is not a separate object. It is the same transformer model, but interpreted as a policy over tokens.\nThe state is the current text context. The action is the next token. The trajectory is the complete generated response.\nThe reward is usually only given after the whole answer has been generated, because the reward model scores the complete prompt-answer pair.\nThis is why the setting is naturally an episodic reinforcement-learning problem: one prompt gives one generated answer, and the answer receives a scalar reward."
+  },
+  {
+    "objectID": "rlhf/index.html#the-rlhf-objective",
+    "href": "rlhf/index.html#the-rlhf-objective",
+    "title": "An Introduction to Scoring Models in RLHF",
+    "section": "The RLHF objective",
+    "text": "The RLHF objective\nFor prompts x \\sim \\mathcal{D}, generate answers\n\ny \\sim \\pi_\\theta(\\cdot \\mid x).\n\nThe aim is to maximise expected reward:\n\n\\max_\\theta\n\\;\n\\mathbb{E}_{x \\sim \\mathcal{D}}\n\\mathbb{E}_{y \\sim \\pi_\\theta(\\cdot \\mid x)}\n\\left[\nr_\\phi(x,y)\n\\right].\n\n\nBut if we optimise only this reward, the model may exploit weaknesses in the reward model.\n\n\nSo we add a penalty for moving too far from a reference model.\n\n\n\\max_\\theta\n\\;\n\\mathbb{E}_{x \\sim \\mathcal{D}}\n\\mathbb{E}_{y \\sim \\pi_\\theta(\\cdot \\mid x)}\n\\left[\nr_\\phi(x,y)\n-\n\\beta\n\\operatorname{KL}\n\\left(\n\\pi_\\theta(\\cdot \\mid x)\n\\Vert\n\\pi_{\\mathrm{ref}}(\\cdot \\mid x)\n\\right)\n\\right].\n\n\nThis is the cleaner version of the objective.\nThe previous slide only wrote the expectation over y, but really there is also an expectation over prompts x drawn from some prompt distribution.\nThe reference model is usually the supervised fine-tuned model, or a frozen copy of a previous model.\nThe KL penalty discourages the model from drifting too far away from the model we already trust. This matters because the reward model is imperfect. If the policy is allowed to optimise the reward model too aggressively, it can discover unnatural answers that get high reward-model scores but are bad for humans.\nThis is analogous to regularisation."
+  },
+  {
+    "objectID": "rlhf/index.html#why-only-approximately",
+    "href": "rlhf/index.html#why-only-approximately",
+    "title": "An Introduction to Scoring Models in RLHF",
+    "section": "Why only approximately?",
+    "text": "Why only approximately?\nThe objective is:\n\n\\mathbb{E}\n\\left[\nr_\\phi(x,y)\n-\n\\beta\n\\operatorname{KL}\n\\left(\n\\pi_\\theta(\\cdot \\mid x)\n\\Vert\n\\pi_{\\mathrm{ref}}(\\cdot \\mid x)\n\\right)\n\\right].\n\nIn practice, this is optimised approximately using samples.\n\n\n\nWhat we can sample\nWe sample prompts:\n\nx_i \\sim \\mathcal{D}.\n\nThen sample model answers:\n\ny_i \\sim \\pi_\\theta(\\cdot \\mid x_i).\n\nThen score them:\n\nr_\\phi(x_i,y_i).\n\n\n\n\nWhat we approximate\nThe expectation is approximated by minibatches.\nThe KL term is usually estimated token by token.\nThe policy update is done using a stable policy-gradient method, often PPO.\n\n\n\n“Approximate” means: sample-based optimisation of a regularised expected reward objective.\n\n\nThis slide explains the word approximate.\nThere are several approximations: 1. We use samples of prompts, not the full prompt distribution. 2. We use sampled model completions, not all possible completions. 3. The KL penalty is estimated using token probabilities from the current model and reference model. 4. The policy-gradient update uses a practical surrogate objective, such as PPO, rather than exactly maximising the displayed expression.\nSo the displayed equation is the conceptual objective. PPO is one practical method for taking stable gradient steps towards improving that objective."
+  },
+  {
+    "objectID": "rlhf/index.html#why-is-there-a-kl-penalty",
+    "href": "rlhf/index.html#why-is-there-a-kl-penalty",
+    "title": "An Introduction to Scoring Models in RLHF",
+    "section": "Why is there a KL penalty?",
+    "text": "Why is there a KL penalty?\nIn principle, we could optimise only the reward model:\n\n\\max_\\theta\n\\mathbb{E}_{y\\sim\\pi_\\theta(\\cdot\\mid x)}\n[\nr_\\phi(x,y)\n].\n\nBut the reward model is only a learned proxy for human preference.\nSo RLHF usually solves a regularised problem:\n\n\\max_\\theta\n\\mathbb{E}_{y\\sim\\pi_\\theta(\\cdot\\mid x)}\n\\left[\nr_\\phi(x,y)\n-\n\\beta\n\\log\n\\frac{\\pi_\\theta(y\\mid x)}\n{\\pi_{\\mathrm{ref}}(y\\mid x)}\n\\right].\n\n\nThe KL penalty says: improve according to the reward model, but stay close to the reference model."
+  },
+  {
+    "objectID": "rlhf/index.html#policy-gradient-intuition",
+    "href": "rlhf/index.html#policy-gradient-intuition",
+    "title": "An Introduction to Scoring Models in RLHF",
+    "section": "Policy-gradient intuition",
+    "text": "Policy-gradient intuition\nSuppose the model samples an answer\n\ny \\sim \\pi_\\theta(\\cdot \\mid x).\n\nIf the answer receives high reward, we want to make it more likely.\nIf it receives low reward, we want to make it less likely.\nA basic policy-gradient update has the form\n\n\\nabla_\\theta J(\\theta)\n\\approx\n\\left(\nR(x,y) - b(x)\n\\right)\n\\nabla_\\theta\n\\log \\pi_\\theta(y \\mid x),\n\nwhere\n\nR(x,y)\n=\nr_\\phi(x,y)\n-\n\\beta\n\\operatorname{KL}\n\\left(\n\\pi_\\theta(\\cdot \\mid x)\n\\Vert\n\\pi_{\\mathrm{ref}}(\\cdot \\mid x)\n\\right).\n\n\nReward-weighted maximum likelihood: make high-scoring sampled answers more likely.\n\n\nThis is not the exact PPO objective, but it gives the core intuition.\nThe term \\nabla_\\theta \\log \\pi_\\theta(y \\mid x) tells us how to change the model parameters to increase the probability of the sampled answer.\nThe scalar reward term tells us whether that sampled answer should be encouraged or discouraged.\nThe baseline b(x) reduces variance. In actor-critic methods, this baseline is learned by a value function.\nPPO modifies this basic idea by restricting how large the policy update can be. This makes training more stable."
+  },
+  {
+    "objectID": "rlhf/index.html#why-ppo",
+    "href": "rlhf/index.html#why-ppo",
+    "title": "An Introduction to Scoring Models in RLHF",
+    "section": "Why PPO?",
+    "text": "Why PPO?\nA naive policy-gradient update can change the model too aggressively.\nPPO uses a clipped objective that discourages overly large policy updates.\nDefine the probability ratio\n\n\\rho_t(\\theta)\n=\n\\frac{\n\\pi_\\theta(y_t \\mid x,y_{&lt;t})\n}{\n\\pi_{\\theta_{\\mathrm{old}}}(y_t \\mid x,y_{&lt;t})\n}.\n\nPPO encourages high-reward tokens while keeping\n\n\\rho_t(\\theta)\n\nclose to 1.\n\nPPO is a practical stabilisation method: improve the policy, but do not let it move too far in one update.\n\n\nYou probably do not need to derive PPO fully.\nThe key idea is that PPO compares the new policy to the old policy. If the new policy makes a token much more or less likely than before, the clipped objective limits the update.\nThis sits alongside the KL penalty to the reference model: - PPO controls step size relative to the previous model; - the KL penalty controls drift relative to the trusted reference model.\nFor this talk, the important point is not PPO itself. The important point is that the LLM is being updated using policy-gradient style reinforcement learning, with the learned reward model providing the reward signal."
+  },
+  {
+    "objectID": "rlhf/index.html#the-scoring-model-perspective-1",
+    "href": "rlhf/index.html#the-scoring-model-perspective-1",
+    "title": "An Introduction to Scoring Models in RLHF",
+    "section": "The scoring-model perspective",
+    "text": "The scoring-model perspective\n\nFrom a statistical perspective, the exciting object is not really\nreinforcement learning.\nIt is the learned scoring model.\n\n\nRLHF turns qualitative human judgements into a quantitative objective.\n\n\n\nHuman comparisons\n\n\n→\n\n\nLatent score model\n\n\n→\n\n\nOptimisation target"
+  },
+  {
+    "objectID": "rlhf/index.html#from-elo-style-scores-to-rlhf-scores",
+    "href": "rlhf/index.html#from-elo-style-scores-to-rlhf-scores",
+    "title": "An Introduction to Scoring Models in RLHF",
+    "section": "From Elo-style scores to RLHF scores",
+    "text": "From Elo-style scores to RLHF scores\n\n\n\nSport / Elo setting\nA competitor has a persistent latent score:\n\ns_i \\in \\mathbb{R}.\n\nFor two competitors,\n\n\\mathbb{P}(i \\succ j)\n=\n\\sigma(s_i - s_j).\n\n\nThe same competitors appear repeatedly.\n\n\n\n\nRLHF setting\nA prompt–answer pair has a latent score:\n\nr_\\phi(x,y) \\in \\mathbb{R}.\n\nFor two answers to the same prompt,\n\n\\mathbb{P}(y_A \\succ y_B \\mid x)\n=\n\\sigma\\{r_\\phi(x,y_A)-r_\\phi(x,y_B)\\}.\n\n\nThe same exact answer to the same exact prompt may never appear again.\n\n\n\n\nRanking systems typically score persistent competitors; RLHF scores context-dependent outputs.\n\n\nThis slide makes the mapping to sports statistics explicit.\nIn a simple Elo or Bradley–Terry setting, each team or player has a latent score. The same teams appear repeatedly, so it is plausible to maintain a table of scores and update them over time.\nIn RLHF, the object being scored is not just “the model” globally. The reward model scores a particular answer in response to a particular prompt. That is a much higher-dimensional object.\nSo the score cannot usually be a simple parameter s_i attached to a named competitor. Instead, we need a function approximator r_\\phi(x,y) which can generalise across prompts and answers."
+  },
+  {
+    "objectID": "rlhf/index.html#why-use-a-scoring-model-at-all",
+    "href": "rlhf/index.html#why-use-a-scoring-model-at-all",
+    "title": "An Introduction to Scoring Models in RLHF",
+    "section": "Why use a scoring model at all?",
+    "text": "Why use a scoring model at all?\nIf every prompt–answer pair had its own unrelated score, we would need something like\n\ns_{x,y}.\n\nBut this is impossible in practice.\n\n\n\nSports ratings\nA small set of recurring objects:\n\n\\text{Team A}, \\text{Team B}, \\text{Team C}, \\ldots\n\n\nMany repeated observations per competitor.\n\n\nA table of scores is plausible: \ns_1,\\ldots,s_N.\n\n\n\n\n\nLLM outputs\nA huge space of possible objects:\n\n(x,y) \\in \\mathcal{X} \\times \\mathcal{Y}.\n\n\nMost prompt–answer pairs are observed rarely or never.\n\n\nWe need a learned function: \nr_\\phi : \\mathcal{X} \\times \\mathcal{Y} \\to \\mathbb{R}.\n\n\n\n\n\nThe reward model is a generalising scoring rule, not just a table of ratings.\n\n\nThis is the key statistical reason for using a neural reward model.\nIn Elo, the score belongs to a persistent competitor. A team plays many matches, so we can update its rating.\nIn RLHF, each output is more like a one-off performance in a high-dimensional context. The exact prompt and exact answer may never recur. Therefore we cannot assign an independent parameter to every possible pair (x,y).\nInstead, we train a model r_\\phi(x,y) that learns features of good answers: relevance, clarity, correctness, helpfulness, style, safety, and so on. It must generalise from observed comparisons to new prompts and new answers."
+  },
+  {
+    "objectID": "rlhf/index.html#the-scoring-model-is-trained-from-comparisons",
+    "href": "rlhf/index.html#the-scoring-model-is-trained-from-comparisons",
+    "title": "An Introduction to Scoring Models in RLHF",
+    "section": "The scoring model is trained from comparisons",
+    "text": "The scoring model is trained from comparisons\nFor a prompt x, suppose a human prefers answer y_A to answer y_B:\n\ny_A \\succ y_B.\n\nThe scoring model should assign the preferred answer a higher score:\n\nr_\\phi(x,y_A) &gt; r_\\phi(x,y_B).\n\nA Bradley–Terry-style likelihood writes this as\n\n\\mathbb{P}(y_A \\succ y_B \\mid x)\n=\n\\sigma\\{r_\\phi(x,y_A)-r_\\phi(x,y_B)\\}.\n\n\nThe model learns a scoring function by being punished when its score differences disagree with human preferences.\n\n\nThis slide returns from the sports analogy to the RLHF training objective.\nThe key idea is simple: if humans prefer y_A to y_B, then the reward model should give y_A a higher score.\nThe Bradley–Terry likelihood turns this into a differentiable loss. Other scoring models would change the likelihood, but the basic idea remains: learn scores whose implied preferences match human judgements."
+  },
+  {
+    "objectID": "rlhf/index.html#stage-2-observes-judgements-not-scores",
+    "href": "rlhf/index.html#stage-2-observes-judgements-not-scores",
+    "title": "An Introduction to Scoring Models in RLHF",
+    "section": "Stage 2 observes judgements, not scores",
+    "text": "Stage 2 observes judgements, not scores\nFor a prompt x, suppose the model produces candidate answers\n\ny_1,\\ldots,y_K.\n\nA human annotator does not provide the true rewards\n\nr_\\phi(x,y_1),\\ldots,r_\\phi(x,y_K).\n\nInstead, they provide an observation:\n\n\ny_A \\succ y_B\n\n\ny_A \\sim y_B\n\n\ny_1 \\succ y_3 \\succ y_2\n\n\n\\text{``answer } y_A \\text{ is 4/5''}\n\n\n\nThe reward model is trained by choosing a likelihood for the kind of judgement we observe.\n\n\nThis is the transition from the intuitive point that pairwise comparisons are easier to the statistical point that different data types require different observation models.\nThe human does not reveal the reward function. They provide noisy evidence about it.\nSo the role of Stage 2 is to infer a scoring function from whatever kind of judgement data we collect: pairwise preferences, ties, rankings, ratings, or something else."
+  },
+  {
+    "objectID": "rlhf/index.html#same-scoring-function-different-likelihood",
+    "href": "rlhf/index.html#same-scoring-function-different-likelihood",
+    "title": "An Introduction to Scoring Models in RLHF",
+    "section": "Same scoring function, different likelihood",
+    "text": "Same scoring function, different likelihood\nThe scoring model is still a function\n\nr_\\phi : \\mathcal{X} \\times \\mathcal{Y} \\to \\mathbb{R}.\n\nWhat changes is the probability model for the observed judgement:\n\n\\mathcal{L}_{\\mathrm{RM}}(\\phi)\n=\n-\n\\log p_\\phi\n\\left(\n\\text{human judgement}\n\\mid\nx,y_1,\\ldots,y_K\n\\right).\n\n\n\n\nExamples of observations\nPairwise preference:\n\ny_A \\succ y_B\n\nTie or no preference:\n\ny_A \\sim y_B\n\nRanking:\n\ny_1 \\succ y_2 \\succ y_3\n\n\n\n\nExamples of likelihoods\nBradley–Terry\nDavidson / tie models\nPlackett–Luce\nOrdinal rating models\n\n\n\nDifferent judgement data change the Stage 2 loss, not the basic idea of learning a scalar reward.\n\n\nThis is the main statistical message.\nThe scoring model produces a scalar score for each prompt-answer pair. But we never directly observe that scalar score.\nInstead, we specify a likelihood connecting the scores to the human judgement. If the judgement is pairwise, we might use Bradley–Terry. If ties are allowed, we use a tie model. If the annotator ranks several answers, we might use Plackett–Luce.\nThe final Stage 3 RLHF step only needs the trained scalar reward model r_\\phi(x,y)."
+  },
+  {
+    "objectID": "rlhf/index.html#pairwise-comparison-is-easier-than-absolute-scoring",
+    "href": "rlhf/index.html#pairwise-comparison-is-easier-than-absolute-scoring",
+    "title": "An Introduction to Scoring Models in RLHF",
+    "section": "Pairwise comparison is easier than absolute scoring",
+    "text": "Pairwise comparison is easier than absolute scoring\n\n\n\nAbsolute scoring\nHard for humans:\n\n\\text{This answer is } 7.3/10.\n\n\nWhat exactly does 7.3 mean?\n\n\n\n\nPairwise comparison\nUsually easier:\n\ny_A \\succ y_B.\n\n\nThis answer is better than that one.\n\n\n\n\nThis is why paired-comparison models are attractive in sport, rankings, judging, and psychometrics.\n\n\nMake the point intuitively.\nHumans are often bad at calibrated absolute scoring, but much better at relative judgements.\nThis is one reason RLHF usually uses comparisons rather than asking annotators to give precise numerical scores."
+  },
+  {
+    "objectID": "rlhf/index.html#bradleyterry-the-simplest-paired-comparison-model",
+    "href": "rlhf/index.html#bradleyterry-the-simplest-paired-comparison-model",
+    "title": "An Introduction to Scoring Models in RLHF",
+    "section": "Bradley–Terry: the simplest paired-comparison model",
+    "text": "Bradley–Terry: the simplest paired-comparison model\nSuppose item i has latent score s_i and item j has latent score s_j.\nA Bradley–Terry model says\n\n\\mathbb{P}(i \\succ j)\n=\n\\frac{\\exp(s_i)}{\\exp(s_i) + \\exp(s_j)}\n=\n\\sigma(s_i - s_j).\n\n\n\n\nSport\n\n\\mathbb{P}(\\text{Team A beats Team B})\n=\n\\sigma(s_A - s_B).\n\n\n\n\nRLHF\n\n\\mathbb{P}(y_A \\succ y_B \\mid x)\n=\n\\sigma(r_\\phi(x,y_A) - r_\\phi(x,y_B)).\n\n\n\n\nOnly the difference in scores matters."
+  },
+  {
+    "objectID": "rlhf/index.html#what-about-draws",
+    "href": "rlhf/index.html#what-about-draws",
+    "title": "An Introduction to Scoring Models in RLHF",
+    "section": "What about draws?",
+    "text": "What about draws?\nBradley–Terry only allows\n\ni \\succ j\n\\qquad \\text{or} \\qquad\nj \\succ i.\n\nWhat about draws?\n\n\n\nSport\nFootball matches etc. can end in a draw:\n\ni \\sim j.\n\n\n\n\nRLHF\nTwo answers may be equally good, equally bad, or too close to call:\n\ny_A \\sim y_B.\n\n\n\n\nOne extension is the Davidson model:\n\n\\mathbb{P}(i \\succ j)\n=\n\\frac{\\alpha_i}{\\alpha_i + \\alpha_j + \\nu \\sqrt{\\alpha_i\\alpha_j}},\n\n\n\\mathbb{P}(i \\sim j)\n=\n\\frac{\\nu \\sqrt{\\alpha_i\\alpha_j}}{\\alpha_i + \\alpha_j + \\nu \\sqrt{\\alpha_i\\alpha_j}},\n\nwhere \\alpha_i = \\exp(s_i) and \\nu \\geq 0 controls the tendency for draws.\n\n\nThis is a good example because it connects naturally to sport.\nThe ordinary Bradley–Terry model forces every comparison to have a winner. But in football, chess, judged sport, and human preference annotation, sometimes the honest answer is: these are about the same.\nThe draw parameter \\nu controls how much probability is given to ties. If \\nu=0, we recover the no-draw version.\nFor RLHF, this matters because forcing annotators to choose a winner between two nearly identical answers can add noise."
+  },
+  {
+    "objectID": "rlhf/index.html#what-about-rankings",
+    "href": "rlhf/index.html#what-about-rankings",
+    "title": "An Introduction to Scoring Models in RLHF",
+    "section": "What about rankings?",
+    "text": "What about rankings?\nIn principle, a human annotator can rank several options:\n\ni_1 \\succ i_2 \\succ \\cdots \\succ i_K.\n\nA common model is the Plackett–Luce model:\n\n\\mathbb{P}(i_1 \\succ i_2 \\succ \\cdots \\succ i_K)\n=\n\\prod_{m=1}^{K}\n\\frac{\\exp(s_{i_m})}\n{\\sum_{\\ell=m}^{K} \\exp(s_{i_\\ell})}.\n\n\n\n\nSport\nRank players, teams, performances, or candidates:\n\n\\text{Gold} \\succ \\text{Silver} \\succ \\text{Bronze}.\n\n\n\n\nRLHF\nRank several candidate answers to the same prompt:\n\ny_1 \\succ y_3 \\succ y_2 \\succ y_4.\n\n\n\n\nThis slide shows that pairwise comparisons are not the only possible data format.\nInstead of asking a human to compare two answers, we might ask them to rank four answers. This gives richer information, but it may also be harder for the human annotator.\nThe Plackett–Luce model says: first choose the best item from the full set, then choose the best item from the remaining set, and so on.\nAgain, the same latent-score idea appears."
+  },
+  {
+    "objectID": "rlhf/index.html#the-rlhf-version-scores-depend-on-context",
+    "href": "rlhf/index.html#the-rlhf-version-scores-depend-on-context",
+    "title": "An Introduction to Scoring Models in RLHF",
+    "section": "The RLHF version: scores depend on context",
+    "text": "The RLHF version: scores depend on context\nIn most ranking systems we have a fixed score for each competitor:\n\ns_i.\n\nBut in RLHF, the score depends on both the prompt and the answer:\n\nr_\\phi(x,y).\n\n\n\n\nFixed ability\nA team-strength model might say:\n\ns_i = \\text{ability of team } i.\n\nThe score belongs mainly to the team.\n\n\n\nContext-dependent quality\nAn answer-quality model says:\n\nr_\\phi(x,y) = \\text{quality of answer } y \\text{ for prompt } x.\n\nThe score belongs to the pair (x,y).\n\n\n\nThe same answer can be excellent for one prompt and terrible for another.\n\n\nThis is an important conceptual move.\nIn a basic Bradley–Terry model, each object has a fixed latent score. But in RLHF the score is context-dependent. The reward model is not asking whether an answer is globally good. It is asking whether this answer is good for this prompt.\nThis is also familiar in sport. A tactical decision may be good in one match state and bad in another. A player action may be good depending on scoreline, opponent, weather, time remaining, formation, and so on."
+  },
+  {
+    "objectID": "rlhf/index.html#what-changes-if-we-change-the-scoring-model",
+    "href": "rlhf/index.html#what-changes-if-we-change-the-scoring-model",
+    "title": "An Introduction to Scoring Models in RLHF",
+    "section": "What changes if we change the scoring model?",
+    "text": "What changes if we change the scoring model?\nThe RLHF pipeline stays mostly the same:\n\n\\text{human judgements}\n\\to\n\\text{reward model}\n\\to\n\\text{policy optimisation}.\n\nChanging the scoring model mainly changes the reward-model loss:\n\n\\mathcal{L}_{\\mathrm{RM}}(\\phi)\n=\n-\\log p_\\phi(\\text{judgement} \\mid x, y_1,\\ldots,y_K).\n\nBradley–Terry, Plackett–Luce, tie models, and ordinal models give different likelihoods.\n\nBut Stage 3 only sees the resulting scalar reward \nr_\\phi(x,y)."
+  },
+  {
+    "objectID": "rlhf/index.html#a-variant-direct-preference-optimisation",
+    "href": "rlhf/index.html#a-variant-direct-preference-optimisation",
+    "title": "An Introduction to Scoring Models in RLHF",
+    "section": "A variant: Direct Preference Optimisation",
+    "text": "A variant: Direct Preference Optimisation\nClassical RLHF separates two steps:\n\n\nStage 2: Train reward model\n\n\n→\n\n\nStage 3: Optimise policy with RL\n\n\nDPO collapses these into one preference-learning objective.\nGiven preference data of pairwise comparisons\n\n(x, y_w, y_l),\n\nDPO directly fine-tunes the language model so that the preferred answer becomes more likely than the rejected answer:\n\n\\pi_\\theta(y_w \\mid x)\n\\quad \\text{increases relative to} \\quad\n\\pi_\\theta(y_l \\mid x).\n\n\nThe reward model r_\\phi(x,y) has not disappeared completely. Instead, it is implicit in the policy update.\n\n\nDPO stands for Direct Preference Optimisation.\nIt is often described as RLHF without reinforcement learning, because it avoids a separate reward model and PPO-style policy optimisation.\nHowever, conceptually it is still doing preference-based alignment. It uses the same kind of human comparison data, but turns it directly into a loss for the language model.\nThe reference model, usually the SFT model, prevents the new model from moving too far away from the original assistant model."
+  },
+  {
+    "objectID": "rlhf/index.html#classical-rlhf-has-two-mathematical-steps",
+    "href": "rlhf/index.html#classical-rlhf-has-two-mathematical-steps",
+    "title": "An Introduction to Scoring Models in RLHF",
+    "section": "Classical RLHF has two mathematical steps",
+    "text": "Classical RLHF has two mathematical steps\nClassical RLHF separates the problem into two stages.\n\n\n\nStage 2: fit a reward model\nGiven preference data\n\n(x,y_w,y_l),\n\ntrain r_\\phi(x,y) so that\n\nr_\\phi(x,y_w) &gt; r_\\phi(x,y_l).\n\nFor Bradley–Terry:\n\n\\mathbb{P}_\\phi(y_w \\succ y_l \\mid x)\n=\n\\sigma\n\\left(\nr_\\phi(x,y_w)-r_\\phi(x,y_l)\n\\right).\n\n\n\n\nStage 3: optimise the policy\nThen fine-tune the language model\n\n\\pi_\\theta(y \\mid x)\n\nto maximise reward while staying close to a reference model:\n\n\\pi_{\\mathrm{ref}}(y \\mid x).\n\n\n\n\nDPO starts by asking whether these two steps can be algebraically collapsed.\n\n\nHere y_w means the winning or preferred answer, and y_l means the losing or rejected answer.\nIn the classical pipeline, the reward model is trained first. Then it is frozen and used as the reward signal for policy optimisation.\nDPO asks: if we know the form of the preference likelihood and the form of the policy optimisation problem, can we remove the explicit reward model?"
+  },
+  {
+    "objectID": "rlhf/index.html#stage-3-kl-regularised-reward-maximisation",
+    "href": "rlhf/index.html#stage-3-kl-regularised-reward-maximisation",
+    "title": "An Introduction to Scoring Models in RLHF",
+    "section": "Stage 3: KL-regularised reward maximisation",
+    "text": "Stage 3: KL-regularised reward maximisation\nFor a fixed prompt x, classical RLHF approximately solves\n\n\\max_{\\pi}\n\\;\n\\mathbb{E}_{y \\sim \\pi(\\cdot \\mid x)}\n\\left[\nr(x,y)\n\\right]\n-\n\\beta\n\\operatorname{KL}\n\\left(\n\\pi(\\cdot \\mid x)\n\\Vert\n\\pi_{\\mathrm{ref}}(\\cdot \\mid x)\n\\right).\n\nEquivalently,\n\n\\max_{\\pi}\n\\sum_y \\pi(y \\mid x) r(x,y)\n-\n\\beta\n\\sum_y\n\\pi(y \\mid x)\n\\log\n\\frac{\\pi(y \\mid x)}\n{\\pi_{\\mathrm{ref}}(y \\mid x)}.\n\n\nThe reward encourages preferred outputs; the KL penalty stops the model drifting too far from the reference model.\n\n\nThis is the usual RLHF objective in simplified form.\nThe policy \\pi is the language model being fine-tuned. The reference policy \\pi_{\\mathrm{ref}} is usually the supervised fine-tuned model.\nThe constant \\beta &gt; 0 controls the reward–KL trade-off. Smaller \\beta means the model is allowed to move more aggressively towards high-reward answers. Larger \\beta keeps it closer to the reference model."
+  },
+  {
+    "objectID": "rlhf/index.html#the-optimal-policy-has-a-closed-form",
+    "href": "rlhf/index.html#the-optimal-policy-has-a-closed-form",
+    "title": "An Introduction to Scoring Models in RLHF",
+    "section": "The optimal policy has a closed form",
+    "text": "The optimal policy has a closed form\nFor a fixed reward function r(x,y), the solution has the form\n\n\\pi_r(y \\mid x)\n=\n\\frac{1}{Z_r(x)}\n\\pi_{\\mathrm{ref}}(y \\mid x)\n\\exp\n\\left(\n\\frac{1}{\\beta} r(x,y)\n\\right),\n\nwhere\n\nZ_r(x)\n=\n\\sum_y\n\\pi_{\\mathrm{ref}}(y \\mid x)\n\\exp\n\\left(\n\\frac{1}{\\beta} r(x,y)\n\\right)\n\nis a normalising constant.\n\nHigh-reward outputs become more likely, but only relative to the reference model.\n\n\nThis is the key mathematical fact behind DPO.\nThe optimal policy is a tilted version of the reference policy. Outputs with larger reward receive larger probability under the new policy.\nThe normalising constant Z_r(x) makes the probabilities sum to one.\nYou do not need to derive this fully in the talk, but it follows from optimising the KL-regularised objective over the probability simplex."
+  },
+  {
+    "objectID": "rlhf/index.html#the-policy-secretly-defines-a-reward-model",
+    "href": "rlhf/index.html#the-policy-secretly-defines-a-reward-model",
+    "title": "An Introduction to Scoring Models in RLHF",
+    "section": "The policy secretly defines a reward model",
+    "text": "The policy secretly defines a reward model\nRearranging the closed-form solution gives\n\nr(x,y)\n=\n\\beta\n\\log\n\\frac{\\pi_r(y \\mid x)}\n{\\pi_{\\mathrm{ref}}(y \\mid x)}\n+\n\\beta \\log Z_r(x).\n\nSo, up to a prompt-dependent constant,\n\nr(x,y)\n\\equiv\n\\beta\n\\log\n\\frac{\\pi_r(y \\mid x)}\n{\\pi_{\\mathrm{ref}}(y \\mid x)}.\n\n\nA policy can be interpreted as an implicit reward model.\n\n\nThis is the key DPO insight.\nIf a policy assigns an answer much higher probability than the reference model does, then that answer has high implicit reward.\nThe term \\beta \\log Z_r(x) depends only on the prompt x, not on the answer y. Therefore it cancels when comparing two answers to the same prompt.\nThat cancellation is what lets us substitute this expression directly into the Bradley–Terry preference likelihood."
+  },
+  {
+    "objectID": "rlhf/index.html#reward-differences-become-log-probability-ratios",
+    "href": "rlhf/index.html#reward-differences-become-log-probability-ratios",
+    "title": "An Introduction to Scoring Models in RLHF",
+    "section": "Reward differences become log-probability ratios",
+    "text": "Reward differences become log-probability ratios\nFor two answers y_w and y_l to the same prompt x,\n\nr(x,y_w)-r(x,y_l)\n=\n\\beta\n\\log\n\\frac{\\pi_r(y_w \\mid x)}\n{\\pi_{\\mathrm{ref}}(y_w \\mid x)}\n-\n\\beta\n\\log\n\\frac{\\pi_r(y_l \\mid x)}\n{\\pi_{\\mathrm{ref}}(y_l \\mid x)}.\n\nEquivalently,\n\nr(x,y_w)-r(x,y_l)\n=\n\\beta\n\\log\n\\frac{\n\\pi_r(y_w \\mid x)\\pi_{\\mathrm{ref}}(y_l \\mid x)\n}{\n\\pi_{\\mathrm{ref}}(y_w \\mid x)\\pi_r(y_l \\mid x)\n}.\n\n\nPreference depends on how much the new policy favours the winner over the loser, relative to the reference model.\n\n\nThis is the bridge from reward modelling to direct policy optimisation.\nThe reward difference is not just about whether \\pi_r(y_w \\mid x) is large. It is about whether the policy increases the probability of the preferred answer relative to the reference model, compared with the rejected answer.\nThat relative-to-reference structure is very important. It prevents the model from simply increasing the probability of generic high-probability text."
+  },
+  {
+    "objectID": "rlhf/index.html#substitute-into-the-bradleyterry-likelihood",
+    "href": "rlhf/index.html#substitute-into-the-bradleyterry-likelihood",
+    "title": "An Introduction to Scoring Models in RLHF",
+    "section": "Substitute into the Bradley–Terry likelihood",
+    "text": "Substitute into the Bradley–Terry likelihood\nThe Bradley–Terry preference model says\n\n\\mathbb{P}(y_w \\succ y_l \\mid x)\n=\n\\sigma\n\\left(\nr(x,y_w)-r(x,y_l)\n\\right).\n\nUsing the implicit reward expression,\n\n\\mathbb{P}_\\theta(y_w \\succ y_l \\mid x)\n=\n\\sigma\n\\left[\n\\beta\n\\log\n\\frac{\\pi_\\theta(y_w \\mid x)}\n{\\pi_{\\mathrm{ref}}(y_w \\mid x)}\n-\n\\beta\n\\log\n\\frac{\\pi_\\theta(y_l \\mid x)}\n{\\pi_{\\mathrm{ref}}(y_l \\mid x)}\n\\right].\n\n\nThe likelihood is now written directly in terms of the policy \\pi_\\theta.\n\n\nThis is the algebraic collapse.\nIn classical RLHF, the Bradley–Terry likelihood is used to train r_\\phi.\nIn DPO, the same Bradley–Terry likelihood is used, but the reward difference is replaced by an expression involving the policy and reference model.\nSo there is no separate reward-model network. The policy itself defines the implicit reward."
+  },
+  {
+    "objectID": "rlhf/index.html#the-dpo-loss",
+    "href": "rlhf/index.html#the-dpo-loss",
+    "title": "An Introduction to Scoring Models in RLHF",
+    "section": "The DPO loss",
+    "text": "The DPO loss\nDPO minimises the negative log-likelihood of the observed preferences:\n\n\\mathcal{L}_{\\mathrm{DPO}}(\\theta)\n=\n-\n\\mathbb{E}_{(x,y_w,y_l)}\n\\left[\n\\log\n\\sigma\n\\left(\n\\beta\n\\log\n\\frac{\\pi_\\theta(y_w \\mid x)}\n{\\pi_{\\mathrm{ref}}(y_w \\mid x)}\n-\n\\beta\n\\log\n\\frac{\\pi_\\theta(y_l \\mid x)}\n{\\pi_{\\mathrm{ref}}(y_l \\mid x)}\n\\right)\n\\right].\n\n\nThis is a supervised classification-style loss on preference pairs.\n\n\nThis is the final DPO objective.\nThe model is rewarded when the preferred answer becomes more likely than the rejected answer relative to the reference model.\nUnlike PPO-style RLHF, this does not require sampling new outputs during training, fitting a separate reward model, or running a reinforcement learning algorithm.\nHowever, it still depends on the RLHF objective mathematically: it comes from the closed-form solution of the KL-regularised reward maximisation problem."
+  },
+  {
+    "objectID": "rlhf/index.html#the-score-is-latent-and-context-dependent",
+    "href": "rlhf/index.html#the-score-is-latent-and-context-dependent",
+    "title": "An Introduction to Scoring Models in RLHF",
+    "section": "The score is latent and context-dependent",
+    "text": "The score is latent and context-dependent\nThe reward model assigns a scalar score:\n\nr_\\phi(x,y) \\in \\mathbb{R}.\n\n\nBut the reward is not a physical quantity.\nIt is inferred from human preference data.\n\n\nThe same answer may be good in one context and bad in another:\n\nr_\\phi(x,y)\n\\quad \\text{depends on both } x \\text{ and } y.\n\n\n\nSports analogy\nA performance score may depend on:\n\nopposition strength\nmatch context\nposition or role\ntactics\nweather\njudging criteria\n\n\n\nEmphasise that the scoring model is not estimating an intrinsic property of the answer alone.\nA response can be excellent for one prompt and terrible for another.\nFor example, a short answer may be good when the user asks for a quick summary, but bad when they ask for a detailed proof."
+  },
+  {
+    "objectID": "rlhf/index.html#human-preference-is-noisy",
+    "href": "rlhf/index.html#human-preference-is-noisy",
+    "title": "An Introduction to Scoring Models in RLHF",
+    "section": "Human preference is noisy",
+    "text": "Human preference is noisy\nDifferent humans may disagree.\nThe same human may be inconsistent.\nSome criteria are vague.\n\nSo the reward model estimates something like\n\n\\Pr(y_A \\succ y_B \\mid x).\n\n\n\nThis is not the same as estimating\n\n\\text{truth}\n\\qquad \\text{or} \\qquad\n\\text{objective quality}.\n\n\n\nThe scoring model learns a pattern in human preferences, not a direct measurement of reality.\n\n\nThis is a useful place to be precise.\nThe target is not “truth” in a philosophical or scientific sense. The data are comparative human judgements.\nThat can still be very useful, but we should not confuse “preferred by annotators” with “objectively correct”."
+  },
+  {
+    "objectID": "rlhf/index.html#optimising-a-learned-score-can-break-the-score",
+    "href": "rlhf/index.html#optimising-a-learned-score-can-break-the-score",
+    "title": "An Introduction to Scoring Models in RLHF",
+    "section": "Optimising a learned score can break the score",
+    "text": "Optimising a learned score can break the score\nOnce the model is trained to maximise\n\nr_\\phi(x,y),\n\nit may find outputs that get high reward-model scores without genuinely being better.\n\nGoodhart’s law:\n\nWhen a measure becomes a target, it can stop being a good measure.\n\n\n\nSports analogies\n\nOptimise shots on target\n\\Rightarrow teams may take many low-quality shots.\nOptimise distance covered\n\\Rightarrow players may run more without playing better.\nOptimise a judging rubric\n\\Rightarrow competitors may learn to game the rubric.\n\n\n\nRLHF has the same problem: the model may learn to satisfy the judge rather than genuinely improve.\n\n\nThis is probably the most important warning in the talk.\nSay: “The reward model is only a proxy. Once we optimise hard against a proxy, we should expect failure modes.”\nIn RLHF this is often called reward hacking. The model may discover outputs that exploit weaknesses in the reward model.\nThis motivates why RLHF systems need careful evaluation, regularisation, human review, and sometimes additional safety constraints."
+  },
+  {
+    "objectID": "monoPostTalk/index.html#gaussian-process-regression",
+    "href": "monoPostTalk/index.html#gaussian-process-regression",
+    "title": "Monotonicity of Gaussian Process Posterior Variance",
+    "section": "Gaussian Process Regression",
+    "text": "Gaussian Process Regression\nPrior: \nf \\sim \\mathcal{GP}(m, k)\n\nPosterior mean: \n\\tilde m(x)\n=\nm(x)\n+\nk(x,X)[K+\\lambda I]^{-1}(Y-m(X))\n\nPosterior variance: \n\\sigma^2(x; X)\n=\nk(x,x)\n-\nk(x,X)[K+\\lambda I]^{-1}k(X,x)\n\nNotes:\n\nX is the training data, Y are the corresponding targets\n\\lambda is the noise variance\nK = k(X,X) is the kernel matrix on the training data"
+  },
+  {
+    "objectID": "monoPostTalk/index.html#posterior-variance-under-input-scaling",
+    "href": "monoPostTalk/index.html#posterior-variance-under-input-scaling",
+    "title": "Monotonicity of Gaussian Process Posterior Variance",
+    "section": "Posterior Variance Under Input Scaling",
+    "text": "Posterior Variance Under Input Scaling\nMove observations toward the origin using a scale r &gt; 0: \nk_r(x,y) = k(rx, ry)\n\\qquad\n\\text{(stationary: } k_r(x,y) = k(r(x-y))\\text{)}\n\nPosterior variance at the origin: \n\\sigma^2(0; rX)\n=\nk(0,0)\n-\ng(r),\n\\qquad\ng(r) = a(r)^\\top A(r)^{-1} a(r)\n\n\nA(r) = k_r(X,X) + \\lambda I,\n\\qquad\na(r) = k_r(X,0)\n\nCentral question Does posterior uncertainty at the origin decrease as observations move closer?\nEquivalent mathematical question: Is g(r) increasing as r \\rightarrow 0?\nDerivative identity Let \\alpha(r) = A(r)^{-1} a(r). Then\n\ng'(r)\n=\n2 a'(r)^\\top \\alpha(r)\n-\n\\alpha(r)^\\top A'(r) \\alpha(r)\n\nResearch problem:\nUnder what conditions on the kernel k does g'(r) \\le 0 hold for all r &gt; 0?"
+  },
+  {
+    "objectID": "monoPostTalk/index.html#visualisation-of-posterior-variance-under-input-scaling",
+    "href": "monoPostTalk/index.html#visualisation-of-posterior-variance-under-input-scaling",
+    "title": "Monotonicity of Gaussian Process Posterior Variance",
+    "section": "Visualisation of Posterior Variance Under Input Scaling",
+    "text": "Visualisation of Posterior Variance Under Input Scaling\nUsing \nk(x,y) = \\exp\\!\\biggl(-\\frac{\\|x-y\\|^2}{2\\ell^2}\\biggr)\n\n\n\nCode\nn = 20\n\nX = {\n  function mulberry32(a) {\n    return function() {\n      a |= 0; a = a + 0x6D2B79F5 | 0;\n      var t = Math.imul(a ^ a &gt;&gt;&gt; 15, 1 | a);\n      t = t + Math.imul(t ^ t &gt;&gt;&gt; 7, 61 | t) ^ t;\n      return ((t ^ t &gt;&gt;&gt; 14) &gt;&gt;&gt; 0) / 4294967296;\n    }\n  }\n  const rng = mulberry32(42);\n  return Array.from({length: n}, (_, i) =&gt; {\n    const t = (2 * Math.PI * i) / n;\n    return [1.2 * Math.cos(t) + 0.25 * (rng() - 0.5),\n            1.2 * Math.sin(t) + 0.25 * (rng() - 0.5)];\n  });\n}\n\nell = 0.7\nsigmaF2 = 1.0\nlambda = 1e-3\n\n// Inject styles to fix slider accent and plot text on dark Reveal background\nthemeStyle = html`&lt;style&gt;\n  .ojs-cell input[type=\"range\"],\n  .reveal input[type=\"range\"] {\n    accent-color: var(--accent, #ee4558);\n  }\n  .ojs-cell input[type=\"number\"],\n  .reveal input[type=\"number\"] {\n    background: rgba(255,255,255,0.08);\n    color: rgba(255,255,255,0.9);\n    border: 1px solid rgba(255,255,255,0.2);\n    border-radius: 4px;\n  }\n  .ojs-cell label, .ojs-cell output,\n  .reveal form label, .reveal form output {\n    color: rgba(255,255,255,0.85) !important;\n  }\n  .reveal .ojs-cell {\n    display: flex;\n    flex-direction: column;\n    align-items: center;\n  }\n&lt;/style&gt;`\n\nviewof r = Inputs.range([0, 2], {step: 0.01, value: 1.0, label: \"scale r\"})\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\nCode\nfunction k(x, y) {\n  const dx = x[0] - y[0], dy = x[1] - y[1];\n  return sigmaF2 * Math.exp(-(dx*dx + dy*dy) / (2 * ell * ell));\n}\n\nfunction gram(XA, XB) {\n  const nA = XA.length, nB = XB.length;\n  const K = Array.from({length: nA}, () =&gt; Array(nB).fill(0));\n  for (let i = 0; i &lt; nA; i++)\n    for (let j = 0; j &lt; nB; j++)\n      K[i][j] = k(XA[i], XB[j]);\n  return K;\n}\n\nfunction cholesky(A) {\n  const m = A.length;\n  const L = Array.from({length: m}, () =&gt; Array(m).fill(0));\n  for (let i = 0; i &lt; m; i++) {\n    for (let j = 0; j &lt;= i; j++) {\n      let s = A[i][j];\n      for (let p = 0; p &lt; j; p++) s -= L[i][p] * L[j][p];\n      L[i][j] = (i === j) ? Math.sqrt(Math.max(s, 1e-14)) : s / L[j][j];\n    }\n  }\n  return L;\n}\n\nfunction cholSolve(A, b) {\n  const L = cholesky(A), m = A.length;\n  const z = Array(m).fill(0);\n  for (let i = 0; i &lt; m; i++) {\n    let s = b[i];\n    for (let p = 0; p &lt; i; p++) s -= L[i][p] * z[p];\n    z[i] = s / L[i][i];\n  }\n  const x = Array(m).fill(0);\n  for (let i = m - 1; i &gt;= 0; i--) {\n    let s = z[i];\n    for (let p = i + 1; p &lt; m; p++) s -= L[p][i] * x[p];\n    x[i] = s / L[i][i];\n  }\n  return x;\n}\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\nCode\norigin = [0, 0]\nrX = X.map(([x1, x2]) =&gt; [r * x1, r * x2])\n\nposteriorResult = {\n  const Krr = gram(rX, rX);\n  for (let i = 0; i &lt; n; i++) Krr[i][i] += lambda;\n  const a = rX.map(xi =&gt; k(xi, origin));\n  const u = cholSolve(Krr, a);\n  const g = a.reduce((acc, ai, i) =&gt; acc + ai * u[i], 0);\n  return {g, sigma2: k(origin, origin) - g};\n}\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\nCode\naxisLim = 3\n\n// Dark-theme-friendly plot style string\ndarkStyle = \"background:transparent; color:rgba(255,255,255,0.82); font-size:13px;\"\n\ncurve = {\n  function sigma2At(rv) {\n    const sX = X.map(([x1, x2]) =&gt; [rv * x1, rv * x2]);\n    const A = gram(sX, sX);\n    for (let i = 0; i &lt; n; i++) A[i][i] += lambda;\n    const av = sX.map(xi =&gt; k(xi, origin));\n    const uv = cholSolve(A, av);\n    const gv = av.reduce((acc, ai, i) =&gt; acc + ai * uv[i], 0);\n    return k(origin, origin) - gv;\n  }\n  return Array.from({length: 201}, (_, i) =&gt; {\n    const rv = i * (2 / 200);\n    return {r: rv, sigma2: sigma2At(rv)};\n  });\n}\n\nleftPlot = Plot.plot({\n  width: 380,\n  height: 340,\n  style: darkStyle,\n  x: {label: \"x₁\", domain: [-axisLim, axisLim]},\n  y: {label: \"x₂\", domain: [-axisLim, axisLim]},\n  marks: [\n    Plot.dot(rX, {\n      x: d =&gt; d[0], y: d =&gt; d[1],\n      fill: \"#93c5fd\", r: 4, opacity: 0.9\n    }),\n    Plot.dot([[0, 0]], {\n      x: d =&gt; d[0], y: d =&gt; d[1],\n      stroke: \"#ee4558\", fill: \"none\",\n      strokeWidth: 2.5, r: 7, symbol: \"cross\"\n    })\n  ]\n})\n\nrightPlot = Plot.plot({\n  width: 380,\n  height: 340,\n  style: darkStyle,\n  x: {label: \"scale r\", domain: [0, 2]},\n  y: {label: \"σ²(0; rX)\", domain: [0, sigmaF2 * 1.05]},\n  marks: [\n    Plot.ruleY([0], {stroke: \"rgba(255,255,255,0.15)\"}),\n    Plot.line(curve, {x: \"r\", y: \"sigma2\", stroke: \"#93c5fd\", strokeWidth: 2}),\n    Plot.dot([{r: +r, sigma2: posteriorResult.sigma2}], {\n      x: \"r\", y: \"sigma2\", r: 6, fill: \"#ee4558\"\n    })\n  ]\n})\n\nhtml`&lt;div style=\"display:flex; gap:24px; align-items:flex-start; flex-wrap:wrap; justify-content:center;\"&gt;\n  &lt;div style=\"text-align:center;\"&gt;\n    &lt;div style=\"font-weight:600; margin-bottom:6px; color:rgba(255,255,255,0.85);\"&gt;\n      Scaled locations &lt;i&gt;r&lt;/i&gt;&lt;b&gt;X&lt;/b&gt; in ℝ²\n    &lt;/div&gt;\n    ${leftPlot}\n  &lt;/div&gt;\n  &lt;div style=\"text-align:center;\"&gt;\n    &lt;div style=\"font-weight:600; margin-bottom:6px; color:rgba(255,255,255,0.85);\"&gt;\n      Posterior variance at the origin\n    &lt;/div&gt;\n    ${rightPlot}\n  &lt;/div&gt;\n&lt;/div&gt;`"
+  },
+  {
+    "objectID": "monoPostTalk/index.html#radial-gaussian-process-kernels",
+    "href": "monoPostTalk/index.html#radial-gaussian-process-kernels",
+    "title": "Monotonicity of Gaussian Process Posterior Variance",
+    "section": "Radial Gaussian Process Kernels",
+    "text": "Radial Gaussian Process Kernels\nWe focus on isotropic kernels:\n\nk(x,y) = \\varphi(\\|x-y\\|^2)\n\nExamples:\n\nGaussian\nMatérn\nRational quadratic"
+  },
+  {
+    "objectID": "monoPostTalk/index.html#completely-monotone-kernels",
+    "href": "monoPostTalk/index.html#completely-monotone-kernels",
+    "title": "Monotonicity of Gaussian Process Posterior Variance",
+    "section": "Completely Monotone Kernels",
+    "text": "Completely Monotone Kernels\nA kernel is completely monotone if\n\nk(x,y) = \\varphi(\\|x-y\\|^2)\n\nwhere\n\n(-1)^n \\varphi^{(n)}(h) \\ge 0\n\nExamples:\n\nGaussian (yes)\nMatérn (not always)\nRational quadratic (yes)"
+  },
+  {
+    "objectID": "monoPostTalk/index.html#bernstein-functions-generate-kernels",
+    "href": "monoPostTalk/index.html#bernstein-functions-generate-kernels",
+    "title": "Monotonicity of Gaussian Process Posterior Variance",
+    "section": "Bernstein functions generate kernels",
+    "text": "Bernstein functions generate kernels\nA Bernstein function satisfies:\n\nincreasing\nconcave\nf'(h) completely monotone\n\nThese generate kernels:\n\nk(x,y)\n=\ne^{-f(\\|x-y\\|^2)}\n\nThis defines a valid Gaussian process kernel."
+  },
+  {
+    "objectID": "monoPostTalk/index.html#correspondence-with-completely-monotone-kernels",
+    "href": "monoPostTalk/index.html#correspondence-with-completely-monotone-kernels",
+    "title": "Monotonicity of Gaussian Process Posterior Variance",
+    "section": "Correspondence with completely monotone kernels",
+    "text": "Correspondence with completely monotone kernels\nThere is a one-to-one correspondence:\n\n\\varphi(h)\n=\ne^{-f(h)}\n\nThen\n\nf Bernstein \\iff \\varphi completely monotone\n\nTherefore Bernstein functions parameterise completely monotone kernels."
+  },
+  {
+    "objectID": "monoPostTalk/index.html#why-bernstein-structure-is-useful",
+    "href": "monoPostTalk/index.html#why-bernstein-structure-is-useful",
+    "title": "Monotonicity of Gaussian Process Posterior Variance",
+    "section": "Why Bernstein structure is useful",
+    "text": "Why Bernstein structure is useful\nOur (scaled) kernel has form:\n\nk_r(x,y) = e^{-f(r^2\\|x-y\\|^2)}\n\nDerivative introduces term:\n\nh f'(h)\n\nWe need this to preserve the Bernstein property."
+  },
+  {
+    "objectID": "monoPostTalk/index.html#thorinbernstein-functions",
+    "href": "monoPostTalk/index.html#thorinbernstein-functions",
+    "title": "Monotonicity of Gaussian Process Posterior Variance",
+    "section": "Thorin–Bernstein functions",
+    "text": "Thorin–Bernstein functions\nA Thorin–Bernstein function (Schilling et al., 2012) is a Bernstein function which additionally satisfies:\n\nh f'(h)\n\\text{ is Bernstein}\n\nThis ensures\n\nderivative kernel remains CND\nmonotonicity holds"
+  },
+  {
+    "objectID": "monoPostTalk/index.html#representation-of-k",
+    "href": "monoPostTalk/index.html#representation-of-k",
+    "title": "Monotonicity of Gaussian Process Posterior Variance",
+    "section": "Representation of k",
+    "text": "Representation of k\nAssume the (scaled) kernel can be written as \nk_r(x,y) = \\exp\\{-\\eta_r(x,y)\\}, \\qquad \\eta_r(x,y) = \\eta(rx,ry),\n where \\eta is conditionally negative definite (CND).\n\nBy Schoenberg’s criterion (Schoenberg, 1938), k_r is positive definite (PD) for all r&gt;0 iff \\eta_r is CND.\n\n\nTheorem 1 (Monotonicity condition) If, for some r&gt;0, the derivative \\partial_r \\eta_r(x,y) is a CND function, then \ng'(r) \\le 0."
+  },
+  {
+    "objectID": "monoPostTalk/index.html#proof-sketch",
+    "href": "monoPostTalk/index.html#proof-sketch",
+    "title": "Monotonicity of Gaussian Process Posterior Variance",
+    "section": "Proof sketch",
+    "text": "Proof sketch\nWe start from the derivative identity:\n\ng'(r)\n=\n-2\\sum_i \\eta_r'(x_i,0)\\,k_r(x_i,0)\\,\\alpha_i\n+\n\\sum_{i,j}\n\\alpha_i\\alpha_j\\,\n\\eta_r'(x_i,x_j)\\,\nk_r(x_i,x_j)\n\nUse the CND structure\nIf \\eta_r' is CND, then by the polarisation identity:\n\n\\eta_r'(x,y)\n=\n\\eta_r'(x,0)\n+\n\\eta_r'(y,0)\n-\n\\psi_r(x,y)\n\nwhere \\psi_r is positive definite.\nUse the linear system\nRecall:\n\n(K_r + \\lambda I)\\alpha = k_r(0,X)\n\nThis implies\n\n\\sum_j k_r(x_i,x_j)\\alpha_j\n=\nk_r(x_i,0)\n-\n\\lambda \\alpha_i\n\nSubstitute into g'(r).\nResult\nAfter simplification:\n\ng'(r)\n=\n-2\\lambda\n\\sum_i\n\\alpha_i^2\n\\eta_r'(x_i,0)\n-\n\\sum_{i,j}\n\\alpha_i\\alpha_j\n\\psi_r(x_i,x_j)\nk_r(x_i,x_j)\n\nSign of each term\nSince:\n\n\\eta_r' is CND ⇒ \\eta_r'(x_i,0) \\ge 0\n\\psi_r is PD\nk_r is PD\n\nboth terms are non-positive\nConclusion\n\ng'(r) \\le 0\n\nTherefore posterior variance decreases."
+  },
+  {
+    "objectID": "monoPostTalk/index.html#main-theorem",
+    "href": "monoPostTalk/index.html#main-theorem",
+    "title": "Monotonicity of Gaussian Process Posterior Variance",
+    "section": "Main theorem",
+    "text": "Main theorem\n\nTheorem 2 (Sufficient Condtion for Monotonicity of Posterior Variance) If \nk(x,y) = \\exp\\{-f(\\|x-y\\|^2)\\}\n\nand f is Thorin–Bernstein, then\n\ng'(r) \\le 0\n\n\nKey reason\nThorin–Bernstein \\Rightarrow \\eta_r' is CND \\Rightarrow monotonicity"
+  },
+  {
+    "objectID": "monoPostTalk/index.html#proof-sketch-1",
+    "href": "monoPostTalk/index.html#proof-sketch-1",
+    "title": "Monotonicity of Gaussian Process Posterior Variance",
+    "section": "Proof sketch",
+    "text": "Proof sketch\nStart from the representation\n\n\\eta_r(x,y)\n=\nf\\!\\left(r^2 \\|x-y\\|^2\\right),\n\\qquad\nf \\in \\mathcal{TBF}\n\nDifferentiate with respect to r:\n\n\\eta_r'(x,y)\n=\n2r \\|x-y\\|^2\n\\, f'\\!\\left(r^2 \\|x-y\\|^2\\right)\n\nKey structural property:\nIf f is Thorin–Bernstein, then\n\nu(h) = h f'(h)\n\nis a Bernstein function\nTherefore\n\nu(\\|x-y\\|^2) is CND\nscaling preserves the CND property\n\nso\n\n\\eta_r'\n\\text{ is CND}\n\nApply previous theorem:\n\n\\eta_r' \\text{ CND}\n\\quad \\Rightarrow \\quad\ng'(r) \\le 0"
+  },
+  {
+    "objectID": "monoPostTalk/index.html#kernels-satisfying-the-conditions",
+    "href": "monoPostTalk/index.html#kernels-satisfying-the-conditions",
+    "title": "Monotonicity of Gaussian Process Posterior Variance",
+    "section": "Kernels satisfying the conditions",
+    "text": "Kernels satisfying the conditions\nRecall the main result. If \nk(x,y) = \\exp\\{-f(\\|x-y\\|^2)\\},\n where f is a Thorin–Bernstein function, then g'(r) \\le 0.\nExamples:\n\nGaussian kernel (yes)\nRational quadratic kernel (yes)\nMatérn kernel (not always)"
+  },
+  {
+    "objectID": "monoPostTalk/index.html#a-counterexample-kernel-bernstein-but-not-thorinbernstein",
+    "href": "monoPostTalk/index.html#a-counterexample-kernel-bernstein-but-not-thorinbernstein",
+    "title": "Monotonicity of Gaussian Process Posterior Variance",
+    "section": "A counterexample kernel (Bernstein but not Thorin–Bernstein)",
+    "text": "A counterexample kernel (Bernstein but not Thorin–Bernstein)\nFrom the Levy–Khintchine representation, take \nf(h)=a+bh+\\int_0^\\infty (1-e^{-ht})\\,\\mu(dt),\n and choose a=b=0 and \\mu=\\delta_1 (Dirac mass at t=1). Then \nf(h)=1-e^{-h}\n is a Bernstein function.\nTherefore the kernel \nk(x,y)=\\exp\\!\\Big\\{-f(\\|x-y\\|^2)\\Big\\}\n=\\exp\\!\\left\\{-\\left(1-e^{-\\|x-y\\|^2}\\right)\\right\\}\n is completely monotone (and hence PD).\nWe call this the Exp–Exp kernel."
+  },
+  {
+    "objectID": "monoPostTalk/index.html#visualisation-of-posterior-variance-under-input-scaling-expexp",
+    "href": "monoPostTalk/index.html#visualisation-of-posterior-variance-under-input-scaling-expexp",
+    "title": "Monotonicity of Gaussian Process Posterior Variance",
+    "section": "Visualisation of Posterior Variance Under Input Scaling (Exp–Exp)",
+    "text": "Visualisation of Posterior Variance Under Input Scaling (Exp–Exp)\nUsing \nk(x,y) = \\exp\\!\\Big\\{-\\bigl(1 - e^{-\\|x-y\\|^2}\\bigr)\\Big\\}\n\n\n\nCode\nn_ee = 6\n\nX_ee = {\n  function mulberry32(a) {\n    return function() {\n      a |= 0; a = a + 0x6D2B79F5 | 0;\n      var t = Math.imul(a ^ a &gt;&gt;&gt; 15, 1 | a);\n      t = t + Math.imul(t ^ t &gt;&gt;&gt; 7, 61 | t) ^ t;\n      return ((t ^ t &gt;&gt;&gt; 14) &gt;&gt;&gt; 0) / 4294967296;\n    }\n  }\n  const rng = mulberry32(32);\n  return Array.from({length: n_ee}, (_, i) =&gt; {\n    const t = (2 * Math.PI * i) / n_ee;\n    return [1.2 * Math.cos(t) + 0.25 * (rng() - 0.5),\n            1.2 * Math.sin(t) + 0.25 * (rng() - 0.5)];\n  });\n}\n\nlambda_ee = 1e-3\n\nthemeStyle_ee = html`&lt;style&gt;\n  .ojs-cell input[type=\"range\"],\n  .reveal input[type=\"range\"] {\n    accent-color: var(--accent, #ee4558);\n  }\n  .ojs-cell input[type=\"number\"],\n  .reveal input[type=\"number\"] {\n    background: rgba(255,255,255,0.08);\n    color: rgba(255,255,255,0.9);\n    border: 1px solid rgba(255,255,255,0.2);\n    border-radius: 4px;\n  }\n  .ojs-cell label, .ojs-cell output,\n  .reveal form label, .reveal form output {\n    color: rgba(255,255,255,0.85) !important;\n  }\n  .reveal .ojs-cell {\n    display: flex;\n    flex-direction: column;\n    align-items: center;\n  }\n&lt;/style&gt;`\n\nviewof r_ee = Inputs.range([1, 8192], {step: 0.8, value: 1.0, label: \"scale r\"})\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\nCode\nfunction k_ee(x, y) {\n  const dx = x[0] - y[0], dy = x[1] - y[1];\n  const dist2 = dx*dx + dy*dy;\n  return Math.exp(-(1 - Math.exp(-dist2)));\n}\n\nfunction gram_ee(XA, XB) {\n  const nA = XA.length, nB = XB.length;\n  const K = Array.from({length: nA}, () =&gt; Array(nB).fill(0));\n  for (let i = 0; i &lt; nA; i++)\n    for (let j = 0; j &lt; nB; j++)\n      K[i][j] = k_ee(XA[i], XB[j]);\n  return K;\n}\n\nfunction cholesky_ee(A) {\n  const m = A.length;\n  const L = Array.from({length: m}, () =&gt; Array(m).fill(0));\n  for (let i = 0; i &lt; m; i++) {\n    for (let j = 0; j &lt;= i; j++) {\n      let s = A[i][j];\n      for (let p = 0; p &lt; j; p++) s -= L[i][p] * L[j][p];\n      L[i][j] = (i === j) ? Math.sqrt(Math.max(s, 1e-14)) : s / L[j][j];\n    }\n  }\n  return L;\n}\n\nfunction cholSolve_ee(A, b) {\n  const L = cholesky_ee(A), m = A.length;\n  const z = Array(m).fill(0);\n  for (let i = 0; i &lt; m; i++) {\n    let s = b[i];\n    for (let p = 0; p &lt; i; p++) s -= L[i][p] * z[p];\n    z[i] = s / L[i][i];\n  }\n  const x = Array(m).fill(0);\n  for (let i = m - 1; i &gt;= 0; i--) {\n    let s = z[i];\n    for (let p = i + 1; p &lt; m; p++) s -= L[p][i] * x[p];\n    x[i] = s / L[i][i];\n  }\n  return x;\n}\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\nCode\norigin_ee = [0, 0]\nrX_ee = X_ee.map(([x1, x2]) =&gt; [r_ee * x1, r_ee * x2])\n\nposteriorResult_ee = {\n  const Krr = gram_ee(rX_ee, rX_ee);\n  for (let i = 0; i &lt; n_ee; i++) Krr[i][i] += lambda_ee;\n  const a = rX_ee.map(xi =&gt; k_ee(xi, origin_ee));\n  const u = cholSolve_ee(Krr, a);\n  const g = a.reduce((acc, ai, i) =&gt; acc + ai * u[i], 0);\n  return {g, sigma2: k_ee(origin_ee, origin_ee) - g};\n}\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\nCode\naxisLim_ee = 8192 + 20\ndarkStyle_ee = \"background:transparent; color:rgba(255,255,255,0.82); font-size:13px;\"\n\ncurve_ee = {\n  function sigma2At(rv) {\n    const sX = X_ee.map(([x1, x2]) =&gt; [rv * x1, rv * x2]);\n    const A = gram_ee(sX, sX);\n    for (let i = 0; i &lt; n_ee; i++) A[i][i] += lambda_ee;\n    const av = sX.map(xi =&gt; k_ee(xi, origin_ee));\n    const uv = cholSolve_ee(A, av);\n    const gv = av.reduce((acc, ai, i) =&gt; acc + ai * uv[i], 0);\n    return k_ee(origin_ee, origin_ee) - gv;\n  }\n  return Array.from({length: 201}, (_, i) =&gt; {\n    const rv = i * (8192 / 200);\n    return {r: rv, sigma2: sigma2At(rv)};\n  });\n}\n\nleftPlot_ee = Plot.plot({\n  width: 380,\n  height: 340,\n  style: darkStyle_ee,\n  x: {label: \"x₁\", domain: [-axisLim_ee, axisLim_ee]},\n  y: {label: \"x₂\", domain: [-axisLim_ee, axisLim_ee]},\n  marks: [\n    Plot.dot(rX_ee, {\n      x: d =&gt; d[0], y: d =&gt; d[1],\n      fill: \"#93c5fd\", r: 4, opacity: 0.9\n    }),\n    Plot.dot([[0, 0]], {\n      x: d =&gt; d[0], y: d =&gt; d[1],\n      stroke: \"#ee4558\", fill: \"none\",\n      strokeWidth: 2.5, r: 7, symbol: \"cross\"\n    })\n  ]\n})\n\nrightPlot_ee = Plot.plot({\n  width: 380,\n  height: 340,\n  style: darkStyle_ee,\n  x: {label: \"scale r\", domain: [0, 8192]},\n  y: {label: \"σ²(0; rX)\", domain: [0, 1.05]},\n  marks: [\n    Plot.ruleY([0], {stroke: \"rgba(255,255,255,0.15)\"}),\n    Plot.line(curve_ee, {x: \"r\", y: \"sigma2\", stroke: \"#93c5fd\", strokeWidth: 2}),\n    Plot.dot([{r: +r_ee, sigma2: posteriorResult_ee.sigma2}], {\n      x: \"r\", y: \"sigma2\", r: 6, fill: \"#ee4558\"\n    })\n  ]\n})\n\nhtml`&lt;div style=\"display:flex; gap:24px; align-items:flex-start; flex-wrap:wrap; justify-content:center;\"&gt;\n  &lt;div style=\"text-align:center;\"&gt;\n    &lt;div style=\"font-weight:600; margin-bottom:6px; color:rgba(255,255,255,0.85);\"&gt;\n      Scaled locations &lt;i&gt;r&lt;/i&gt;&lt;b&gt;X&lt;/b&gt; in ℝ²\n    &lt;/div&gt;\n    ${leftPlot_ee}\n  &lt;/div&gt;\n  &lt;div style=\"text-align:center;\"&gt;\n    &lt;div style=\"font-weight:600; margin-bottom:6px; color:rgba(255,255,255,0.85);\"&gt;\n      Posterior variance at the origin\n    &lt;/div&gt;\n    ${rightPlot_ee}\n  &lt;/div&gt;\n&lt;/div&gt;`"
+  },
+  {
+    "objectID": "monoPostTalk/index.html#references",
+    "href": "monoPostTalk/index.html#references",
+    "title": "Monotonicity of Gaussian Process Posterior Variance",
+    "section": "References",
+    "text": "References\n\nRene L. Schilling, Renming Song, and Zoran Vondraˇcek. Bernstein Functions: Theory and Appli- cations, volume 37 of De Gruyter Studies in Mathematics. De Gruyter, 2nd edition, 2012. ISBN 978-3-11-025386-6. doi: 10.1515/9783110258151.\nI. J. Schoenberg. Metric spaces and positive definite functions. Transactions of the American Mathematical Society, 44(3):522–536, 1938b. doi: 10.2307/1989894"
   },
   {
     "objectID": "varFourierTalk/index.html#big-picture-idea",
@@ -329,115 +735,10 @@
     "text": "Derivation\nStep 1: Gâteaux derivative of \\mathrm{KL}\nLet Q\\ll \\pi with density \\rho=\\dfrac{dQ}{d\\pi} and \n\\mathrm{KL}(Q\\|\\pi)=\\int \\rho\\log\\rho\\,d\\pi.\n Consider a differentiable path of probability measures (Q_\\varepsilon)_{\\varepsilon} with Q_0=Q and \n\\dot Q := \\left.\\frac{d}{d\\varepsilon} Q_\\varepsilon \\right|_{\\varepsilon=0},\n\\qquad \\dot Q(\\mathcal X)=0.\n Assume Q_\\varepsilon\\ll\\pi for |\\varepsilon| small with densities \\rho_\\varepsilon=\\dfrac{dQ_\\varepsilon}{d\\pi} differentiable at \\varepsilon=0 \\pi-a.e., and \\dot\\rho:=\\left.\\dfrac{d}{d\\varepsilon}\\rho_\\varepsilon \\right|_{\\varepsilon=0}. Then d\\dot q=\\dot\\rho\\,d\\pi.\nWrite \\varphi(t)=t\\log t. Then \\varphi'(t)=1+\\log t and \nF(\\varepsilon):=\\mathrm{KL}(Q_\\varepsilon\\|\\pi)=\\int \\varphi(\\rho_\\varepsilon)\\,d\\pi.\n By differentiation under the integral sign: \nF'(0)=\\int \\varphi'(\\rho)\\,\\dot\\rho\\,d\\pi\n=\\int \\bigl(1+\\log\\rho\\bigr)\\,d\\dot Q.\n Because \\dot Q(\\mathcal X)=\\int 1\\,d\\dot Q=0, the constant “1” drops out: \nF'(0)=\\int \\log\\rho\\,d\\dot Q\n=\\int \\log\\!\\Big(\\frac{dQ}{d\\pi}\\Big)\\,d\\dot Q.\n\nStep 2: What is the allowable \\dot q?\nGiven a current law Q, the one–step pushforward along P_\\varepsilon is Q_\\varepsilon:=Q\\,P_\\varepsilon. Its tangent is \n\\dot Q\n:=\\left.\\frac{d}{d\\varepsilon}\\, Q\\,P_\\varepsilon\\right|_{\\varepsilon=0}\n= QM,\n\\qquad\\text{i.e.}\\quad\n\\langle f,\\dot Q\\rangle\n=\\int (Mf)(x)\\,Q(dx).\n\nUsing the property of M: \n\\boxed{\\;\n\\langle f,\\dot q\\rangle\n=\\iint \\big(f(y)-f(x)\\big)\\,A(x,y)\\,\\underbrace{q(dx)\\,P(x,dy)}_{=:~\\mu_Q(dx,dy)}\\;.\n}\n\\tag{Tangent}\n Here \\mu_q is the one–step coupling of (Q,P). Note \\mu_q is generally not symmetric unless Q=\\pi.\nStep 3: First variation of \\mathrm{KL}\nThe Gâteaux derivative of KL gives \n\\frac{d}{d\\varepsilon}\\left.\\mathrm{KL}(Q\\,P_\\varepsilon\\|\\pi) \\right|_{\\varepsilon=0}\n=\\int \\log\\!\\Big(\\frac{dQ}{d\\pi}\\Big)\\,d\\dot Q\n=\\left\\langle \\log\\dfrac{dQ}{d\\pi},\\dot Q\\right\\rangle.\n Therefore: \n\\boxed{\\;\n\\frac{d}{d\\varepsilon}\\Big|_{\\varepsilon=0}\\mathrm{KL}(Q\\,P_\\varepsilon\\|\\pi)\n= \\iint \\big(\\log\\dfrac{dQ}{d\\pi}(y)-\\log\\dfrac{dQ}{d\\pi}(x)\\big)\\,A(x,y)\\,\\mu_Q(dx,dy)\\;.\n}\n\nThis is the general first–order formula for any admissible perturbation (i.e. any symmetric A in (\\dagger))."
   },
   {
-    "objectID": "monoPostTalk/index.html#gaussian-process-regression",
-    "href": "monoPostTalk/index.html#gaussian-process-regression",
-    "title": "Monotonicity of Gaussian Process Posterior Variance",
-    "section": "Gaussian Process Regression",
-    "text": "Gaussian Process Regression\nPrior: \nf \\sim \\mathcal{GP}(m, k)\n\nPosterior mean: \n\\tilde m(x)\n=\nm(x)\n+\nk(x,X)[K+\\lambda I]^{-1}(Y-m(X))\n\nPosterior variance: \n\\sigma^2(x; X)\n=\nk(x,x)\n-\nk(x,X)[K+\\lambda I]^{-1}k(X,x)\n\nNotes:\n\nX is the training data, Y are the corresponding targets\n\\lambda is the noise variance\nK = k(X,X) is the kernel matrix on the training data"
-  },
-  {
-    "objectID": "monoPostTalk/index.html#posterior-variance-under-input-scaling",
-    "href": "monoPostTalk/index.html#posterior-variance-under-input-scaling",
-    "title": "Monotonicity of Gaussian Process Posterior Variance",
-    "section": "Posterior Variance Under Input Scaling",
-    "text": "Posterior Variance Under Input Scaling\nMove observations toward the origin using a scale r &gt; 0: \nk_r(x,y) = k(rx, ry)\n\\qquad\n\\text{(stationary: } k_r(x,y) = k(r(x-y))\\text{)}\n\nPosterior variance at the origin: \n\\sigma^2(0; rX)\n=\nk(0,0)\n-\ng(r),\n\\qquad\ng(r) = a(r)^\\top A(r)^{-1} a(r)\n\n\nA(r) = k_r(X,X) + \\lambda I,\n\\qquad\na(r) = k_r(X,0)\n\nCentral question Does posterior uncertainty at the origin decrease as observations move closer?\nEquivalent mathematical question: Is g(r) increasing as r \\rightarrow 0?\nDerivative identity Let \\alpha(r) = A(r)^{-1} a(r). Then\n\ng'(r)\n=\n2 a'(r)^\\top \\alpha(r)\n-\n\\alpha(r)^\\top A'(r) \\alpha(r)\n\nResearch problem:\nUnder what conditions on the kernel k does g'(r) \\le 0 hold for all r &gt; 0?"
-  },
-  {
-    "objectID": "monoPostTalk/index.html#visualisation-of-posterior-variance-under-input-scaling",
-    "href": "monoPostTalk/index.html#visualisation-of-posterior-variance-under-input-scaling",
-    "title": "Monotonicity of Gaussian Process Posterior Variance",
-    "section": "Visualisation of Posterior Variance Under Input Scaling",
-    "text": "Visualisation of Posterior Variance Under Input Scaling\nUsing \nk(x,y) = \\exp\\!\\biggl(-\\frac{\\|x-y\\|^2}{2\\ell^2}\\biggr)\n\n\n\nCode\nn = 20\n\nX = {\n  function mulberry32(a) {\n    return function() {\n      a |= 0; a = a + 0x6D2B79F5 | 0;\n      var t = Math.imul(a ^ a &gt;&gt;&gt; 15, 1 | a);\n      t = t + Math.imul(t ^ t &gt;&gt;&gt; 7, 61 | t) ^ t;\n      return ((t ^ t &gt;&gt;&gt; 14) &gt;&gt;&gt; 0) / 4294967296;\n    }\n  }\n  const rng = mulberry32(42);\n  return Array.from({length: n}, (_, i) =&gt; {\n    const t = (2 * Math.PI * i) / n;\n    return [1.2 * Math.cos(t) + 0.25 * (rng() - 0.5),\n            1.2 * Math.sin(t) + 0.25 * (rng() - 0.5)];\n  });\n}\n\nell = 0.7\nsigmaF2 = 1.0\nlambda = 1e-3\n\n// Inject styles to fix slider accent and plot text on dark Reveal background\nthemeStyle = html`&lt;style&gt;\n  .ojs-cell input[type=\"range\"],\n  .reveal input[type=\"range\"] {\n    accent-color: var(--accent, #ee4558);\n  }\n  .ojs-cell input[type=\"number\"],\n  .reveal input[type=\"number\"] {\n    background: rgba(255,255,255,0.08);\n    color: rgba(255,255,255,0.9);\n    border: 1px solid rgba(255,255,255,0.2);\n    border-radius: 4px;\n  }\n  .ojs-cell label, .ojs-cell output,\n  .reveal form label, .reveal form output {\n    color: rgba(255,255,255,0.85) !important;\n  }\n  .reveal .ojs-cell {\n    display: flex;\n    flex-direction: column;\n    align-items: center;\n  }\n&lt;/style&gt;`\n\nviewof r = Inputs.range([0, 2], {step: 0.01, value: 1.0, label: \"scale r\"})\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\nCode\nfunction k(x, y) {\n  const dx = x[0] - y[0], dy = x[1] - y[1];\n  return sigmaF2 * Math.exp(-(dx*dx + dy*dy) / (2 * ell * ell));\n}\n\nfunction gram(XA, XB) {\n  const nA = XA.length, nB = XB.length;\n  const K = Array.from({length: nA}, () =&gt; Array(nB).fill(0));\n  for (let i = 0; i &lt; nA; i++)\n    for (let j = 0; j &lt; nB; j++)\n      K[i][j] = k(XA[i], XB[j]);\n  return K;\n}\n\nfunction cholesky(A) {\n  const m = A.length;\n  const L = Array.from({length: m}, () =&gt; Array(m).fill(0));\n  for (let i = 0; i &lt; m; i++) {\n    for (let j = 0; j &lt;= i; j++) {\n      let s = A[i][j];\n      for (let p = 0; p &lt; j; p++) s -= L[i][p] * L[j][p];\n      L[i][j] = (i === j) ? Math.sqrt(Math.max(s, 1e-14)) : s / L[j][j];\n    }\n  }\n  return L;\n}\n\nfunction cholSolve(A, b) {\n  const L = cholesky(A), m = A.length;\n  const z = Array(m).fill(0);\n  for (let i = 0; i &lt; m; i++) {\n    let s = b[i];\n    for (let p = 0; p &lt; i; p++) s -= L[i][p] * z[p];\n    z[i] = s / L[i][i];\n  }\n  const x = Array(m).fill(0);\n  for (let i = m - 1; i &gt;= 0; i--) {\n    let s = z[i];\n    for (let p = i + 1; p &lt; m; p++) s -= L[p][i] * x[p];\n    x[i] = s / L[i][i];\n  }\n  return x;\n}\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\nCode\norigin = [0, 0]\nrX = X.map(([x1, x2]) =&gt; [r * x1, r * x2])\n\nposteriorResult = {\n  const Krr = gram(rX, rX);\n  for (let i = 0; i &lt; n; i++) Krr[i][i] += lambda;\n  const a = rX.map(xi =&gt; k(xi, origin));\n  const u = cholSolve(Krr, a);\n  const g = a.reduce((acc, ai, i) =&gt; acc + ai * u[i], 0);\n  return {g, sigma2: k(origin, origin) - g};\n}\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\nCode\naxisLim = 3\n\n// Dark-theme-friendly plot style string\ndarkStyle = \"background:transparent; color:rgba(255,255,255,0.82); font-size:13px;\"\n\ncurve = {\n  function sigma2At(rv) {\n    const sX = X.map(([x1, x2]) =&gt; [rv * x1, rv * x2]);\n    const A = gram(sX, sX);\n    for (let i = 0; i &lt; n; i++) A[i][i] += lambda;\n    const av = sX.map(xi =&gt; k(xi, origin));\n    const uv = cholSolve(A, av);\n    const gv = av.reduce((acc, ai, i) =&gt; acc + ai * uv[i], 0);\n    return k(origin, origin) - gv;\n  }\n  return Array.from({length: 201}, (_, i) =&gt; {\n    const rv = i * (2 / 200);\n    return {r: rv, sigma2: sigma2At(rv)};\n  });\n}\n\nleftPlot = Plot.plot({\n  width: 380,\n  height: 340,\n  style: darkStyle,\n  x: {label: \"x₁\", domain: [-axisLim, axisLim]},\n  y: {label: \"x₂\", domain: [-axisLim, axisLim]},\n  marks: [\n    Plot.dot(rX, {\n      x: d =&gt; d[0], y: d =&gt; d[1],\n      fill: \"#93c5fd\", r: 4, opacity: 0.9\n    }),\n    Plot.dot([[0, 0]], {\n      x: d =&gt; d[0], y: d =&gt; d[1],\n      stroke: \"#ee4558\", fill: \"none\",\n      strokeWidth: 2.5, r: 7, symbol: \"cross\"\n    })\n  ]\n})\n\nrightPlot = Plot.plot({\n  width: 380,\n  height: 340,\n  style: darkStyle,\n  x: {label: \"scale r\", domain: [0, 2]},\n  y: {label: \"σ²(0; rX)\", domain: [0, sigmaF2 * 1.05]},\n  marks: [\n    Plot.ruleY([0], {stroke: \"rgba(255,255,255,0.15)\"}),\n    Plot.line(curve, {x: \"r\", y: \"sigma2\", stroke: \"#93c5fd\", strokeWidth: 2}),\n    Plot.dot([{r: +r, sigma2: posteriorResult.sigma2}], {\n      x: \"r\", y: \"sigma2\", r: 6, fill: \"#ee4558\"\n    })\n  ]\n})\n\nhtml`&lt;div style=\"display:flex; gap:24px; align-items:flex-start; flex-wrap:wrap; justify-content:center;\"&gt;\n  &lt;div style=\"text-align:center;\"&gt;\n    &lt;div style=\"font-weight:600; margin-bottom:6px; color:rgba(255,255,255,0.85);\"&gt;\n      Scaled locations &lt;i&gt;r&lt;/i&gt;&lt;b&gt;X&lt;/b&gt; in ℝ²\n    &lt;/div&gt;\n    ${leftPlot}\n  &lt;/div&gt;\n  &lt;div style=\"text-align:center;\"&gt;\n    &lt;div style=\"font-weight:600; margin-bottom:6px; color:rgba(255,255,255,0.85);\"&gt;\n      Posterior variance at the origin\n    &lt;/div&gt;\n    ${rightPlot}\n  &lt;/div&gt;\n&lt;/div&gt;`"
-  },
-  {
-    "objectID": "monoPostTalk/index.html#radial-gaussian-process-kernels",
-    "href": "monoPostTalk/index.html#radial-gaussian-process-kernels",
-    "title": "Monotonicity of Gaussian Process Posterior Variance",
-    "section": "Radial Gaussian Process Kernels",
-    "text": "Radial Gaussian Process Kernels\nWe focus on isotropic kernels:\n\nk(x,y) = \\varphi(\\|x-y\\|^2)\n\nExamples:\n\nGaussian\nMatérn\nRational quadratic"
-  },
-  {
-    "objectID": "monoPostTalk/index.html#completely-monotone-kernels",
-    "href": "monoPostTalk/index.html#completely-monotone-kernels",
-    "title": "Monotonicity of Gaussian Process Posterior Variance",
-    "section": "Completely Monotone Kernels",
-    "text": "Completely Monotone Kernels\nA kernel is completely monotone if\n\nk(x,y) = \\varphi(\\|x-y\\|^2)\n\nwhere\n\n(-1)^n \\varphi^{(n)}(h) \\ge 0\n\nExamples:\n\nGaussian (yes)\nMatérn (not always)\nRational quadratic (yes)"
-  },
-  {
-    "objectID": "monoPostTalk/index.html#bernstein-functions-generate-kernels",
-    "href": "monoPostTalk/index.html#bernstein-functions-generate-kernels",
-    "title": "Monotonicity of Gaussian Process Posterior Variance",
-    "section": "Bernstein functions generate kernels",
-    "text": "Bernstein functions generate kernels\nA Bernstein function satisfies:\n\nincreasing\nconcave\nf'(h) completely monotone\n\nThese generate kernels:\n\nk(x,y)\n=\ne^{-f(\\|x-y\\|^2)}\n\nThis defines a valid Gaussian process kernel."
-  },
-  {
-    "objectID": "monoPostTalk/index.html#correspondence-with-completely-monotone-kernels",
-    "href": "monoPostTalk/index.html#correspondence-with-completely-monotone-kernels",
-    "title": "Monotonicity of Gaussian Process Posterior Variance",
-    "section": "Correspondence with completely monotone kernels",
-    "text": "Correspondence with completely monotone kernels\nThere is a one-to-one correspondence:\n\n\\varphi(h)\n=\ne^{-f(h)}\n\nThen\n\nf Bernstein \\iff \\varphi completely monotone\n\nTherefore Bernstein functions parameterise completely monotone kernels."
-  },
-  {
-    "objectID": "monoPostTalk/index.html#why-bernstein-structure-is-useful",
-    "href": "monoPostTalk/index.html#why-bernstein-structure-is-useful",
-    "title": "Monotonicity of Gaussian Process Posterior Variance",
-    "section": "Why Bernstein structure is useful",
-    "text": "Why Bernstein structure is useful\nOur (scaled) kernel has form:\n\nk_r(x,y) = e^{-f(r^2\\|x-y\\|^2)}\n\nDerivative introduces term:\n\nh f'(h)\n\nWe need this to preserve the Bernstein property."
-  },
-  {
-    "objectID": "monoPostTalk/index.html#thorinbernstein-functions",
-    "href": "monoPostTalk/index.html#thorinbernstein-functions",
-    "title": "Monotonicity of Gaussian Process Posterior Variance",
-    "section": "Thorin–Bernstein functions",
-    "text": "Thorin–Bernstein functions\nA Thorin–Bernstein function is a Bernstein function which additionally satisfies:\n\nh f'(h)\n\\text{ is Bernstein}\n\nThis ensures\n\nderivative kernel remains CND\nmonotonicity holds"
-  },
-  {
-    "objectID": "monoPostTalk/index.html#representation-of-k",
-    "href": "monoPostTalk/index.html#representation-of-k",
-    "title": "Monotonicity of Gaussian Process Posterior Variance",
-    "section": "Representation of k",
-    "text": "Representation of k\nAssume the (scaled) kernel can be written as \nk_r(x,y) = \\exp\\{-\\eta_r(x,y)\\}, \\qquad \\eta_r(x,y) = \\eta(rx,ry),\n where \\eta is conditionally negative definite (CND).\n\nBy Schoenberg’s criterion, k_r is positive definite (PD) for all r&gt;0 iff \\eta_r is CND.\n\n\nTheorem 1 (Monotonicity condition) If, for some r&gt;0, the derivative \\partial_r \\eta_r(x,y) is a CND function, then \ng'(r) \\le 0."
-  },
-  {
-    "objectID": "monoPostTalk/index.html#proof-sketch",
-    "href": "monoPostTalk/index.html#proof-sketch",
-    "title": "Monotonicity of Gaussian Process Posterior Variance",
-    "section": "Proof sketch",
-    "text": "Proof sketch\nWe start from the derivative identity:\n\ng'(r)\n=\n-2\\sum_i \\eta_r'(x_i,0)\\,k_r(x_i,0)\\,\\alpha_i\n+\n\\sum_{i,j}\n\\alpha_i\\alpha_j\\,\n\\eta_r'(x_i,x_j)\\,\nk_r(x_i,x_j)\n\nUse the CND structure\nIf \\eta_r' is CND, then by the polarisation identity:\n\n\\eta_r'(x,y)\n=\n\\eta_r'(x,0)\n+\n\\eta_r'(y,0)\n-\n\\psi_r(x,y)\n\nwhere \\psi_r is positive definite.\nUse the linear system\nRecall:\n\n(K_r + \\lambda I)\\alpha = k_r(0,X)\n\nThis implies\n\n\\sum_j k_r(x_i,x_j)\\alpha_j\n=\nk_r(x_i,0)\n-\n\\lambda \\alpha_i\n\nSubstitute into g'(r).\nResult\nAfter simplification:\n\ng'(r)\n=\n-2\\lambda\n\\sum_i\n\\alpha_i^2\n\\eta_r'(x_i,0)\n-\n\\sum_{i,j}\n\\alpha_i\\alpha_j\n\\psi_r(x_i,x_j)\nk_r(x_i,x_j)\n\nSign of each term\nSince:\n\n\\eta_r' is CND ⇒ \\eta_r'(x_i,0) \\ge 0\n\\psi_r is PD\nk_r is PD\n\nboth terms are non-positive\nConclusion\n\ng'(r) \\le 0\n\nTherefore posterior variance decreases."
-  },
-  {
-    "objectID": "monoPostTalk/index.html#main-theorem",
-    "href": "monoPostTalk/index.html#main-theorem",
-    "title": "Monotonicity of Gaussian Process Posterior Variance",
-    "section": "Main theorem",
-    "text": "Main theorem\n\nTheorem 2 (Sufficient Condtion for Monotonicity of Posterior Variance) If \nk(x,y) = \\exp\\{-f(\\|x-y\\|^2)\\}\n\nand f is Thorin–Bernstein, then\n\ng'(r) \\le 0\n\n\nKey reason\nThorin–Bernstein \\Rightarrow \\eta_r' is CND \\Rightarrow monotonicity"
-  },
-  {
-    "objectID": "monoPostTalk/index.html#proof-sketch-1",
-    "href": "monoPostTalk/index.html#proof-sketch-1",
-    "title": "Monotonicity of Gaussian Process Posterior Variance",
-    "section": "Proof sketch",
-    "text": "Proof sketch\nStart from the representation\n\n\\eta_r(x,y)\n=\nf\\!\\left(r^2 \\|x-y\\|^2\\right),\n\\qquad\nf \\in \\mathcal{TBF}\n\nDifferentiate with respect to r:\n\n\\eta_r'(x,y)\n=\n2r \\|x-y\\|^2\n\\, f'\\!\\left(r^2 \\|x-y\\|^2\\right)\n\nKey structural property:\nIf f is Thorin–Bernstein, then\n\nu(h) = h f'(h)\n\nis a Bernstein function\nTherefore\n\nu(\\|x-y\\|^2) is CND\nscaling preserves the CND property\n\nso\n\n\\eta_r'\n\\text{ is CND}\n\nApply previous theorem:\n\n\\eta_r' \\text{ CND}\n\\quad \\Rightarrow \\quad\ng'(r) \\le 0"
-  },
-  {
-    "objectID": "monoPostTalk/index.html#kernels-satisfying-the-conditions",
-    "href": "monoPostTalk/index.html#kernels-satisfying-the-conditions",
-    "title": "Monotonicity of Gaussian Process Posterior Variance",
-    "section": "Kernels satisfying the conditions",
-    "text": "Kernels satisfying the conditions\nRecall the main result. If \nk(x,y) = \\exp\\{-f(\\|x-y\\|^2)\\},\n where f is a Thorin–Bernstein function, then g'(r) \\le 0.\nExamples:\n\nGaussian kernel (yes)\nRational quadratic kernel (yes)\nMatérn kernel (not always)"
-  },
-  {
-    "objectID": "monoPostTalk/index.html#a-counterexample-kernel-bernstein-but-not-thorinbernstein",
-    "href": "monoPostTalk/index.html#a-counterexample-kernel-bernstein-but-not-thorinbernstein",
-    "title": "Monotonicity of Gaussian Process Posterior Variance",
-    "section": "A counterexample kernel (Bernstein but not Thorin–Bernstein)",
-    "text": "A counterexample kernel (Bernstein but not Thorin–Bernstein)\nFrom the Levy–Khintchine representation, take \nf(h)=a+bh+\\int_0^\\infty (1-e^{-ht})\\,\\mu(dt),\n and choose a=b=0 and \\mu=\\delta_1 (Dirac mass at t=1). Then \nf(h)=1-e^{-h}\n is a Bernstein function.\nTherefore the kernel \nk(x,y)=\\exp\\!\\Big\\{-f(\\|x-y\\|^2)\\Big\\}\n=\\exp\\!\\left\\{-\\left(1-e^{-\\|x-y\\|^2}\\right)\\right\\}\n is completely monotone (and hence PD).\nWe call this the Exp–Exp kernel."
-  },
-  {
-    "objectID": "monoPostTalk/index.html#visualisation-of-posterior-variance-under-input-scaling-expexp",
-    "href": "monoPostTalk/index.html#visualisation-of-posterior-variance-under-input-scaling-expexp",
-    "title": "Monotonicity of Gaussian Process Posterior Variance",
-    "section": "Visualisation of Posterior Variance Under Input Scaling (Exp–Exp)",
-    "text": "Visualisation of Posterior Variance Under Input Scaling (Exp–Exp)\nUsing \nk(x,y) = \\exp\\!\\Big\\{-\\bigl(1 - e^{-\\|x-y\\|^2}\\bigr)\\Big\\}\n\n\n\nCode\nn_ee = 8\n\nX_ee = {\n  function mulberry32(a) {\n    return function() {\n      a |= 0; a = a + 0x6D2B79F5 | 0;\n      var t = Math.imul(a ^ a &gt;&gt;&gt; 15, 1 | a);\n      t = t + Math.imul(t ^ t &gt;&gt;&gt; 7, 61 | t) ^ t;\n      return ((t ^ t &gt;&gt;&gt; 14) &gt;&gt;&gt; 0) / 4294967296;\n    }\n  }\n  const rng = mulberry32(42);\n  return Array.from({length: n_ee}, (_, i) =&gt; {\n    const t = (2 * Math.PI * i) / n_ee;\n    return [1.2 * Math.cos(t) + 0.25 * (rng() - 0.5),\n            1.2 * Math.sin(t) + 0.25 * (rng() - 0.5)];\n  });\n}\n\nlambda_ee = 1e-3\n\nthemeStyle_ee = html`&lt;style&gt;\n  .ojs-cell input[type=\"range\"],\n  .reveal input[type=\"range\"] {\n    accent-color: var(--accent, #ee4558);\n  }\n  .ojs-cell input[type=\"number\"],\n  .reveal input[type=\"number\"] {\n    background: rgba(255,255,255,0.08);\n    color: rgba(255,255,255,0.9);\n    border: 1px solid rgba(255,255,255,0.2);\n    border-radius: 4px;\n  }\n  .ojs-cell label, .ojs-cell output,\n  .reveal form label, .reveal form output {\n    color: rgba(255,255,255,0.85) !important;\n  }\n  .reveal .ojs-cell {\n    display: flex;\n    flex-direction: column;\n    align-items: center;\n  }\n&lt;/style&gt;`\n\nviewof r_ee = Inputs.range([0, 32], {step: 0.01, value: 1.0, label: \"scale r\"})\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\nCode\nfunction k_ee(x, y) {\n  const dx = x[0] - y[0], dy = x[1] - y[1];\n  const dist2 = dx*dx + dy*dy;\n  return Math.exp(-(1 - Math.exp(-dist2)));\n}\n\nfunction gram_ee(XA, XB) {\n  const nA = XA.length, nB = XB.length;\n  const K = Array.from({length: nA}, () =&gt; Array(nB).fill(0));\n  for (let i = 0; i &lt; nA; i++)\n    for (let j = 0; j &lt; nB; j++)\n      K[i][j] = k_ee(XA[i], XB[j]);\n  return K;\n}\n\nfunction cholesky_ee(A) {\n  const m = A.length;\n  const L = Array.from({length: m}, () =&gt; Array(m).fill(0));\n  for (let i = 0; i &lt; m; i++) {\n    for (let j = 0; j &lt;= i; j++) {\n      let s = A[i][j];\n      for (let p = 0; p &lt; j; p++) s -= L[i][p] * L[j][p];\n      L[i][j] = (i === j) ? Math.sqrt(Math.max(s, 1e-14)) : s / L[j][j];\n    }\n  }\n  return L;\n}\n\nfunction cholSolve_ee(A, b) {\n  const L = cholesky_ee(A), m = A.length;\n  const z = Array(m).fill(0);\n  for (let i = 0; i &lt; m; i++) {\n    let s = b[i];\n    for (let p = 0; p &lt; i; p++) s -= L[i][p] * z[p];\n    z[i] = s / L[i][i];\n  }\n  const x = Array(m).fill(0);\n  for (let i = m - 1; i &gt;= 0; i--) {\n    let s = z[i];\n    for (let p = i + 1; p &lt; m; p++) s -= L[p][i] * x[p];\n    x[i] = s / L[i][i];\n  }\n  return x;\n}\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\nCode\norigin_ee = [0, 0]\nrX_ee = X_ee.map(([x1, x2]) =&gt; [r_ee * x1, r_ee * x2])\n\nposteriorResult_ee = {\n  const Krr = gram_ee(rX_ee, rX_ee);\n  for (let i = 0; i &lt; n_ee; i++) Krr[i][i] += lambda_ee;\n  const a = rX_ee.map(xi =&gt; k_ee(xi, origin_ee));\n  const u = cholSolve_ee(Krr, a);\n  const g = a.reduce((acc, ai, i) =&gt; acc + ai * u[i], 0);\n  return {g, sigma2: k_ee(origin_ee, origin_ee) - g};\n}\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\nCode\naxisLim_ee = 36\ndarkStyle_ee = \"background:transparent; color:rgba(255,255,255,0.82); font-size:13px;\"\n\ncurve_ee = {\n  function sigma2At(rv) {\n    const sX = X_ee.map(([x1, x2]) =&gt; [rv * x1, rv * x2]);\n    const A = gram_ee(sX, sX);\n    for (let i = 0; i &lt; n_ee; i++) A[i][i] += lambda_ee;\n    const av = sX.map(xi =&gt; k_ee(xi, origin_ee));\n    const uv = cholSolve_ee(A, av);\n    const gv = av.reduce((acc, ai, i) =&gt; acc + ai * uv[i], 0);\n    return k_ee(origin_ee, origin_ee) - gv;\n  }\n  return Array.from({length: 201}, (_, i) =&gt; {\n    const rv = i * (32 / 200);\n    return {r: rv, sigma2: sigma2At(rv)};\n  });\n}\n\nleftPlot_ee = Plot.plot({\n  width: 380,\n  height: 340,\n  style: darkStyle_ee,\n  x: {label: \"x₁\", domain: [-axisLim_ee, axisLim_ee]},\n  y: {label: \"x₂\", domain: [-axisLim_ee, axisLim_ee]},\n  marks: [\n    Plot.dot(rX_ee, {\n      x: d =&gt; d[0], y: d =&gt; d[1],\n      fill: \"#93c5fd\", r: 4, opacity: 0.9\n    }),\n    Plot.dot([[0, 0]], {\n      x: d =&gt; d[0], y: d =&gt; d[1],\n      stroke: \"#ee4558\", fill: \"none\",\n      strokeWidth: 2.5, r: 7, symbol: \"cross\"\n    })\n  ]\n})\n\nrightPlot_ee = Plot.plot({\n  width: 380,\n  height: 340,\n  style: darkStyle_ee,\n  x: {label: \"scale r\", domain: [0, 32]},\n  y: {label: \"σ²(0; rX)\", domain: [0, 1.05]},\n  marks: [\n    Plot.ruleY([0], {stroke: \"rgba(255,255,255,0.15)\"}),\n    Plot.line(curve_ee, {x: \"r\", y: \"sigma2\", stroke: \"#93c5fd\", strokeWidth: 2}),\n    Plot.dot([{r: +r_ee, sigma2: posteriorResult_ee.sigma2}], {\n      x: \"r\", y: \"sigma2\", r: 6, fill: \"#ee4558\"\n    })\n  ]\n})\n\nhtml`&lt;div style=\"display:flex; gap:24px; align-items:flex-start; flex-wrap:wrap; justify-content:center;\"&gt;\n  &lt;div style=\"text-align:center;\"&gt;\n    &lt;div style=\"font-weight:600; margin-bottom:6px; color:rgba(255,255,255,0.85);\"&gt;\n      Scaled locations &lt;i&gt;r&lt;/i&gt;&lt;b&gt;X&lt;/b&gt; in ℝ²\n    &lt;/div&gt;\n    ${leftPlot_ee}\n  &lt;/div&gt;\n  &lt;div style=\"text-align:center;\"&gt;\n    &lt;div style=\"font-weight:600; margin-bottom:6px; color:rgba(255,255,255,0.85);\"&gt;\n      Posterior variance at the origin\n    &lt;/div&gt;\n    ${rightPlot_ee}\n  &lt;/div&gt;\n&lt;/div&gt;`"
+    "objectID": "index.html",
+    "href": "index.html",
+    "title": "VGD",
+    "section": "",
+    "text": "Welcome to the VGD documentation. See the Tutorials to get started."
   }
 ]

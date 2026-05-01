@@ -437,7 +437,7 @@ We need this to preserve the Bernstein property.
 
 ## Thorin–Bernstein functions
 
-A Thorin–Bernstein function is a **Bernstein function** which additionally satisfies:
+A Thorin–Bernstein function (Schilling et al., 2012) is a **Bernstein function** which additionally satisfies:
 
 $$
 h f'(h)
@@ -460,7 +460,7 @@ k_r(x,y) = \exp\{-\eta_r(x,y)\}, \qquad \eta_r(x,y) = \eta(rx,ry),
 $$
 where $\eta$ is **conditionally negative definite (CND)**.
 
-- By **Schoenberg's criterion**, $k_r$ is positive definite (PD) for all $r>0$ iff $\eta_r$ is CND.
+- By **Schoenberg's criterion** (Schoenberg, 1938), $k_r$ is positive definite (PD) for all $r>0$ iff $\eta_r$ is CND.
 
 
 ::: {.theorem #thm-monotonicity-condition}
@@ -689,7 +689,7 @@ $$
 ```{ojs}
 // --- Block 1ee: Controls + data ---
 
-n_ee = 8
+n_ee = 6
 
 X_ee = {
   function mulberry32(a) {
@@ -700,7 +700,7 @@ X_ee = {
       return ((t ^ t >>> 14) >>> 0) / 4294967296;
     }
   }
-  const rng = mulberry32(42);
+  const rng = mulberry32(32);
   return Array.from({length: n_ee}, (_, i) => {
     const t = (2 * Math.PI * i) / n_ee;
     return [1.2 * Math.cos(t) + 0.25 * (rng() - 0.5),
@@ -733,7 +733,7 @@ themeStyle_ee = html`<style>
   }
 </style>`
 
-viewof r_ee = Inputs.range([0, 32], {step: 0.01, value: 1.0, label: "scale r"})
+viewof r_ee = Inputs.range([1, 8192], {step: 0.8, value: 1.0, label: "scale r"})
 ```
 
 ```{ojs}
@@ -806,7 +806,7 @@ posteriorResult_ee = {
 ```{ojs}
 // --- Block 4ee: Two-panel visualisation ---
 
-axisLim_ee = 36
+axisLim_ee = 8192 + 20
 darkStyle_ee = "background:transparent; color:rgba(255,255,255,0.82); font-size:13px;"
 
 curve_ee = {
@@ -820,7 +820,7 @@ curve_ee = {
     return k_ee(origin_ee, origin_ee) - gv;
   }
   return Array.from({length: 201}, (_, i) => {
-    const rv = i * (32 / 200);
+    const rv = i * (8192 / 200);
     return {r: rv, sigma2: sigma2At(rv)};
   });
 }
@@ -848,7 +848,7 @@ rightPlot_ee = Plot.plot({
   width: 380,
   height: 340,
   style: darkStyle_ee,
-  x: {label: "scale r", domain: [0, 32]},
+  x: {label: "scale r", domain: [0, 8192]},
   y: {label: "σ²(0; rX)", domain: [0, 1.05]},
   marks: [
     Plot.ruleY([0], {stroke: "rgba(255,255,255,0.15)"}),
@@ -874,3 +874,11 @@ html`<div style="display:flex; gap:24px; align-items:flex-start; flex-wrap:wrap;
   </div>
 </div>`
 ``` 
+
+## References
+
+- Rene L. Schilling, Renming Song, and Zoran Vondraˇcek. Bernstein Functions: Theory and Appli-
+cations, volume 37 of De Gruyter Studies in Mathematics. De Gruyter, 2nd edition, 2012. ISBN
+978-3-11-025386-6. doi: 10.1515/9783110258151.
+- I. J. Schoenberg. Metric spaces and positive definite functions. Transactions of the American
+Mathematical Society, 44(3):522–536, 1938b. doi: 10.2307/1989894

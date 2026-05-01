@@ -12,6 +12,8 @@ website:
         href: api/index.html
       - text: Monotonic Posterior Talk
         href: monoPostTalk/index.qmd
+      - text: Scoring Models in RLHF
+        href: rlhf/index.qmd
     right:
       - icon: github
         href: https://github.com/matthewalexanderfisher/vgd
